@@ -1,0 +1,14 @@
+## Interface: 100105
+## Version: 1.0.0
+## Title: DaveTest
+## Notes: Buff Watcher
+## Author: Big Dave
+## SavedVariables: HelloWorldDB
+## Dependencies: DevTool
+
+DaveTest_Shared.lua
+DaveTest_Callbacks.lua
+DaveTest_Pager.lua
+DaveTest_LoggerWindow.lua
+DaveTest_MainWindow.lua
+DaveTest.lua
