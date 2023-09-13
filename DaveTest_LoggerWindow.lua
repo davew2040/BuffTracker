@@ -3,24 +3,44 @@ function SpellRow:new(parent)
     self = {}
 
     local currentSpell = nil
+    local AddEventName = "SPELL_ADD"
 
-    local spellRowFrame = CreateFrame("Frame", "Test Frame", parent)
+    local events = DaveTest_Callbacks:new()
+
+    local spellRowFrame = CreateFrame("Frame", "Spell Row", parent)
+
+    local addButton = DaveTest_Shared_Singleton.GetButton(
+        spellRowFrame, 
+        "Interface/Buttons/UI-DialogBox-Button-Up", 
+        "Interface/Buttons/UI-DialogBox-Button-Down"
+    )
+    
+    addButton:SetPoint("TOPLEFT", spellRowFrame, "TOPLEFT", 0, 13)
+    addButton:SetWidth(75)
+    addButton:SetHeight(40)
+    addButton:SetScript("OnClick", function()
+        events.fire(AddEventName, currentSpell)
+    end)
+    
+    local addButtonText = addButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    addButtonText:SetText("Add")
+    addButtonText:SetPoint("CENTER", 0, 8)
 
     local textureFrame = spellRowFrame:CreateTexture()
-    textureFrame:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 25, 0)
+    textureFrame:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 125, 0)
     textureFrame:SetSize(32, 32)
 
     local spellTypeText = spellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellTypeText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 100, 0)
+    spellTypeText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 200, 0)
 
     local spellIdText = spellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellIdText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 200, 0)
+    spellIdText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 300, 0)
 
     local spellNameText = spellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellNameText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 300, 0)
+    spellNameText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 400, 0)
 
     local sourceNameText = spellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    sourceNameText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 550, 0)
+    sourceNameText:SetPoint("LEFT", spellRowFrame, "TOPLEFT", 650, 0)
 
     self.getFrame = function()
         return spellRowFrame
@@ -33,7 +53,7 @@ function SpellRow:new(parent)
         local texture = GetSpellTexture(spell.spellId)
 
         spellIdText:SetText(spell.spellId)
-        spellTypeText:SetText(spell.type)
+        spellTypeText:SetText(DaveTest_Shared_Singleton.SpellTypeLabels[spell.type])
         spellNameText:SetText(spellName)
         sourceNameText:SetText(spell.sourceName)
         textureFrame:SetTexture(texture)
@@ -52,42 +72,41 @@ function SpellRow:new(parent)
         return currentSpell;
     end
 
+    self.registerAdd = function(fn)
+        events.registerCallback(AddEventName, fn)
+    end
+
     return self
 end
 
 DaveTest_LoggerWindow = {}
-function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
+function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
     self = {}
 
+    local SpellTypes = DaveTest_Shared_Singleton.SpellTypes
+    local SpellTypeLabels = DaveTest_Shared_Singleton.SpellTypeLabels
+
+    local spellFilters = {
+        spellType = SpellTypes.Any,
+        name = "",
+        caster = ""
+    }
     local mainFrame = nil
-    local pageSize = 12
+    local pageSize = 10
     local spellRowHeight = 32
     local spellRecords = {}
+    local filteredSpellRecords = {}
     local uiSpellRows = {}
     local indexedSpellRecords = {}
     local pagerText = nil
-    local dropDown = nil
+    local buffPickerDropdown = nil
     local foundSpells = {}
+    local isShowing = false
+    local storedSpells = incomingStoredSpells
 
     local pager = Pager:new(pageSize, 0)
 
-    local GetButton = function(parent, unpressedTexture, pressedTexture)
-        local button = CreateFrame("Button", "random button title", parent)
-    
-        local ntex = button:CreateTexture()
-        ntex:SetTexture(unpressedTexture)
-        ntex:SetAllPoints()	
-        button:SetNormalTexture(ntex)
-        
-        local ptex = button:CreateTexture()
-        ptex:SetTexture(pressedTexture)
-        ptex:SetAllPoints()
-        button:SetPushedTexture(ptex)
-        
-        return button;
-    end
-
-    local GetIndexedRecords = function()
+    local GetIndexedRecords = function(spellRecords)
         local iSpellRecords = {}
     
         local i = 1
@@ -99,6 +118,16 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
         return iSpellRecords
     end
 
+    local nameOnly = function(fullname)
+        local dashIndex = string.find(fullname, "-")
+
+        if (dashIndex == nil) then
+            return fullname
+        end
+
+        return string.sub(fullname, 0, dashIndex-1)
+    end
+
     local OnEvent = function (ref, event, ...)
         if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
             local eventInfo = {CombatLogGetCurrentEventInfo()}
@@ -108,16 +137,12 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
 
             if (subevent == "SPELL_CAST_SUCCESS") then
                 local spellId = eventInfo[12]
-                local spellRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord("SPELL_CAST", spellId, sourceName)
+                local spellName = eventInfo[13]
+
+                local spellRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
 
                 if (spellRecords[spellRecord.key] == nil) then
                     spellRecords[spellRecord.key] = spellRecord
-                end
-
-                if (true) then -- sourceGuid == UnitGUID("player")) then
-                    if (foundSpells[spellId] == nil) then
-                        foundSpells[spellId] = true
-                    end
                 end
             end
         elseif (event == "UNIT_AURA") then
@@ -134,11 +159,10 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
                         break
                     end
 
-                    local buffRecord = nil
                     if (v.isHelpful) then
-                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord("BUFF", v.spellId, unitName)
+                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Buff, v.spellId, v.name, unitName)
                     else
-                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord("DEBUFF", v.spellId, unitName)
+                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Debuff, v.spellId, v.name, unitName)
                     end
 
                     if (spellRecords[buffRecord.key] == nil) then
@@ -147,6 +171,63 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
                 end
             end
         end
+    end
+
+    local handleSpellAdd = function(...) 
+        local spellRecord = select(1, ...)
+        DevTool:AddData(spellRecord, "fixme handleSpellAdd")
+        storedSpells.addSpell(spellRecord)
+    end
+
+    local meetsFilter = function(spellRecord, filter) 
+        if (storedSpells.hasSpell(spellRecord)) then
+            return false
+        end
+
+        if (filter.spellType ~= SpellTypes.Any and spellRecord.type ~= filter.spellType) then
+            return false
+        end
+
+        if (filter.name ~= nil and filter.name ~= "") then
+            if string.find(spellRecord.loweredName, filter.name) == nil then
+                return false
+            end
+        end
+
+        if (filter.caster ~= nil and filter.caster ~= "") then
+            if string.find(spellRecord.loweredCaster, filter.caster) == nil then
+                return false
+            end
+        end
+
+        return true
+    end
+
+    local applyFilters = function(spellRecords, filters)
+        local filtered = {}
+
+        for k,v in pairs(spellRecords) do
+            if (meetsFilter(v, filters) == true) then
+                filtered[k] = v
+            end
+        end
+
+        return filtered
+    end
+
+    local setSpellTypeFilter = function(newType)
+        spellFilters.spellType = newType
+        self.UpdateWindow()
+    end
+
+    local setSpellNameFilter = function(newFilter)
+        spellFilters.name = string.lower(newFilter)
+        self.UpdateWindow()
+    end
+
+    local setCasterNameFilter = function(newFilter)
+        spellFilters.caster = string.lower(newFilter)
+        self.UpdateWindow()
     end
 
     local Initialize = function(parent)
@@ -162,56 +243,106 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
             edgeSize = 8,
             insets = { left = 1, right = 1, top = 1, bottom = 1 },
         }
+
         frame:SetBackdrop(backdropInfo)
-        
-        frame:SetBackdropColor(0, 0, 0, .5)
-        frame:SetBackdropBorderColor(0, 0, 0)
-        frame:EnableMouse(true)
-        frame:SetMovable(true)
-        frame:RegisterForDrag("LeftButton")
-        frame:SetScript("OnDragStart", frame.StartMoving)
-        frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-        frame:SetScript("OnHide", frame.StopMovingOrSizing)
+        -- debug color
+        frame:SetBackdropColor(0, 0, 0, 1)
+
+        -- buff type picker start
+        local function WPDropDownDemo_OnClick(ref)
+            UIDropDownMenu_SetSelectedValue(buffPickerDropdown, ref.value)
+            setSpellTypeFilter(ref.value)
+        end
     
+        local function WPDropDownDemo_Menu(frame, level, menuList)
+            local OrderedSpellTypes = {
+                [1] = SpellTypes.Any,
+                [2] = SpellTypes.Buff,
+                [3] = SpellTypes.Debuff,
+                [4] = SpellTypes.Cast
+            }
+
+            for k, v in pairs(OrderedSpellTypes) do
+                local info = UIDropDownMenu_CreateInfo()
+
+                info.value = v
+                info.text = SpellTypeLabels[v]
+                info.checked = false
+                info.func = WPDropDownDemo_OnClick
+
+                UIDropDownMenu_AddButton(info)
+            end
+        end
+
+        buffPickerDropdown = CreateFrame("Frame", "WPDemoDropDown", frame, "UIDropDownMenuTemplate")
+        buffPickerDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -10)
+        
+        UIDropDownMenu_SetWidth(buffPickerDropdown, 125) 
+        UIDropDownMenu_Initialize(buffPickerDropdown, WPDropDownDemo_Menu)
+        UIDropDownMenu_SetSelectedValue(buffPickerDropdown, SpellTypes.Any)
+        -- buff type picker end       
+
+        -- filter spell name
+        local filterSpellName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
+        filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 175, 0);
+        filterSpellName:SetWidth(100);
+        filterSpellName:SetHeight(50);
+        filterSpellName:SetMovable(false);
+        filterSpellName:SetAutoFocus(false);
+        filterSpellName:SetScript("OnTextChanged", function(...)
+            local ctl = select(1, ...)
+            local textValue = ctl:GetText()
+            setSpellNameFilter(textValue ~= nil and textValue or "")
+        end)
+        -- end filter spell name
+
+        -- filter caster name
+        local filterCasterName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
+        filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, 0);
+        filterSpellName:SetWidth(100);
+        filterSpellName:SetHeight(50);
+        filterSpellName:SetMovable(false);
+        filterSpellName:SetAutoFocus(false);
+        filterSpellName:SetScript("OnTextChanged", function(...)
+            local ctl = select(1, ...)
+            local textValue = ctl:GetText()
+            setCasterNameFilter(textValue ~= nil and textValue or "")
+        end)
+        -- end caster spell name
+
+        -- spell rows start
         for i=1,pageSize do 
             local newRow = SpellRow:new(frame)
     
-            newRow.getFrame():SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -i*spellRowHeight)
+            newRow.getFrame():SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -50 - i*spellRowHeight)
             newRow.getFrame():Show()
             newRow.getFrame():SetSize(50, 50)
+            newRow.registerAdd(handleSpellAdd)
             
             table.insert(uiSpellRows, newRow)
         end
+        -- spell rows end
     
-        local close = CreateFrame("Button", "YourCloseButtonName", frame, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
-        close:SetScript("OnClick", function()
-            frame:Hide()
-        end)
-
-        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
-        close:SetScript("OnClick", function()
-            frame:Hide()
-        end)
-    
-        local exportButton = GetButton(
+        -- refresh button start
+        local refreshButton = DaveTest_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-DialogBox-Button-Up", 
             "Interface/Buttons/UI-DialogBox-Button-Down"
         )
         
-        exportButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -300, 0)
-        exportButton:SetWidth(100)
-        exportButton:SetHeight(64)
-        exportButton:SetScript("OnClick", function()
-            WeakAuras.ScanEvents("my_custom_event", {key = 6673})
+        refreshButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -300, 0)
+        refreshButton:SetWidth(100)
+        refreshButton:SetHeight(64)
+        refreshButton:SetScript("OnClick", function()
+            self.UpdateWindow()
         end)
     
-        local exportText = exportButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        exportText:SetText("Export")
-        exportText:SetPoint("CENTER", 0, 8)
+        local refreshText = refreshButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        refreshText:SetText("Refresh")
+        refreshText:SetPoint("CENTER", 0, 8)
+        -- refresh button end
     
-        local nextButton = GetButton(
+        local nextButton = DaveTest_Shared_Singleton.GetButton(
             frame,
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Up",
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Down"
@@ -227,7 +358,7 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
             end
         )
     
-        local prevButton = GetButton(
+        local prevButton = DaveTest_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Up", 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Down"
@@ -246,32 +377,6 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
         pagerText = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         pagerText:SetPoint("CENTER", frame, "BOTTOMRIGHT", -135, 45)
         pagerText:SetText("test text")
-    
-        local function WPDropDownDemo_OnClick(self)
-            UIDropDownMenu_SetSelectedValue(dropDown, self.value)
-    
-            if self.value == 1 then
-                print("You can continue to believe whatever you want to believe.")
-            elseif self.value == 2 then
-                print("Let's see how deep the rabbit hole goes.")
-            end
-           end
-    
-        local function WPDropDownDemo_Menu(frame, level, menuList)
-            local info = UIDropDownMenu_CreateInfo()
-            info.func = WPDropDownDemo_OnClick
-            info.text, info.value, info.checked = "Blue Pill", 1, false
-            UIDropDownMenu_AddButton(info)
-            info.text, info.value, info.checked = "Red Pill", 2, false
-            UIDropDownMenu_AddButton(info)
-        end
-    
-        local dropDown = CreateFrame("Frame", "WPDemoDropDown", frame, "UIDropDownMenuTemplate")
-        dropDown:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -450, 45)
-        
-        UIDropDownMenu_SetWidth(dropDown, 150) 
-        UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu)
-        UIDropDownMenu_SetSelectedValue(dropDown, 1)
 
         frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
         frame:RegisterEvent("UNIT_AURA")
@@ -300,10 +405,22 @@ function DaveTest_LoggerWindow:new(parent, spellCount, spellRowHeight, pager)
         pagerText:SetText(text)
     end
     
-    self.UpdateWindow = function() 
-        indexedSpellRecords = GetIndexedRecords()
+    self.UpdateWindow = function()
+        local filteredRecords = applyFilters(spellRecords, spellFilters)
+        indexedSpellRecords = GetIndexedRecords(filteredRecords)
         pager = Pager:new(pageSize, #indexedSpellRecords)
         self.UpdateSpellRows()
+    end
+
+    self.Show = function()
+        self.UpdateWindow()
+        mainFrame:Show()
+        isShowing = true
+    end
+
+    self.Hide = function()
+        mainFrame:Hide()
+        isShowing = false
     end
 
     self.GetFrame = function()

@@ -3,12 +3,19 @@
 ## Title: DaveTest
 ## Notes: Buff Watcher
 ## Author: Big Dave
-## SavedVariables: HelloWorldDB
-## Dependencies: DevTool
+## SavedVariables: DaveTestDB
+## Dependencies: DevTool, WeakAuras
 
+lua_linq/Enumerable.lua
+lua_linq/KeyValuePair.lua
+lua_linq/PredicateParser.lua
 DaveTest_Shared.lua
+DaveTest_DbAccessor.lua
 DaveTest_Callbacks.lua
-DaveTest_Pager.lua
-DaveTest_LoggerWindow.lua
+DaveTest_StoredSpells.lua
+DaveTest_WeakAuraInterface.lua
 DaveTest_MainWindow.lua
+DaveTest_Pager.lua
+DaveTest_SavedSpellsWindow.lua
+DaveTest_LoggerWindow.lua
 DaveTest.lua

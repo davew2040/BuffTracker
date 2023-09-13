@@ -10,12 +10,14 @@ function DaveTest_Callbacks:new()
             registrations[eventName] = {}
         end
 
-        registrations[fn] = fn
+        registrations[eventName][fn] = fn
     end
 
     self.fire = function(eventName, ...)
+        print("firing event name" .. eventName)
         if (registrations[eventName] ~= nil) then
-            for k, v in pairs(registrations) do
+            for k, v in pairs(registrations[eventName]) do
+                print("firing event name" .. eventName)
                 v(...)
             end
         end
