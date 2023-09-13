@@ -298,12 +298,12 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
 
         -- filter caster name
         local filterCasterName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
-        filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, 0);
-        filterSpellName:SetWidth(100);
-        filterSpellName:SetHeight(50);
-        filterSpellName:SetMovable(false);
-        filterSpellName:SetAutoFocus(false);
-        filterSpellName:SetScript("OnTextChanged", function(...)
+        filterCasterName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, 0);
+        filterCasterName:SetWidth(100);
+        filterCasterName:SetHeight(50);
+        filterCasterName:SetMovable(false);
+        filterCasterName:SetAutoFocus(false);
+        filterCasterName:SetScript("OnTextChanged", function(...)
             local ctl = select(1, ...)
             local textValue = ctl:GetText()
             setCasterNameFilter(textValue ~= nil and textValue or "")
