@@ -25,10 +25,37 @@ function f:OnEvent(event, ...)
         DaveTest_Frame:GetFrame():SetPoint("CENTER")
 
         DaveTest_Frame:Show()
+    elseif (event == "NAME_PLATE_UNIT_ADDED") then
+        -- TODO - make this an optional setting
+        local plateName = select(1, ...)
+        local nameplate = C_NamePlate.GetNamePlateForUnit(plateName)
+        local frame = nameplate.UnitFrame
+        if not nameplate or frame:IsForbidden() then return end
+        frame.BuffFrame:ClearAllPoints()
+        frame.BuffFrame:SetAlpha(0)
     end
 end
 
+-- local f = CreateFrame("Frame")
+-- local events = {}
+
+-- function events:NAME_PLATE_UNIT_ADDED(plate)
+-- 	local unitId = plate
+-- 	local nameplate = C_NamePlate.GetNamePlateForUnit(unitId)
+-- 	local frame = nameplate.UnitFrame
+-- 	if not nameplate or frame:IsForbidden() then return end
+-- 	frame.BuffFrame:ClearAllPoints()
+-- 	frame.BuffFrame:SetAlpha(0)
+-- end
+
+-- for j, u in pairs(events) do
+-- 	f:RegisterEvent(j)
+-- end
+
+-- f:SetScript("OnEvent", function(self, event, ...) events[event](self, ...) end)
+
 f:RegisterEvent("ADDON_LOADED")
+f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 
 f:SetScript("OnEvent", f.OnEvent)
 

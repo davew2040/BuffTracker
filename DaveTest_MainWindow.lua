@@ -8,6 +8,7 @@ function DaveTest_MainWindow:new(parent, incomingStoredSpells)
     
     local loggerWindow = nil
     local savedSpellsWindow = nil
+    local addEditCastWindow = nil
     local storedSpells = incomingStoredSpells
     
     local Initialize = function(parent)
@@ -64,6 +65,19 @@ function DaveTest_MainWindow:new(parent, incomingStoredSpells)
             self.OpenWatcherTab()
         end)
 
+        addEditCastWindow = DaveTest_AddEditSavedCast:new(UIParent)
+        addEditCastWindow:GetFrame():SetSize(800, 800)
+        addEditCastWindow:GetFrame():SetPoint("CENTER")
+        addEditCastWindow:GetFrame():SetScale(0.5)
+        addEditCastWindow:GetFrame():EnableMouse(true)
+        addEditCastWindow:GetFrame():SetMovable(true)
+
+        addEditCastWindow:GetFrame():SetScript("OnDragStart", addEditCastWindow.StartMoving)
+        addEditCastWindow:GetFrame():SetScript("OnDragStop", addEditCastWindow.StopMovingOrSizing)
+        addEditCastWindow:GetFrame():SetScript("OnHide", addEditCastWindow.StopMovingOrSizing)
+
+        addEditCastWindow.Hide()
+
         local tabContentFrame = CreateFrame("Frame", nil, frame)
         tabContentFrame:SetPoint("TOPLEFT", SavedSpellsTab, "BOTTOMLEFT", 0, -10)
         tabContentFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 20)
@@ -73,10 +87,9 @@ function DaveTest_MainWindow:new(parent, incomingStoredSpells)
         loggerWindow:GetFrame():SetPoint("BOTTOMRIGHT", tabContentFrame, "BOTTOMRIGHT", 0, 0)
         loggerWindow:GetFrame():SetScale(0.5)
 
-        savedSpellsWindow = DaveTest_SavedSpellsWindow:new(tabContentFrame, storedSpells)
+        savedSpellsWindow = DaveTest_SavedSpellsWindow:new(tabContentFrame, storedSpells, addEditCastWindow)
         savedSpellsWindow:GetFrame():SetPoint("TOPLEFT", tabContentFrame, "TOPLEFT", 0, 0)
         savedSpellsWindow:GetFrame():SetPoint("BOTTOMRIGHT", tabContentFrame, "BOTTOMRIGHT", 0, 0)
-        --savedSpellsWindow:GetFrame():SetScale(0.5)
 
         self.OpenWatcherTab()
 

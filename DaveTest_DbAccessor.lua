@@ -43,7 +43,6 @@ function DaveTest_DbAccessor:new()
 
     self.GetSpells = function()
         if (DbIsEmpty()) then
-            print ('returning empty spells')
             return {}
         end
         return DaveTestDB.savedSpells

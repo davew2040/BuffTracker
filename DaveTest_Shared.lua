@@ -17,12 +17,55 @@ function DaveTest_Shared:new()
             spellId = spellId,
             loweredName = string.lower(spellName),
             sourceName = sourceName, 
-            loweredCaster = string.lower(sourceName)
+            loweredCaster = string.lower(sourceName), 
+            duration = 0
         }
 
         record.key = self.GetCastRecordKey(record)
 
         return record;
+    end
+
+    self.GetDefaultStoredSpell = function(spellRecord)
+        return {
+            spellId = 0,
+            buffType = DaveTest_Shared_Singleton.SpellTypes.Any,
+            version = 1,
+            showInParty = true,
+            showInArena = true,
+            showInRaid = true,
+            showOnNameplates = true, 
+            duration = 0,
+            showGlow = false,
+            sizeMultiplier = 1,
+        }
+    end
+
+    self.StoredSpellFromCastRecord = function(spellRecord)
+        return {
+            spellId = spellRecord.spellId,
+            buffType = spellRecord.type,
+            version = 1,
+            showInParty = true,
+            showInArena = true,
+            showInRaid = true,
+            showOnNameplates = true, 
+            duration = 0,
+            showGlow = false,
+            sizeMultiplier = 1,
+        }
+    end
+
+    self.CreateShallowCopy =  function(src)
+        local copy = {}
+
+        for index, value in pairs(src) do
+            if type(value) ~= "table" then
+                copy[index] = value
+            end
+        end
+
+        return copy
     end
 
     self.GetButton = function(parent, unpressedTexture, pressedTexture)

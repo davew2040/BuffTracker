@@ -175,7 +175,6 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
 
     local handleSpellAdd = function(...) 
         local spellRecord = select(1, ...)
-        DevTool:AddData(spellRecord, "fixme handleSpellAdd")
         storedSpells.addSpell(spellRecord)
     end
 
@@ -273,9 +272,52 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
                 UIDropDownMenu_AddButton(info)
             end
         end
+        -- end buff type picker
+
+        -- start filter labels
+        local filterLabelsFrame = CreateFrame("Frame", nil, frame)
+        filterLabelsFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 25, -30) 
+        filterLabelsFrame:Show()
+        filterLabelsFrame:SetSize(50, 50)
+
+        local filterTypeLabel = filterLabelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        filterTypeLabel:SetPoint("LEFT", filterLabelsFrame, "TOPLEFT", 0, 0)  
+        filterTypeLabel:SetText("TYPE") 
+
+        local filterSpellLabel = filterLabelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        filterSpellLabel:SetPoint("LEFT", filterLabelsFrame, "TOPLEFT", 150, 0)  
+        filterSpellLabel:SetText("SPELL") 
+
+        local filterCasterLabel = filterLabelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        filterCasterLabel:SetPoint("LEFT", filterLabelsFrame, "TOPLEFT", 275, 0)  
+        filterCasterLabel:SetText("CASTER") 
+        -- end filter labels
+
+        -- start grid labels
+        local labelsFrame = CreateFrame("Frame", nil, frame)
+        labelsFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -120) 
+        labelsFrame:Show()
+        labelsFrame:SetSize(50, 50)
+
+        local spellTypeLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        spellTypeLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 200, 0)  
+        spellTypeLabel:SetText("TYPE") 
+
+        local spellIdLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        spellIdLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 300, 0)  
+        spellIdLabel:SetText("SPELL ID") 
+
+        local spellNameLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        spellNameLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 400, 0)  
+        spellNameLabel:SetText("SPELL NAME") 
+
+        local spellCasterLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        spellCasterLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 650, 0)  
+        spellCasterLabel:SetText("CASTER") 
+        -- end grid labels
 
         buffPickerDropdown = CreateFrame("Frame", "WPDemoDropDown", frame, "UIDropDownMenuTemplate")
-        buffPickerDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -10)
+        buffPickerDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -45)
         
         UIDropDownMenu_SetWidth(buffPickerDropdown, 125) 
         UIDropDownMenu_Initialize(buffPickerDropdown, WPDropDownDemo_Menu)
@@ -284,7 +326,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
 
         -- filter spell name
         local filterSpellName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
-        filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 175, 0);
+        filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 175, -35);
         filterSpellName:SetWidth(100);
         filterSpellName:SetHeight(50);
         filterSpellName:SetMovable(false);
@@ -298,7 +340,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
 
         -- filter caster name
         local filterCasterName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
-        filterCasterName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, 0);
+        filterCasterName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, -35);
         filterCasterName:SetWidth(100);
         filterCasterName:SetHeight(50);
         filterCasterName:SetMovable(false);
@@ -314,7 +356,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
         for i=1,pageSize do 
             local newRow = SpellRow:new(frame)
     
-            newRow.getFrame():SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -50 - i*spellRowHeight)
+            newRow.getFrame():SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -135 - i*spellRowHeight)
             newRow.getFrame():Show()
             newRow.getFrame():SetSize(50, 50)
             newRow.registerAdd(handleSpellAdd)
@@ -330,7 +372,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
             "Interface/Buttons/UI-DialogBox-Button-Down"
         )
         
-        refreshButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -300, 0)
+        refreshButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -350, 5)
         refreshButton:SetWidth(100)
         refreshButton:SetHeight(64)
         refreshButton:SetScript("OnClick", function()
@@ -364,7 +406,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Down"
         )
     
-        prevButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -200, 25)
+        prevButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -250, 25)
         prevButton:SetWidth(40)
         prevButton:SetHeight(40)
         prevButton:SetScript("OnClick", 
@@ -375,7 +417,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
         )
     
         pagerText = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        pagerText:SetPoint("CENTER", frame, "BOTTOMRIGHT", -135, 45)
+        pagerText:SetPoint("CENTER", frame, "BOTTOMRIGHT", -160, 45)
         pagerText:SetText("test text")
 
         frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -401,7 +443,12 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
             rowIndex = rowIndex + 1
         end
     
-        local text = "Showing page " .. pager.getCurrentPage() .. " of " .. pager.getTotalPageCount();
+        local text = ''
+        if pager.getTotalPageCount() == 0 then
+            text = 'No Entries'
+        else
+            text = "Showing page " .. pager.getCurrentPage() .. " of " .. pager.getTotalPageCount();
+        end
         pagerText:SetText(text)
     end
     

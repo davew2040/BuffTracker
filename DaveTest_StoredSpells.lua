@@ -4,48 +4,65 @@ function DaveTest_StoredSpells:new()
     self = {}
 
     local AddEventName = "SPELL_ADDED"
+    local RemoveEventName = "SPELL_REMOVED"
+
     local events = DaveTest_Callbacks:new()
 
-    local storedSpellFromCastRecord = function(spellRecord)
-        return {
-            spellId = spellRecord.spellId,
-            buffType = spellRecord.type,
-            version = 1,
-            showInParty = true,
-            showInArena = true,
-            showInRaid = true,
-            showOnNameplates = true
-        }
+    local readSpells = function()
+        local defaultStoredRecord = DaveTest_Shared_Singleton.GetDefaultStoredSpell()
+        local dbSpells = DaveTest_DbAccessor_Singleton.GetSpells()
+
+        local allResults = {}
+        for _, dbSpell in pairs(dbSpells) do
+            local singleResult = {}
+
+            for key, _ in pairs(defaultStoredRecord) do
+                if (dbSpell[key] ~= nil) then
+                    singleResult[key] = dbSpell[key]
+                end
+            end
+
+            allResults[DaveTest_Shared_Singleton.GetStoredSpellKey(singleResult)] = singleResult
+        end
+
+        return allResults
+    end
+
+    local saveSpellsToDatabase = function(spells)
+        DaveTest_DbAccessor_Singleton.SaveStoredSpells(spells)
     end
 
     self.hasSpell = function(castRecord) 
-        local storedSpells = DaveTest_DbAccessor_Singleton.GetSpells()
+        local storedSpells = readSpells()
         return storedSpells[castRecord.key] ~= nil 
     end
 
     self.addSpell = function(castRecord) 
-        DevTool:AddData(DaveTest_DbAccessor_Singleton, "fixme DaveTest_DbAccessor_Singleton")
-        local storedSpells = DaveTest_DbAccessor_Singleton.GetSpells()
-        storedSpells[castRecord.key] = storedSpellFromCastRecord(castRecord)
-        DaveTest_DbAccessor_Singleton.SaveStoredSpells(storedSpells)
+        local storedSpells = readSpells()
+        storedSpells[castRecord.key] = DaveTest_Shared_Singleton.StoredSpellFromCastRecord(castRecord)
+        saveSpellsToDatabase(storedSpells)
         events.fire(AddEventName)
     end
 
     self.removeSpell = function(storedSpell) 
         local key = DaveTest_Shared_Singleton.GetStoredSpellKey(storedSpell)
-        local spells = DaveTest_DbAccessor_Singleton.GetSpells()
+        local spells = readSpells()
         spells[key] = nil
-        DaveTest_DbAccessor_Singleton.SaveStoredSpells(spells)
+        saveSpellsToDatabase(spells)
+        events.fire(RemoveEventName)
     end
 
     self.getSpells = function()
-        local spells = DaveTest_DbAccessor_Singleton.GetSpells()
-        DevTool:AddData(spells, "fixme getSpells() spells")
+        local spells = readSpells()
         return spells
     end
 
     self.registerSpellAdded = function(callback)
         events.registerCallback(AddEventName, callback)
+    end
+
+    self.registerSpellRemoved = function(callback)
+        events.registerCallback(RemoveEventName, callback)
     end
 
     return self

@@ -1,7 +1,7 @@
 DaveTest_Callbacks = {}
 
 function DaveTest_Callbacks:new()
-    local self = {};
+    self = {};
 
     local registrations = {}
 

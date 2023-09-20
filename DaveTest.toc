@@ -4,7 +4,7 @@
 ## Notes: Buff Watcher
 ## Author: Big Dave
 ## SavedVariables: DaveTestDB
-## Dependencies: DevTool, WeakAuras
+## Dependencies: DevTool
 
 lua_linq/Enumerable.lua
 lua_linq/KeyValuePair.lua
@@ -12,10 +12,13 @@ lua_linq/PredicateParser.lua
 DaveTest_Shared.lua
 DaveTest_DbAccessor.lua
 DaveTest_Callbacks.lua
+DaveTest_AuraContext.lua
 DaveTest_StoredSpells.lua
+DaveTest_SharedAuraContext.lua
 DaveTest_WeakAuraInterface.lua
 DaveTest_MainWindow.lua
 DaveTest_Pager.lua
+DaveTest_AddEditSavedCast.lua
 DaveTest_SavedSpellsWindow.lua
 DaveTest_LoggerWindow.lua
 DaveTest.lua
