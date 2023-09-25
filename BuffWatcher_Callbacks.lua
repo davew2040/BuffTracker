@@ -1,6 +1,6 @@
-DaveTest_Callbacks = {}
+BuffWatcher_Callbacks = {}
 
-function DaveTest_Callbacks:new()
+function BuffWatcher_Callbacks:new()
     self = {};
 
     local registrations = {}

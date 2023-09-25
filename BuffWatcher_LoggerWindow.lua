@@ -5,11 +5,11 @@ function SpellRow:new(parent)
     local currentSpell = nil
     local AddEventName = "SPELL_ADD"
 
-    local events = DaveTest_Callbacks:new()
+    local events = BuffWatcher_Callbacks:new()
 
     local spellRowFrame = CreateFrame("Frame", "Spell Row", parent)
 
-    local addButton = DaveTest_Shared_Singleton.GetButton(
+    local addButton = BuffWatcher_Shared_Singleton.GetButton(
         spellRowFrame, 
         "Interface/Buttons/UI-DialogBox-Button-Up", 
         "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -53,7 +53,7 @@ function SpellRow:new(parent)
         local texture = GetSpellTexture(spell.spellId)
 
         spellIdText:SetText(spell.spellId)
-        spellTypeText:SetText(DaveTest_Shared_Singleton.SpellTypeLabels[spell.type])
+        spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[spell.type])
         spellNameText:SetText(spellName)
         sourceNameText:SetText(spell.sourceName)
         textureFrame:SetTexture(texture)
@@ -79,12 +79,12 @@ function SpellRow:new(parent)
     return self
 end
 
-DaveTest_LoggerWindow = {}
-function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
+BuffWatcher_LoggerWindow = {}
+function BuffWatcher_LoggerWindow:new(parent, incomingStoredSpells)
     self = {}
 
-    local SpellTypes = DaveTest_Shared_Singleton.SpellTypes
-    local SpellTypeLabels = DaveTest_Shared_Singleton.SpellTypeLabels
+    local SpellTypes = BuffWatcher_Shared_Singleton.SpellTypes
+    local SpellTypeLabels = BuffWatcher_Shared_Singleton.SpellTypeLabels
 
     local spellFilters = {
         spellType = SpellTypes.Any,
@@ -139,7 +139,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
                 local spellId = eventInfo[12]
                 local spellName = eventInfo[13]
 
-                local spellRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
+                local spellRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
 
                 if (spellRecords[spellRecord.key] == nil) then
                     spellRecords[spellRecord.key] = spellRecord
@@ -160,9 +160,9 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
                     end
 
                     if (v.isHelpful) then
-                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Buff, v.spellId, v.name, unitName)
+                        buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Buff, v.spellId, v.name, unitName)
                     else
-                        buffRecord = DaveTest_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Debuff, v.spellId, v.name, unitName)
+                        buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Debuff, v.spellId, v.name, unitName)
                     end
 
                     if (spellRecords[buffRecord.key] == nil) then
@@ -230,7 +230,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
     end
 
     local Initialize = function(parent)
-        local frame = CreateFrame("Frame", "DaveTest_LoggerWindow", parent, "BackdropTemplate")
+        local frame = CreateFrame("Frame", "BuffWatcher_LoggerWindow", parent, "BackdropTemplate")
 
         local backdropInfo =
         {
@@ -366,7 +366,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
         -- spell rows end
     
         -- refresh button start
-        local refreshButton = DaveTest_Shared_Singleton.GetButton(
+        local refreshButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-DialogBox-Button-Up", 
             "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -384,7 +384,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
         refreshText:SetPoint("CENTER", 0, 8)
         -- refresh button end
     
-        local nextButton = DaveTest_Shared_Singleton.GetButton(
+        local nextButton = BuffWatcher_Shared_Singleton.GetButton(
             frame,
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Up",
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Down"
@@ -400,7 +400,7 @@ function DaveTest_LoggerWindow:new(parent, incomingStoredSpells)
             end
         )
     
-        local prevButton = DaveTest_Shared_Singleton.GetButton(
+        local prevButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Up", 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Down"

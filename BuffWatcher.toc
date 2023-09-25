@@ -1,0 +1,25 @@
+## Interface: 100105
+## Version: 1.0.0
+## Title: BuffWatcher
+## Notes: Buff Watcher
+## Author: Big Dave
+## SavedVariables: BuffWatcherDB
+## Dependencies: DevTool, WeakAuras
+
+lua_linq/Enumerable.lua
+lua_linq/KeyValuePair.lua
+lua_linq/PredicateParser.lua
+BuffWatcher_Shared.lua
+BuffWatcher_DbAccessor.lua
+BuffWatcher_Callbacks.lua
+BuffWatcher_AuraContext.lua
+BuffWatcher_StoredSpellsRegistry.lua
+BuffWatcher_Configuration.lua
+BuffWatcher_SharedAuraContext.lua
+BuffWatcher_WeakAuraInterface.lua
+BuffWatcher_MainWindow.lua
+BuffWatcher_Pager.lua
+BuffWatcher_AddEditSavedCast.lua
+BuffWatcher_SavedSpellsWindow.lua
+BuffWatcher_LoggerWindow.lua
+BuffWatcher.lua

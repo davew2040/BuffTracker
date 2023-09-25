@@ -1,30 +1,30 @@
 
 local f = CreateFrame("Frame")
 
-DaveTest_Frame = nil
+BuffWatcher_Frame = nil
 
-local storedSpells = DaveTest_StoredSpells:new()
+local storedSpellsRegistry = BuffWatcher_StoredSpellsRegistry:new()
 
 function f:OnEvent(event, ...)
-    if (event == "ADDON_LOADED" and select(1, ...) == "DaveTest") then
-        -- DaveTest_Frame = DaveTest_LoggerWindow:new(UIParent)
+    if (event == "ADDON_LOADED" and select(1, ...) == "BuffWatcher") then
+        -- BuffWatcher_Frame = BuffWatcher_LoggerWindow:new(UIParent)
 
-        -- DaveTest_Frame:GetFrame():SetScale(0.5)
-        -- DaveTest_Frame:GetFrame():SetSize(800, 500)
-        -- DaveTest_Frame:GetFrame():SetPoint("CENTER")
+        -- BuffWatcher_Frame:GetFrame():SetScale(0.5)
+        -- BuffWatcher_Frame:GetFrame():SetSize(800, 500)
+        -- BuffWatcher_Frame:GetFrame():SetPoint("CENTER")
 
-        -- DaveTest_Frame:Show()
+        -- BuffWatcher_Frame:Show()
 
-        DaveTest_WeakAuraInterface_Singleton.RegisterSpells(storedSpells)
+        BuffWatcher_WeakAuraInterface_Singleton.RegisterSpells(storedSpellsRegistry)
 
-        DaveTest_Frame = DaveTest_MainWindow:new(UIParent, storedSpells)
+        BuffWatcher_Frame = BuffWatcher_MainWindow:new(UIParent, storedSpellsRegistry)
 
-       --DaveTest_Frame:GetFrame():SetFrameStrata("DIALOG");
-        DaveTest_Frame:GetFrame():SetScale(0.5)
-        DaveTest_Frame:GetFrame():SetSize(1000, 800)
-        DaveTest_Frame:GetFrame():SetPoint("CENTER")
+       --BuffWatcher_Frame:GetFrame():SetFrameStrata("DIALOG");
+        BuffWatcher_Frame:GetFrame():SetScale(0.5)
+        BuffWatcher_Frame:GetFrame():SetSize(1000, 800)
+        BuffWatcher_Frame:GetFrame():SetPoint("CENTER")
 
-        DaveTest_Frame:Show()
+        BuffWatcher_Frame:Show()
     elseif (event == "NAME_PLATE_UNIT_ADDED") then
         -- TODO - make this an optional setting
         local plateName = select(1, ...)
@@ -59,8 +59,8 @@ f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 
 f:SetScript("OnEvent", f.OnEvent)
 
-SLASH_DAVETEST1 = "/dtest"
+SLASH_BUFFWATCHER1 = "/bw"
 
-SlashCmdList.DAVETEST = function(msg, _)
-    DaveTest_Frame:Show()
+SlashCmdList.BUFFWATCHER = function(msg, _)
+    BuffWatcher_Frame:Show()
 end

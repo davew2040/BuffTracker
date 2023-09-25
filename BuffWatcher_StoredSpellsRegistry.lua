@@ -1,16 +1,16 @@
-DaveTest_StoredSpells = {}
+BuffWatcher_StoredSpellsRegistry = {}
 
-function DaveTest_StoredSpells:new()
+function BuffWatcher_StoredSpellsRegistry:new()
     self = {}
 
     local AddEventName = "SPELL_ADDED"
     local RemoveEventName = "SPELL_REMOVED"
 
-    local events = DaveTest_Callbacks:new()
+    local events = BuffWatcher_Callbacks:new()
 
     local readSpells = function()
-        local defaultStoredRecord = DaveTest_Shared_Singleton.GetDefaultStoredSpell()
-        local dbSpells = DaveTest_DbAccessor_Singleton.GetSpells()
+        local defaultStoredRecord = BuffWatcher_Shared_Singleton.GetDefaultStoredSpell()
+        local dbSpells = BuffWatcher_DbAccessor_Singleton.GetSpells()
 
         local allResults = {}
         for _, dbSpell in pairs(dbSpells) do
@@ -22,14 +22,14 @@ function DaveTest_StoredSpells:new()
                 end
             end
 
-            allResults[DaveTest_Shared_Singleton.GetStoredSpellKey(singleResult)] = singleResult
+            allResults[BuffWatcher_Shared_Singleton.GetStoredSpellKey(singleResult)] = singleResult
         end
 
         return allResults
     end
 
-    local saveSpellsToDatabase = function(spells)
-        DaveTest_DbAccessor_Singleton.SaveStoredSpells(spells)
+    self.saveSpellsToDatabase = function(spells)
+        BuffWatcher_DbAccessor_Singleton.SaveStoredSpells(spells)
     end
 
     self.hasSpell = function(castRecord) 
@@ -39,16 +39,16 @@ function DaveTest_StoredSpells:new()
 
     self.addSpell = function(castRecord) 
         local storedSpells = readSpells()
-        storedSpells[castRecord.key] = DaveTest_Shared_Singleton.StoredSpellFromCastRecord(castRecord)
-        saveSpellsToDatabase(storedSpells)
+        storedSpells[castRecord.key] = BuffWatcher_Shared_Singleton.StoredSpellFromCastRecord(castRecord)
+        self.saveSpellsToDatabase(storedSpells)
         events.fire(AddEventName)
     end
 
     self.removeSpell = function(storedSpell) 
-        local key = DaveTest_Shared_Singleton.GetStoredSpellKey(storedSpell)
+        local key = BuffWatcher_Shared_Singleton.GetStoredSpellKey(storedSpell)
         local spells = readSpells()
         spells[key] = nil
-        saveSpellsToDatabase(spells)
+        self.saveSpellsToDatabase(spells)
         events.fire(RemoveEventName)
     end
 

@@ -8,11 +8,11 @@ function SavedSpellRow:new(parent)
     local EditEventName = "SPELL_EDIT"
     local indexedRecords = {}
 
-    local events = DaveTest_Callbacks:new()
+    local events = BuffWatcher_Callbacks:new()
 
     local savedSpellRowFrame = CreateFrame("Frame", "Spell Row", parent)
 
-    local removeButton = DaveTest_Shared_Singleton.GetButton(
+    local removeButton = BuffWatcher_Shared_Singleton.GetButton(
         savedSpellRowFrame, 
         "Interface/Buttons/UI-DialogBox-Button-Up", 
         "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -29,7 +29,7 @@ function SavedSpellRow:new(parent)
     removeButtonText:SetText("Remove")
     removeButtonText:SetPoint("CENTER", 0, 8)
 
-    local editButton = DaveTest_Shared_Singleton.GetButton(
+    local editButton = BuffWatcher_Shared_Singleton.GetButton(
         savedSpellRowFrame, 
         "Interface/Buttons/UI-DialogBox-Button-Up", 
         "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -86,7 +86,7 @@ function SavedSpellRow:new(parent)
         local texture = GetSpellTexture(spell.spellId)
 
         spellIdText:SetText(spell.spellId)
-        spellTypeText:SetText(DaveTest_Shared_Singleton.SpellTypeLabels[spell.buffType])
+        spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[spell.buffType])
         spellNameText:SetText(spellName)
         textureFrame:SetTexture(texture)
         chkParty:SetChecked(spell.showInParty)
@@ -108,7 +108,6 @@ function SavedSpellRow:new(parent)
         events.registerCallback(RemoveEventName, fn)
     end
 
-
     self.registerEdit = function(fn)
         events.registerCallback(EditEventName, fn)
     end
@@ -116,13 +115,14 @@ function SavedSpellRow:new(parent)
     return self
 end
 
-DaveTest_SavedSpellsWindow = {}
-function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCastWindow)
+BuffWatcher_SavedSpellsWindow = {}
+function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCastWindow)
     self = {}
 
     local pageSize = 10
     local mainFrame = nil
-    local storedSpells = incomingStoredSpells
+    local storedSpellsRegistry = incomingStoredSpells
+    local activeStoredSpells = {}
     local indexedRecords = {}
     local uiSpellRows = {}
     local pagerText = nil
@@ -130,15 +130,28 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
     local pager = Pager:new(pageSize, 0)
 
     local handleSpellRemove = function(...) 
-        storedSpells.removeSpell(select(1, ...))
+        storedSpellsRegistry.removeSpell(select(1, ...))
         self.UpdateWindow()
     end
 
     local handleSpellEdit = function(...) 
         local editTarget = select(1, ...)
 
+        DevTool:AddData(editTarget, "fixme incoming editTarget")
+
         addEditCastWindow.Show(editTarget, function(editedModel)
+
+            DevTool:AddData(editedModel, "fixme editedModel")
+
+            DevTool:AddData(CopyTable(editTarget), "fixme editTarget before")
             editTarget.showInParty = editedModel.showInParty
+            editTarget.sizeMultiplier = editedModel.sizeMultiplier
+
+            DevTool:AddData(editTarget, "fixme editTarget after")
+
+            DevTool:AddData(activeStoredSpells, "fixme activeStoredSpells")
+            storedSpellsRegistry.saveSpellsToDatabase(activeStoredSpells)
+
             addEditCastWindow:Hide()
         end)
 
@@ -146,7 +159,7 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
     end
 
     local Export = function()
-        DaveTest_WeakAuraInterface_Singleton.UpdateSpells()
+        BuffWatcher_WeakAuraInterface_Singleton.UpdateSpells()
     end
 
     local handleSpellAdded = function()
@@ -180,9 +193,9 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
     end
 
     local Initialize = function()
-        local frame = CreateFrame("Frame", "DaveTest_LoggerWindow", parent, "BackdropTemplate")
+        local frame = CreateFrame("Frame", "BuffWatcher_LoggerWindow", parent, "BackdropTemplate")
 
-        storedSpells.registerSpellAdded(handleSpellAdded)
+        storedSpellsRegistry.registerSpellAdded(handleSpellAdded)
 
         local backdropInfo =
         {
@@ -249,7 +262,7 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
         -- end spell rows
 
         -- export button start
-        local exportButton = DaveTest_Shared_Singleton.GetButton(
+        local exportButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-DialogBox-Button-Up", 
             "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -259,7 +272,21 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
         exportButton:SetWidth(100)
         exportButton:SetHeight(64)
         exportButton:SetScript("OnClick", function()
-            Export()
+            --Export()
+            
+            DevTool:AddData(WeakAuras, "WeakAuras")
+            DevTool:AddData(WeakAurasSaved, "WeakAurasSaved")
+
+            local byKey = BuffWatcher_Shared_Singleton.TableKeyFilter(WeakAurasSaved.displays, 
+                function(key) return key == "Buff Watcher Copy Source" end
+            )
+
+            --WeakAurasSaved.displays["Buff Watcher Copy Result"] = CopyTable(byKey["Buff Watcher Copy Source"])
+
+            local copied = CopyTable(byKey["Buff Watcher Copy Source"])
+            copied.id = "Buff Watcher Copy Result"
+            copied.uid = nil
+            WeakAuras.Add(copied)
         end)
     
         -- start refresh button
@@ -268,7 +295,7 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
         refreshText:SetPoint("CENTER", 0, 8)
         -- end refresh button
 
-        local nextButton = DaveTest_Shared_Singleton.GetButton(
+        local nextButton = BuffWatcher_Shared_Singleton.GetButton(
             frame,
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Up",
             "Interface/Buttons/UI-SpellbookIcon-NextPage-Down"
@@ -283,7 +310,7 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
             end
         )
     
-        local prevButton = DaveTest_Shared_Singleton.GetButton(
+        local prevButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Up", 
             "Interface/Buttons/UI-SpellbookIcon-PrevPage-Down"
@@ -318,8 +345,8 @@ function DaveTest_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCas
     end
     
     self.UpdateWindow = function()
-        local spells = storedSpells.getSpells()
-        indexedRecords = GetIndexedRecords(spells)
+        activeStoredSpells = storedSpellsRegistry.getSpells()
+        indexedRecords = GetIndexedRecords(activeStoredSpells)
         pager = Pager:new(pageSize, #indexedRecords)
         UpdateSpellRows()
     end

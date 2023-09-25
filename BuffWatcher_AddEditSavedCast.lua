@@ -1,6 +1,6 @@
 
-DaveTest_AddEditSavedCast = {}
-function DaveTest_AddEditSavedCast:new(parent)
+BuffWatcher_AddEditSavedCast = {}
+function BuffWatcher_AddEditSavedCast:new(parent)
     self = {}
 
     local mainFrame = nil
@@ -31,7 +31,9 @@ function DaveTest_AddEditSavedCast:new(parent)
     local localOnSave = function() end
 
     local setSavedSpell = function(spell)
-        activeModel = DaveTest_Shared_Singleton.CreateShallowCopy(spell)
+        DevTool:AddData(spell, "fixme setSavedSpell")
+
+        activeModel = CopyTable(spell)
 
         local spellName = GetSpellInfo(spell.spellId)
 
@@ -41,16 +43,20 @@ function DaveTest_AddEditSavedCast:new(parent)
         chkRaids:SetChecked(spell.showInRaid)
         chkEnemyNameplates:SetChecked(spell.showOnNameplates)
         chkGlow:SetChecked(spell.showGlow)
-        
+
         multiplierSlider:SetValue(spell.sizeMultiplier)
     end
 
     local getModel = function()
-        return DaveTest_Shared_Singleton.CreateShallowCopy(activeModel)
+        return BuffWatcher_Shared_Singleton.CreateShallowCopy(activeModel)
+    end
+
+    local setSizeMultiplier = function(value)
+        activeModel.sizeMultiplier = value
     end
 
     local Initialize = function(parent)
-        local frame = CreateFrame("Frame", "DaveTest_AddEditSavedCastw", parent, "BackdropTemplate")
+        local frame = CreateFrame("Frame", "BuffWatcher_AddEditSavedCastw", parent, "BackdropTemplate")
 
         local backdropInfo =
         {
@@ -157,7 +163,7 @@ function DaveTest_AddEditSavedCast:new(parent)
             multiplierSlider, 
             MinimalSliderWithSteppersMixin.Event.OnValueChanged, 
             function(value)
-                print(value.Slider:GetValue()) 
+                setSizeMultiplier(value.Slider:GetValue())
             end, 
             multiplierSlider
         );
@@ -165,7 +171,7 @@ function DaveTest_AddEditSavedCast:new(parent)
         vLast = vLast - 50
 
         -- start OK button
-        local okayButton = DaveTest_Shared_Singleton.GetButton(
+        local okayButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-DialogBox-Button-Up", 
             "Interface/Buttons/UI-DialogBox-Button-Down"
@@ -185,7 +191,7 @@ function DaveTest_AddEditSavedCast:new(parent)
         -- end OK button
 
         -- start cancel button
-        local cancelButton = DaveTest_Shared_Singleton.GetButton(
+        local cancelButton = BuffWatcher_Shared_Singleton.GetButton(
             frame, 
             "Interface/Buttons/UI-DialogBox-Button-Up", 
             "Interface/Buttons/UI-DialogBox-Button-Down"

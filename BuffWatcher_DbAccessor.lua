@@ -1,6 +1,6 @@
-DaveTest_DbAccessor = {}
+BuffWatcher_DbAccessor = {}
 
-function DaveTest_DbAccessor:new()
+function BuffWatcher_DbAccessor:new()
     self = {};
 
     local GetDefaultDb = function()
@@ -11,12 +11,12 @@ function DaveTest_DbAccessor:new()
     end
 
     local DbIsEmpty = function()
-        if (DaveTestDB == nil) then
+        if (BuffWatcherDB == nil) then
             return true
         end
 
         local count = 0
-        for k,v in pairs(DaveTestDB) do
+        for k,v in pairs(BuffWatcherDB) do
             count = count + 1
         end
         return count == 0
@@ -24,7 +24,7 @@ function DaveTest_DbAccessor:new()
 
     local OnAddonLoaded = function()
         if (DbIsEmpty()) then
-            DaveTestDB = GetDefaultDb()
+            BuffWatcherDB = GetDefaultDb()
         end
     end
 
@@ -32,23 +32,23 @@ function DaveTest_DbAccessor:new()
 
     frame:RegisterEvent("ADDON_LOADED")
     frame:SetScript("OnEvent", function(loadingFrame, event, addon)
-        if (addon == "DaveTest") then
+        if (addon == "BuffWatcher") then
             OnAddonLoaded()
         end
     end)
 
     self.SaveStoredSpells = function(newStoredSpells)
-        DaveTestDB.savedSpells = newStoredSpells
+        BuffWatcherDB.savedSpells = newStoredSpells
     end
 
     self.GetSpells = function()
         if (DbIsEmpty()) then
             return {}
         end
-        return DaveTestDB.savedSpells
+        return BuffWatcherDB.savedSpells
     end
 
     return self;
 end
 
-DaveTest_DbAccessor_Singleton = DaveTest_DbAccessor:new()
+BuffWatcher_DbAccessor_Singleton = BuffWatcher_DbAccessor:new()

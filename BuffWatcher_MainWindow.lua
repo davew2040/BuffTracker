@@ -1,6 +1,6 @@
-DaveTest_MainWindow = {}
+BuffWatcher_MainWindow = {}
 
-function DaveTest_MainWindow:new(parent, incomingStoredSpells)
+function BuffWatcher_MainWindow:new(parent, incomingStoredSpells)
     self = {}
 
     local isShowing = false
@@ -65,7 +65,7 @@ function DaveTest_MainWindow:new(parent, incomingStoredSpells)
             self.OpenWatcherTab()
         end)
 
-        addEditCastWindow = DaveTest_AddEditSavedCast:new(UIParent)
+        addEditCastWindow = BuffWatcher_AddEditSavedCast:new(UIParent)
         addEditCastWindow:GetFrame():SetSize(800, 800)
         addEditCastWindow:GetFrame():SetPoint("CENTER")
         addEditCastWindow:GetFrame():SetScale(0.5)
@@ -82,12 +82,12 @@ function DaveTest_MainWindow:new(parent, incomingStoredSpells)
         tabContentFrame:SetPoint("TOPLEFT", SavedSpellsTab, "BOTTOMLEFT", 0, -10)
         tabContentFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 20)
 
-        loggerWindow = DaveTest_LoggerWindow:new(tabContentFrame, storedSpells)
+        loggerWindow = BuffWatcher_LoggerWindow:new(tabContentFrame, storedSpells)
         loggerWindow:GetFrame():SetPoint("TOPLEFT", tabContentFrame, "TOPLEFT", 0, 0)
         loggerWindow:GetFrame():SetPoint("BOTTOMRIGHT", tabContentFrame, "BOTTOMRIGHT", 0, 0)
         loggerWindow:GetFrame():SetScale(0.5)
 
-        savedSpellsWindow = DaveTest_SavedSpellsWindow:new(tabContentFrame, storedSpells, addEditCastWindow)
+        savedSpellsWindow = BuffWatcher_SavedSpellsWindow:new(tabContentFrame, storedSpells, addEditCastWindow)
         savedSpellsWindow:GetFrame():SetPoint("TOPLEFT", tabContentFrame, "TOPLEFT", 0, 0)
         savedSpellsWindow:GetFrame():SetPoint("BOTTOMRIGHT", tabContentFrame, "BOTTOMRIGHT", 0, 0)
 
