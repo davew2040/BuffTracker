@@ -5,6 +5,17 @@
 ## Author: Big Dave
 ## SavedVariables: BuffWatcherDB
 ## Dependencies: DevTool, WeakAuras
+## OptionalDeps: Ace3
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 lua_linq/Enumerable.lua
 lua_linq/KeyValuePair.lua
@@ -14,12 +25,16 @@ BuffWatcher_DbAccessor.lua
 BuffWatcher_Callbacks.lua
 BuffWatcher_AuraContext.lua
 BuffWatcher_StoredSpellsRegistry.lua
+BuffWatcher_LoggerModule.lua
 BuffWatcher_Configuration.lua
 BuffWatcher_SharedAuraContext.lua
+BuffWatcher_WeakAuraGenerator.lua
+BuffWatcher_WeakAuraExporter.lua
 BuffWatcher_WeakAuraInterface.lua
-BuffWatcher_MainWindow.lua
 BuffWatcher_Pager.lua
 BuffWatcher_AddEditSavedCast.lua
 BuffWatcher_SavedSpellsWindow.lua
+BuffWatcher_LoggerWindow_SpellRow.lua
 BuffWatcher_LoggerWindow.lua
+BuffWatcher_MainWindow.lua
 BuffWatcher.lua

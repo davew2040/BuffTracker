@@ -1,20 +1,83 @@
 BuffWatcher_AuraContext = {}
 
-function BuffWatcher_AuraContext:new(storedSpells, spellFilterFunction, isNameplate, name, frameType, includeBuffsAndCasts, includeDebuffs, showUnlistedAuras)
+function BuffWatcher_AuraContext:new(params)
+--function BuffWatcher_AuraContext:new(storedSpells, spellFilterFunction, isNameplate, name, frameType, includeBuffsAndCasts, includeDebuffs, showUnlistedAuras)
     self = {};
 
+    local storedSpells = nil
     local spellBundle = nil
     local initialized = false
-    local isNameplateValue = isNameplate
-    -- local frameType = frameType
-    -- local includeBuffsAndCasts = includeBuffsAndCasts
-    -- local includeDebuffs = includeDebuffs
-    -- local showUnlistedAuras = showUnlistedAuras
-    local name = name
+    local isNameplateValue = false
+    local name = ""
+    local frameType = nil
+    local includeBuffsAndCasts = nil
+    local includeDebuffs = nil 
+    local showUnlistedAuras = nil
+    local showDispelType = false
+    local spellFilterFunction = function(spells) error("filter function not initialized") end 
+
     local guidToStateKeyMap = {}
     local auraIdToKeyMap = {}
     local guidToNameplateMap = {}
     local nameplateToGuidMap = {}
+
+    local initializeFromParameters = function(params)
+        if (params.storedSpellsRegistry == nil) then
+            error("Could not find parameter key 'storedSpellsRegistry'.")
+        else
+            storedSpells = params.storedSpellsRegistry
+        end
+
+        if (params.spellFilterFunction == nil) then
+            error("Could not find parameter key 'spellFilterFunction'.")
+        else
+            spellFilterFunction = params.spellFilterFunction
+        end
+
+        if (params.isNameplate == nil) then
+            error("Could not find parameter key 'isNameplate'.")
+        else
+            isNameplateValue = params.isNameplate
+        end
+
+        if (params.name == nil) then
+            error("Could not find parameter key 'name'.")
+        else
+            name = params.name
+        end
+
+        if (params.frameType == nil) then
+            error("Could not find parameter key 'frameType'.")
+        else
+            frameType = params.frameType
+        end
+
+        if (params.includeBuffsAndCasts == nil) then
+            error("Could not find parameter key 'includeBuffsAndCasts'.")
+        else
+            includeBuffsAndCasts = params.includeBuffsAndCasts
+        end
+
+        if (params.includeDebuffs == nil) then
+            error("Could not find parameter key 'includeDebuffs'.")
+        else
+            includeDebuffs = params.includeDebuffs
+        end
+
+        if (params.showUnlistedAuras == nil) then
+            error("Could not find parameter key 'showUnlistedAuras'.")
+        else
+            showUnlistedAuras = params.showUnlistedAuras
+        end
+
+        if (params.showDispelType == nil) then
+            error("Could not find parameter key 'showDispelType'.")
+        else
+            showDispelType = params.showDispelType
+        end
+    end
+
+    initializeFromParameters(params)
 
     storedSpells.registerSpellAdded(function() 
         initialized = false
@@ -136,6 +199,10 @@ function BuffWatcher_AuraContext:new(storedSpells, spellFilterFunction, isNamepl
 
     self.getFrameType = function()
         return frameType
+    end
+
+    self.getShowDispelType = function()
+        return showDispelType
     end
 
     return self;

@@ -137,19 +137,14 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
     local handleSpellEdit = function(...) 
         local editTarget = select(1, ...)
 
-        DevTool:AddData(editTarget, "fixme incoming editTarget")
+        DevTool:AddData(editTarget, "fixme editTarget")
 
         addEditCastWindow.Show(editTarget, function(editedModel)
-
-            DevTool:AddData(editedModel, "fixme editedModel")
-
-            DevTool:AddData(CopyTable(editTarget), "fixme editTarget before")
             editTarget.showInParty = editedModel.showInParty
             editTarget.sizeMultiplier = editedModel.sizeMultiplier
 
-            DevTool:AddData(editTarget, "fixme editTarget after")
-
-            DevTool:AddData(activeStoredSpells, "fixme activeStoredSpells")
+            local key = BuffWatcher_Shared_Singleton.GetStoredSpellKey(editedModel)
+            activeStoredSpells[key] = editedModel
             storedSpellsRegistry.saveSpellsToDatabase(activeStoredSpells)
 
             addEditCastWindow:Hide()
@@ -167,7 +162,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         self.UpdateWindow()
     end
 
-    local UpdateSpellRows = function()
+    local updateSpellRows = function()
         local currentPageCount = pager.getPageEnd() - pager.getPageStart()
     
         local rowIndex = 1
@@ -192,7 +187,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         pagerText:SetText(text)
     end
 
-    local Initialize = function()
+    local initialize = function()
         local frame = CreateFrame("Frame", "BuffWatcher_LoggerWindow", parent, "BackdropTemplate")
 
         storedSpellsRegistry.registerSpellAdded(handleSpellAdded)
@@ -277,16 +272,18 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
             DevTool:AddData(WeakAuras, "WeakAuras")
             DevTool:AddData(WeakAurasSaved, "WeakAurasSaved")
 
-            local byKey = BuffWatcher_Shared_Singleton.TableKeyFilter(WeakAurasSaved.displays, 
-                function(key) return key == "Buff Watcher Copy Source" end
-            )
+            -- local byKey = BuffWatcher_Shared_Singleton.TableKeyFilter(WeakAurasSaved.displays, 
+            --     function(key) return key == "Buff Watcher Copy Source" end
+            -- )
 
-            --WeakAurasSaved.displays["Buff Watcher Copy Result"] = CopyTable(byKey["Buff Watcher Copy Source"])
+            -- --WeakAurasSaved.displays["Buff Watcher Copy Result"] = CopyTable(byKey["Buff Watcher Copy Source"])
 
-            local copied = CopyTable(byKey["Buff Watcher Copy Source"])
-            copied.id = "Buff Watcher Copy Result"
-            copied.uid = nil
-            WeakAuras.Add(copied)
+            -- local copied = CopyTable(byKey["Buff Watcher Copy Source"])
+            -- copied.id = "Buff Watcher Copy Result"
+            -- copied.uid = nil
+            -- WeakAuras.Add(copied)
+
+            BuffWatcher_WeakAuraExporter_Singleton.Export(storedSpellsRegistry, BuffWatcher_WeakAuraInterface_Singleton.GetContexts())
         end)
     
         -- start refresh button
@@ -306,7 +303,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         nextButton:SetScript("OnClick", 
             function()
                 pager.goNextPage()
-                UpdateSpellRows()
+                updateSpellRows()
             end
         )
     
@@ -321,7 +318,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         prevButton:SetScript("OnClick", 
             function()
                 pager.goPreviousPage()
-                UpdateSpellRows()
+                updateSpellRows()
             end
         )
     
@@ -348,7 +345,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         activeStoredSpells = storedSpellsRegistry.getSpells()
         indexedRecords = GetIndexedRecords(activeStoredSpells)
         pager = Pager:new(pageSize, #indexedRecords)
-        UpdateSpellRows()
+        updateSpellRows()
     end
 
     self.Show = function()
@@ -366,7 +363,7 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         return mainFrame
     end
 
-    mainFrame = Initialize()
+    mainFrame = initialize()
 
     return self
 end

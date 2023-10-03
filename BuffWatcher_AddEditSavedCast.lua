@@ -14,20 +14,6 @@ function BuffWatcher_AddEditSavedCast:new(parent)
     local multiplierSlider = nil
     local activeModel = nil
 
-    -- self.StoredSpellFromCastRecord = function(spellRecord)
-    --     return {
-    --         spellId = spellRecord.spellId,
-    --         buffType = spellRecord.type,
-    --         version = 1,
-    --         showInParty = true,
-    --         showInArena = true,
-    --         showInRaid = true,
-    --         showOnNameplates = true, 
-    --         duration = 0,
-    --         showGlow = false,
-    --         sizeMultiplier = 1,
-    --     }
-
     local localOnSave = function() end
 
     local setSavedSpell = function(spell)
@@ -56,7 +42,7 @@ function BuffWatcher_AddEditSavedCast:new(parent)
     end
 
     local Initialize = function(parent)
-        local frame = CreateFrame("Frame", "BuffWatcher_AddEditSavedCastw", parent, "BackdropTemplate")
+        local frame = CreateFrame("Frame", "BuffWatcher_AddEditSavedCast", parent, "BackdropTemplate")
 
         local backdropInfo =
         {
@@ -182,6 +168,7 @@ function BuffWatcher_AddEditSavedCast:new(parent)
         okayButton:SetHeight(64)
         okayButton:SetScript("OnClick", function()
             local model = getModel()
+            DevTool:AddData(model, "fixme save model")
             localOnSave(model)
         end)
     

@@ -29,6 +29,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
     end
 
     self.saveSpellsToDatabase = function(spells)
+        DevTool:AddData(spells, "fixme savestoredspells")
         BuffWatcher_DbAccessor_Singleton.SaveStoredSpells(spells)
     end
 

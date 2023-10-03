@@ -37,7 +37,8 @@ function BuffWatcher_Shared:new()
             showInArena = true,
             showInRaid = true,
             showOnNameplates = true, 
-            duration = 0,
+            showDispelTypeOutline = true,
+            duration = 10,
             showGlow = false,
             sizeMultiplier = 1,
             priority = 5,
@@ -117,7 +118,7 @@ function BuffWatcher_Shared:new()
         return 'player'
     end
 
-    self.CreateShallowCopy =  function(src)
+    self.CreateShallowCopy = function(src)
         local copy = {}
 
         for index, value in pairs(src) do
@@ -127,6 +128,38 @@ function BuffWatcher_Shared:new()
         end
 
         return copy
+    end
+
+    self.CopyKeys = function(src)
+        local copiedKeys = {}
+
+        for key, _ in pairs(src) do
+            copiedKeys[key] = true
+        end
+
+        return copiedKeys
+    end
+
+    self.SimpleTableMerge = function(t1, t2)
+        local merged = {}
+
+        for k,v in pairs(t1) do
+            merged[k] = v
+        end
+
+        for k,v in pairs(t2) do
+            if (merged[k] == nil) then
+                merged[k] = v
+            end
+        end
+
+        return merged
+    end
+
+    self.MergeIntoOrderedTable = function(destination, toMerge)
+        for _,v in pairs(toMerge) do
+            table.insert(destination, v)
+        end
     end
 
     self.GetButton = function(parent, unpressedTexture, pressedTexture)
