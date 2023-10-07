@@ -36,5 +36,6 @@ BuffWatcher_AddEditSavedCast.lua
 BuffWatcher_SavedSpellsWindow.lua
 BuffWatcher_LoggerWindow_SpellRow.lua
 BuffWatcher_LoggerWindow.lua
+BuffWatcher_SettingsDialog.lua
 BuffWatcher_MainWindow.lua
 BuffWatcher.lua

@@ -1,8 +1,8 @@
 local AceGUI = LibStub("AceGUI-3.0")
 
-BuffWatcher_AddEditSavedCast = {}
+BuffWatcher_AddEditSavedCast2 = {}
 
-function BuffWatcher_AddEditSavedCast:new(parent)
+function BuffWatcher_AddEditSavedCast2:new(parent)
     self = {}
 
     local mainFrame = nil
@@ -20,31 +20,11 @@ function BuffWatcher_AddEditSavedCast:new(parent)
 
     local setSavedSpell = function(spell)
         DevTool:AddData(spell, "fixme setSavedSpell")
-
-        activeModel = CopyTable(spell)
-
-        local spellName = GetSpellInfo(spell.spellId)
-
-        txtSpellName:SetText(spellName)
-        chkParty:SetChecked(spell.showInParty)
-        chkArenas:SetChecked(spell.showInArena)
-        chkRaids:SetChecked(spell.showInRaid)
-        chkEnemyNameplates:SetChecked(spell.showOnNameplates)
-        chkGlow:SetChecked(spell.showGlow)
-
-        multiplierSlider:SetValue(spell.sizeMultiplier)
     end
 
-    local getModel = function()
-        return BuffWatcher_Shared_Singleton.CreateShallowCopy(activeModel)
-    end
-
-    local setSizeMultiplier = function(value)
-        activeModel.sizeMultiplier = value
-    end
 
     local Initialize = function(parent)
-        local frame = CreateFrame("Frame", "BuffWatcher_AddEditSavedCast", parent, "BackdropTemplate")
+        local frame = AceGUI:Create("Frame", "Add/Edit Spell")
 
         local backdropInfo =
         {

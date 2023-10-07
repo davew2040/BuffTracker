@@ -651,6 +651,11 @@ AceGUI:RegisterLayout("List",
 		safecall(content.obj.LayoutFinished, content.obj, nil, height)
 	end)
 
+AceGUI:RegisterLayout("Manual",
+	function(content, children)
+		safecall(content.obj.LayoutFinished, content.obj, nil, height)
+	end)
+
 -- A single control fills the whole content area
 AceGUI:RegisterLayout("Fill",
 	function(content, children)

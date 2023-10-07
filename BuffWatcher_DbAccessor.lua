@@ -3,49 +3,41 @@ BuffWatcher_DbAccessor = {}
 function BuffWatcher_DbAccessor:new()
     self = {};
 
+    local db;
+
     local GetDefaultDb = function()
         return {
-            options = {},
-            savedSpells = {}
-        }
+            global = {
+                options = {
+                    message = "Welcome Home!",
+                    showOnScreen = true,
+                    iconSize = 32
+                },
+                savedSpells = {}
+            }
+          }
+
+        -- return {
+        --     options = {},
+        --     savedSpells = {}
+        -- }
     end
-
-    local DbIsEmpty = function()
-        if (BuffWatcherDB == nil) then
-            return true
-        end
-
-        local count = 0
-        for k,v in pairs(BuffWatcherDB) do
-            count = count + 1
-        end
-        return count == 0
-    end
-
-    local OnAddonLoaded = function()
-        if (DbIsEmpty()) then
-            BuffWatcherDB = GetDefaultDb()
-        end
-    end
-
-    local frame = CreateFrame("Frame", "Spell Row", UIParent)
-
-    frame:RegisterEvent("ADDON_LOADED")
-    frame:SetScript("OnEvent", function(loadingFrame, event, addon)
-        if (addon == "BuffWatcher") then
-            OnAddonLoaded()
-        end
-    end)
 
     self.SaveStoredSpells = function(newStoredSpells)
-        BuffWatcherDB.savedSpells = newStoredSpells
+        db.savedSpells = newStoredSpells
     end
 
     self.GetSpells = function()
-        if (DbIsEmpty()) then
-            return {}
-        end
-        return BuffWatcherDB.savedSpells
+        return db.global.savedSpells
+    end
+
+    self.GetOptions = function()
+        return db.global.options
+    end
+
+    self.OnInitialize = function()
+        db = LibStub("AceDB-3.0"):New("BuffWatcherDB", GetDefaultDb())
+        DevTool:AddData(db, "fixme db accessor init")
     end
 
     return self;

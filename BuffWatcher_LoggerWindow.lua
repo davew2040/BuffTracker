@@ -220,133 +220,14 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
         local frame = AceGUI:Create("SimpleGroup", "BuffWatcher_LoggerWindow")
         frame:SetLayout("List")
         frame:SetFullWidth(true)
-
-        -- debug color
-        -- frame.frame:SetBackdropColor(1, 0, 0, 1)
-
-        -- buff type picker start
-        -- local function WPDropDownDemo_OnClick(ref)
-        --     UIDropDownMenu_SetSelectedValue(buffPickerDropdown, ref.value)
-        --     setSpellTypeFilter(ref.value)
-        -- end
-    
-        -- local function WPDropDownDemo_Menu(frame, level, menuList)
-        --     local OrderedSpellTypes = {
-        --         [1] = SpellTypes.Any,
-        --         [2] = SpellTypes.Buff,
-        --         [3] = SpellTypes.Debuff,
-        --         [4] = SpellTypes.Cast
-        --     }
-
-        --     for k, v in pairs(OrderedSpellTypes) do
-        --         local info = UIDropDownMenu_CreateInfo()
-
-        --         info.value = v
-        --         info.text = SpellTypeLabels[v]
-        --         info.checked = false
-        --         info.func = WPDropDownDemo_OnClick
-
-        --         UIDropDownMenu_AddButton(info)
-        --     end
-        -- end
-
-        
-        -- Create the dropdown control
-
-        -- end buff type picker
-
-        -- start filter labels
-        
-        local labelsHolderFrame = AceGUI:Create("SimpleGroup", "Labels Holder Frame")
-        labelsHolderFrame:SetFullWidth(true)
-        labelsHolderFrame:SetLayout("Flow")
-        frame:AddChild(labelsHolderFrame)
-
-        local filterTypeLabel = AceGUI:Create("Label") --CreateFrame("Frame", nil, frame)
-        DevTool:AddData(filterTypeLabel, "fixme filterTypeLabel")
-        filterTypeLabel:SetWidth(50)
-        filterTypeLabel:SetHeight(50)
-        filterTypeLabel:SetText("TYPE")
-
-        labelsHolderFrame:AddChild(filterTypeLabel)
-
-        local filterSpellLabel = AceGUI:Create("Label") --CreateFrame("Frame", nil, frame)
-        filterSpellLabel:SetWidth(50)
-        filterSpellLabel:SetHeight(50)
-        filterSpellLabel:SetText("SPELL")
-
-        labelsHolderFrame:AddChild(filterSpellLabel)
-
-        local filterCasterLabel = AceGUI:Create("Label") --CreateFrame("Frame", nil, frame)
-        filterCasterLabel:SetWidth(50)
-        filterCasterLabel:SetHeight(50)
-        filterCasterLabel:SetText("CASTER")
-
-        labelsHolderFrame:AddChild(filterCasterLabel)
-
-        -- end filter labels
-
-        -- start grid labels
-
-        -- local labelsFrame = CreateFrame("Frame", nil, frame)
-        -- labelsFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -120) 
-        -- labelsFrame:Show()
-        -- labelsFrame:SetSize(50, 50)
-
-        -- local spellTypeLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        -- spellTypeLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 200, 0)  
-        -- spellTypeLabel:SetText("TYPE") 
-
-        -- local spellIdLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        -- spellIdLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 300, 0)  
-        -- spellIdLabel:SetText("SPELL ID") 
-
-        -- local spellNameLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        -- spellNameLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 400, 0)  
-        -- spellNameLabel:SetText("SPELL NAME") 
-
-        -- local spellCasterLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        -- spellCasterLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 650, 0)  
-        -- spellCasterLabel:SetText("CASTER") 
-
-        -- end grid labels
-
-        -- buff type picker end       
-
-   -- buff type picker start
-        -- local function WPDropDownDemo_OnClick(ref)
-        --     UIDropDownMenu_SetSelectedValue(buffPickerDropdown, ref.value)
-        --     setSpellTypeFilter(ref.value)
-        -- end
-    
-        -- local function WPDropDownDemo_Menu(frame, level, menuList)
-        --     local OrderedSpellTypes = {
-        --         [1] = SpellTypes.Any,
-        --         [2] = SpellTypes.Buff,
-        --         [3] = SpellTypes.Debuff,
-        --         [4] = SpellTypes.Cast
-        --     }
-
-        --     for k, v in pairs(OrderedSpellTypes) do
-        --         local info = UIDropDownMenu_CreateInfo()
-
-        --         info.value = v
-        --         info.text = SpellTypeLabels[v]
-        --         info.checked = false
-        --         info.func = WPDropDownDemo_OnClick
-
-        --         UIDropDownMenu_AddButton(info)
-        --     end
-        -- end
-
+ 
         local filtersHolderFrame = AceGUI:Create("SimpleGroup", "Filters Holder Frame")
         filtersHolderFrame:SetLayout("Flow")
         filtersHolderFrame:SetFullWidth(true)
         frame:AddChild(filtersHolderFrame)
 
         local filterSpellType = AceGUI:Create("Dropdown")
-
-        filterSpellType:SetLabel("Select an Option:") 
+        filterSpellType:SetLabel("Spell Type:") 
 
         local OrderedSpellTypes = {
             [1] = SpellTypes.Any,
@@ -358,18 +239,12 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
         local dropdownItems = {}
 
         for k, v in pairs(OrderedSpellTypes) do
-            -- table.insert(dropdownItems, {
-            --     text = SpellTypeLabels[v],
-            --     value = v
-            -- })
-            dropdownItems[k] = SpellTypeLabels[v]
+            dropdownItems[v] = SpellTypeLabels[v]
         end
-
-        DevTool:AddData(dropdownItems, "fixme dropdownItems")
 
         filterSpellType:SetList(dropdownItems)
         filterSpellType:SetValue(SpellTypes.Any)
-        filterSpellType:SetCallback("OnValueChanged", function(key)
+        filterSpellType:SetCallback("OnValueChanged", function(control, event, key)
             print("dropdownSpellType " .. tostring(key))
             setSpellTypeFilter(key)
         end)
@@ -379,7 +254,8 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
         local filterSpellName = AceGUI:Create("EditBox")
             
         filterSpellName:SetWidth(100);
-        filterSpellName:SetHeight(50);
+        filterSpellName:SetHeight(25);
+        filterSpellName:SetLabel("Spell Name:");
         filterSpellName:SetCallback("OnTextChanged", function(control, event, text)
             setSpellNameFilter(text ~= nil and text or "")
         end)
@@ -390,43 +266,13 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
             
         filterCasterName:SetWidth(100);
         filterCasterName:SetHeight(50);
+        filterCasterName:SetLabel("Caster:");
         filterCasterName:SetCallback("OnTextChanged", function(text)
             setCasterNameFilter(text ~= nil and text or "")
         end)
 
         filtersHolderFrame:AddChild(filterCasterName)
     
-        -- end buff type picker
-
-        -- -- filter spell name
-
-        -- local filterSpellName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
-        -- filterSpellName:SetPoint("TOPLEFT", frame, "TOPLEFT", 175, -35);
-        -- filterSpellName:SetWidth(100);
-        -- filterSpellName:SetHeight(50);
-        -- filterSpellName:SetMovable(false);
-        -- filterSpellName:SetAutoFocus(false);
-        -- filterSpellName:SetScript("OnTextChanged", function(...)
-        --     local ctl = select(1, ...)
-        --     local textValue = ctl:GetText()
-        --     setSpellNameFilter(textValue ~= nil and textValue or "")
-        -- end)
-        -- -- end filter spell name
-
-        -- -- filter caster name
-        -- local filterCasterName = CreateFrame("Editbox", nil, frame, "InputBoxTemplate")
-        -- filterCasterName:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, -35);
-        -- filterCasterName:SetWidth(100);
-        -- filterCasterName:SetHeight(50);
-        -- filterCasterName:SetMovable(false);
-        -- filterCasterName:SetAutoFocus(false);
-        -- filterCasterName:SetScript("OnTextChanged", function(...)
-        --     local ctl = select(1, ...)
-        --     local textValue = ctl:GetText()
-        --     setCasterNameFilter(textValue ~= nil and textValue or "")
-        -- end)
-        -- -- end caster spell name
-
         -- spell rows start
         for i=1,pageSize do 
             local newRow = BuffWatcher_LoggerWindow_SpellRow:new()
@@ -473,34 +319,9 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
 
         actionsHolderFrame:AddChild(refreshButton)
 
-        local nextButton = AceGUI:Create("Button")
-        nextButton:SetText("Next")
-        nextButton:SetWidth(40)
-        nextButton:SetHeight(40)
-        nextButton:SetCallback("OnClick", 
-            function()
-                pager.goNextPage()
-                self.UpdateSpellRows()
-            end
-        )
-    
-        actionsHolderFrame:AddChild(nextButton)
-
-        pagerText = AceGUI:Create("Label")
-        pagerText:SetWidth(120)
-        pagerText:SetHeight(40)
-        pagerText:SetCallback("OnClick", 
-            function()
-                pager.goPreviousPage()
-                self.UpdateSpellRows()
-            end
-        )
-    
-        actionsHolderFrame:AddChild(pagerText)
-
         local prevButton = AceGUI:Create("Button")
         prevButton:SetText("Prev")
-        prevButton:SetWidth(40)
+        prevButton:SetWidth(60)
         prevButton:SetHeight(40)
         prevButton:SetCallback("OnClick", 
             function()
@@ -510,6 +331,48 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
         )
     
         actionsHolderFrame:AddChild(prevButton)
+
+        -- local pagerTextHolder = AceGUI:Create("SimpleGroup")
+        -- pagerTextHolder:SetLayout("Fill")
+        -- pagerTextHolder:SetWidth(200)
+        -- pagerTextHolder:SetHeight(200)
+
+        -- actionsHolderFrame:AddChild(pagerTextHolder)
+
+        -- local pagerTextInnerHolder = AceGUI:Create("SimpleGroup")
+        -- pagerTextInnerHolder:SetLayout("Fill")
+        -- -- pagerTextInnerHolder:SetWidth(250)
+        -- -- pagerTextInnerHolder:SetHeight(250)
+        -- pagerTextInnerHolder:SetPoint("TOPLEFT", pagerTextHolder.frame, "TOPLEFT", -25, 25)
+        -- pagerTextInnerHolder:SetPoint("BOTTOMRIGHT", pagerTextHolder.frame, "BOTTOMRIGHT", 25, -25)
+
+        -- --pagerTextHolder:AddChild(pagerTextInnerHolder)
+
+        -- local testBlizzardFrame = CreateFrame("Frame", pagerTextHolder.frame)
+        -- testBlizzardFrame:SetWidth(300)
+        -- testBlizzardFrame:SetHeight(300)
+        -- testBlizzardFrame:SetPoint("CENTER", pagerTextHolder.frame, "CENTER", 0, 0)
+
+
+        pagerText = AceGUI:Create("Label")
+        pagerText:SetJustifyH("CENTER")
+        pagerText:SetJustifyV("MIDDLE")
+        --pagerText.frame:SetPoint("BOTTOMRIGHT", pagerTextHolder.frame, "BOTTOMRIGHT", 0, 0)
+
+        actionsHolderFrame:AddChild(pagerText)
+
+        local nextButton = AceGUI:Create("Button")
+        nextButton:SetText("Next")
+        nextButton:SetWidth(60)
+        nextButton:SetHeight(40)
+        nextButton:SetCallback("OnClick", 
+            function()
+                pager.goNextPage()
+                self.UpdateSpellRows()
+            end
+        )
+    
+        actionsHolderFrame:AddChild(nextButton)
 
         -- local prevButton = BuffWatcher_Shared_Singleton.GetButton(
         --     frame, 
@@ -574,17 +437,6 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells)
         indexedSpellRecords = GetIndexedRecords(filteredRecords)
         pager = Pager:new(pageSize, #indexedSpellRecords)
         self.UpdateSpellRows()
-    end
-
-    self.Show = function()
-        self.UpdateWindow()
-        mainFrame:Show()
-        isShowing = true
-    end
-
-    self.Hide = function()
-        mainFrame:Hide()
-        isShowing = false
     end
 
     self.GetFrame = function()

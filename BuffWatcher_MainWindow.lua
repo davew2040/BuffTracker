@@ -2,26 +2,81 @@ local AceGUI = LibStub("AceGUI-3.0")
 
 BuffWatcher_MainWindow = {}
 
-function BuffWatcher_MainWindow:new(parent, incomingStoredSpells)
+function BuffWatcher_MainWindow:new(incomingStoredSpells)
     self = {}
 
     local isShowing = false
     local mainFrame = nil
+    local tab = nil
     
     local loggerWindow = nil
     local savedSpellsWindow = nil
     local addEditCastWindow = nil
     local storedSpells = incomingStoredSpells
+    local frames = {}
     
-    local Initialize = function(parent)
+    local loggerFrameKey = "loggerFrameKey"
+    local spellsFrameKey = "spellsFrameKey"
+
+    local TabKeys = {
+        Spells = "SPELLS",
+        Logger = "LOGGER"
+    }
+
+    local showFrame = function(frameKey)
+        for k,v in pairs(frames) do
+            if (k == frameKey) then
+                frames[k].frame:Show()
+            else
+                frames[k].frame:Hide()
+            end
+        end
+    end
+
+    local selectTab = function(tabKey)
+        tab:SelectTab("tabLogger")
+
+        if (tabKey == TabKeys.Logger) then
+            showFrame(loggerFrameKey)
+            loggerWindow.UpdateWindow()
+        else
+            --showFrame("SDFSLF")
+        end
+    end
+
+    local initializeFrames = function(addEditCastWindow, tabControl)
+        local loggerWindowFrame = AceGUI:Create("SimpleGroup", "Logger Window Frame")
+        loggerWindowFrame:SetFullWidth(true)
+        loggerWindowFrame:SetFullHeight(true)
+   
+        loggerWindow = BuffWatcher_LoggerWindow:new(storedSpells)
+
+        loggerWindowFrame:AddChild(loggerWindow.GetFrame())
+
+        frames[loggerFrameKey] = loggerWindowFrame
+
+        -- local savedSpellsFrame = AceGUI:Create("SimpleGroup", "Saved Spells Frame")
+        -- savedSpellsFrame:SetFullWidth(true)
+        -- savedSpellsFrame:SetFullHeight(true)
+   
+        -- savedSpellsWindow = BuffWatcher_SavedSpellsWindow:new(storedSpells, addEditCastWindow)
+
+        --savedSpellsFrame:AddChild(savedSpellsWindow.GetFrame())
+
+        --frames[spellsFrameKey] = savedSpellsFrame
+
+        tab:AddChild(loggerWindowFrame)
+    end
+
+    local Initialize = function(addEditCastWindow)
         local frame = AceGUI:Create("Frame")
 
         frame:SetTitle("Buff Watcher")
         frame:SetStatusText("AceGUI-3.0 Example Container Frame")
-        frame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
+        frame:SetCallback("OnClose", frame.frame:Hide())
         frame:SetLayout("Fill")
-        frame:SetWidth(1000)
-        frame:SetHeight(500)
+        frame:SetWidth(1200)
+        frame:SetHeight(750)
 
         -- local SavedSpellsTab = CreateFrame('Button', "$parentTab1", frame, "OptionsFrameTabButtonTemplate");
         -- SavedSpellsTab:SetID(1);
@@ -45,114 +100,81 @@ function BuffWatcher_MainWindow:new(parent, incomingStoredSpells)
         -- tabContentFrame:SetPoint("TOPLEFT", SavedSpellsTab, "BOTTOMLEFT", 0, -10)
         -- tabContentFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 20)
 
-        local loggerWindowFrame = AceGUI:Create("SimpleGroup", "Logger Window Frame")
-        --loggerWindowFrame:SetTitle("loggerWindowFrame")
-        loggerWindowFrame:SetFullWidth(true)
-        loggerWindowFrame:SetFullHeight(true)
-   
-        loggerWindow = BuffWatcher_LoggerWindow:new(storedSpells)
+        addEditCastWindow = BuffWatcher_AddEditSavedCast:new(UIParent)
 
-        loggerWindowFrame:AddChild(loggerWindow.GetFrame())
-        
+        -- addEditCastWindow:GetFrame():SetSize(800, 800)
+        -- addEditCastWindow:GetFrame():SetPoint("CENTER")
+        -- addEditCastWindow:GetFrame():SetScale(0.5)
+        -- addEditCastWindow:GetFrame():EnableMouse(true)
+        -- addEditCastWindow:GetFrame():SetMovable(true)
+
+        -- addEditCastWindow:GetFrame():SetScript("OnDragStart", addEditCastWindow.StartMoving)
+        -- addEditCastWindow:GetFrame():SetScript("OnDragStop", addEditCastWindow.StopMovingOrSizing)
+        -- addEditCastWindow:GetFrame():SetScript("OnHide", addEditCastWindow.StopMovingOrSizing)
+
+        -- addEditCastWindow.Hide()
+
+        -- local loggerWindowFrame = AceGUI:Create("SimpleGroup", "Logger Window Frame")
+        -- --loggerWindowFrame:SetTitle("loggerWindowFrame")
+        -- loggerWindowFrame:SetFullWidth(true)
+        -- loggerWindowFrame:SetFullHeight(true)
+   
+        -- loggerWindow = BuffWatcher_LoggerWindow:new(storedSpells)
+
+        -- loggerWindowFrame:AddChild(loggerWindow.GetFrame())
+
+        -- frames[loggerWindowFrame] = loggerWindowFrame
+
+        -- local loggerWindowFrame = AceGUI:Create("SimpleGroup", "Logger Window Frame")
+        -- --loggerWindowFrame:SetTitle("loggerWindowFrame")
+        -- loggerWindowFrame:SetFullWidth(true)
+        -- loggerWindowFrame:SetFullHeight(true)
+   
+        -- loggerWindow = BuffWatcher_LoggerWindow:new(storedSpells)
+
+        -- loggerWindowFrame:AddChild(loggerWindow.GetFrame())
+
+        -- frames[loggerWindowFrame] = loggerWindowFrame
+
         -- savedSpellsWindow = BuffWatcher_SavedSpellsWindow:new(tabContentFrame, storedSpells, addEditCastWindow)
         -- savedSpellsWindow:GetFrame():SetPoint("TOPLEFT", tabContentFrame, "TOPLEFT", 0, 0)
         -- savedSpellsWindow:GetFrame():SetPoint("BOTTOMRIGHT", tabContentFrame, "BOTTOMRIGHT", 0, 0)
 
-        -- function that draws the widgets for the first tab
-        local function DrawGroup1(container)
-            -- local desc = AceGUI:Create("Label")
-            -- desc:SetText("This is Tab 1")
-            -- desc:SetFullWidth(true)
-            -- container:AddChild(desc)
-            
-            -- local button = AceGUI:Create("Button")
-            -- button:SetText("Tab 1 Button")
-            -- button:SetWidth(200)
-            -- container:AddChild(button)
-        end
-        
-        -- function that draws the widgets for the second tab
-        local function DrawGroup2(container)
-            -- local desc = AceGUI:Create("Label")
-            -- desc:SetText("This is Tab 2")
-            -- desc:SetFullWidth(true)
-            -- container:AddChild(desc)
-            
-            -- local button = AceGUI:Create("Button")
-            -- button:SetText("Tab 2 Button")
-            -- button:SetWidth(200)
-            -- container:AddChild(button)
-        end
-
         -- Callback function for OnGroupSelected
         local function SelectGroup(container, event, group)
-            --container:ReleaseChildren()
-            if group == "tab1" then
-                loggerWindowFrame.frame:Show()
-                DrawGroup1(container)
-            elseif group == "tab2" then
-                loggerWindowFrame.frame:Hide()
-                DrawGroup2(container)
-            end
+            selectTab(group)
         end
 
-        -- Create the TabGroup
-        -- local tab =  AceGUI:Create("TabGroup")
-        -- tab:SetFullWidth(true)
-        -- tab:SetFullHeight(true)
+        tab =  AceGUI:Create("TabGroup")
 
-        -- tab:SetLayout("List")
-        -- -- Setup which tabs to show
-        -- tab:SetTabs({{text="Tab 1", value="tab1"}, {text="Tab 2", value="tab2"}})
-        -- -- Register callback
-        -- tab:SetCallback("OnGroupSelected", SelectGroup)
-        -- -- Set initial Tab (this will fire the OnGroupSelected callback)
-        -- tab:SelectTab("tab1")
+        tab:SetFullWidth(true)
+        tab:SetFullHeight(true)
+        tab:SetLayout("List")
+        tab:SetTabs({
+            {text="Saved Spells", value=TabKeys.Spells}, 
+            {text="Logger", value=TabKeys.Logger}
+        })
+        tab:SetCallback("OnGroupSelected", SelectGroup)
         
-        -- add to the frame container
-        --frame:AddChild(tab)
+        frame:AddChild(tab)
+        
+        initializeFrames(addEditCastWindow, tab)
 
-        frame:AddChild(loggerWindowFrame)
-
-        addEditCastWindow = BuffWatcher_AddEditSavedCast:new(UIParent)
-        addEditCastWindow:GetFrame():SetSize(800, 800)
-        addEditCastWindow:GetFrame():SetPoint("CENTER")
-        addEditCastWindow:GetFrame():SetScale(0.5)
-        addEditCastWindow:GetFrame():EnableMouse(true)
-        addEditCastWindow:GetFrame():SetMovable(true)
-
-        addEditCastWindow:GetFrame():SetScript("OnDragStart", addEditCastWindow.StartMoving)
-        addEditCastWindow:GetFrame():SetScript("OnDragStop", addEditCastWindow.StopMovingOrSizing)
-        addEditCastWindow:GetFrame():SetScript("OnHide", addEditCastWindow.StopMovingOrSizing)
-
-        addEditCastWindow.Hide()
+        selectTab(TabKeys.Logger)
 
         --self.OpenWatcherTab()
 
         return frame
     end
-    
-    self.Show = function()
-        mainFrame:Show()
-        loggerWindow:Show()
-        isShowing = true
-    end
-
-    self.Hide = function()
-        mainFrame:Hide()
-        loggerWindow:Hide()
-        savedSpellsWindow:Hide()
-        isShowing = false
-    end
 
     self.OpenWatcherTab = function()
-        loggerWindow:Show()
-        savedSpellsWindow:Hide()
+        loggerWindowFrame.frame:Show()
+        --savedSpellsWindow:Hide()
     end
 
     self.OpenSavedSpellsTab = function()
-        savedSpellsWindow:Show()
-        loggerWindow:Hide()
+        --savedSpellsWindow:Show()
+        loggerWindowFrame.frame:Hide()
     end
 
     self.GetFrame = function()

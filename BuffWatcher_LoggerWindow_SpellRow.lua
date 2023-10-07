@@ -27,7 +27,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new()
     spellRowFrame:AddChild(addButton)
 
     local textureFrame = AceGUI:Create("Icon")
-    textureFrame:SetImageSize(24, 24)
+    textureFrame:SetImageSize(32, 32)
     spellRowFrame:AddChild(textureFrame)
 
     local spellTypeText = AceGUI:Create("Label")
@@ -41,22 +41,6 @@ function BuffWatcher_LoggerWindow_SpellRow:new()
 
     local sourceNameText = AceGUI:Create("Label")
     spellRowFrame:AddChild(sourceNameText)
-
-    -- local textureFrame = spellRowFrame.frame:CreateTexture()
-    -- textureFrame:SetPoint("LEFT", spellRowFrame.frame, "TOPLEFT", 125, 0)
-    -- textureFrame:SetSize(32, 32)
-
-    -- local spellTypeText = spellRowFrame.frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    -- spellTypeText:SetPoint("LEFT", spellRowFrame.frame, "TOPLEFT", 200, 0)
-
-    -- local spellIdText = spellRowFrame.frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    -- spellIdText:SetPoint("LEFT", spellRowFrame.frame, "TOPLEFT", 300, 0)
-
-    -- local spellNameText = spellRowFrame.frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    -- spellNameText:SetPoint("LEFT", spellRowFrame.frame, "TOPLEFT", 400, 0)
-
-    -- local sourceNameText = spellRowFrame.frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    -- sourceNameText:SetPoint("LEFT", spellRowFrame.frame, "TOPLEFT", 650, 0)
 
     self.getFrame = function()
         return spellRowFrame
