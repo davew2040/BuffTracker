@@ -1,4 +1,4 @@
-
+---@class BuffWatcher_LoggerModule
 BuffWatcher_LoggerModule = {}
 
 function BuffWatcher_LoggerModule:new()
@@ -21,12 +21,10 @@ function BuffWatcher_LoggerModule:new()
         local name = auraInfo[1]
         local spellId = auraInfo[10]
         local sourceName = UnitName(sourceUnit)
-        --DevTool:AddData({ type, name, spellId, sourceName}, "fixme trying add")
 
-        local buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(type, spellId, name, sourceName)
+        local buffRecord = BuffWatcher_CastRecord:new(type, spellId, name, sourceName)
 
         if (spellRecords[buffRecord.key] == nil) then
-            --DevTool:AddData({ type, name, spellId, sourceName}, "fixme completed add")
             spellRecords[buffRecord.key] = buffRecord
         end
     end
@@ -50,6 +48,10 @@ function BuffWatcher_LoggerModule:new()
     end
 
     local nameOnly = function(fullname)
+        if (fullname == nil) then
+            return "(no source)"
+        end
+
         local dashIndex = string.find(fullname, "-")
 
         if (dashIndex == nil) then
@@ -60,8 +62,6 @@ function BuffWatcher_LoggerModule:new()
     end
 
     local OnEvent = function (ref, event, ...)
-        print("processing event")
-
         if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
             local eventInfo = {CombatLogGetCurrentEventInfo()}
             local subevent = eventInfo[2]
@@ -72,7 +72,7 @@ function BuffWatcher_LoggerModule:new()
                 local spellId = eventInfo[12]
                 local spellName = eventInfo[13]
 
-                local spellRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
+                local spellRecord = BuffWatcher_CastRecord:new(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
 
                 if (spellRecords[spellRecord.key] == nil) then
                     spellRecords[spellRecord.key] = spellRecord
@@ -94,9 +94,9 @@ function BuffWatcher_LoggerModule:new()
                     end
 
                     if (v.isHelpful) then
-                        buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Buff, v.spellId, v.name, unitName)
+                        buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Buff, v.spellId, v.name, unitName)
                     else
-                        buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Debuff, v.spellId, v.name, unitName)
+                        buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Debuff, v.spellId, v.name, unitName)
                     end
 
                     if (spellRecords[buffRecord.key] == nil) then
@@ -122,9 +122,9 @@ function BuffWatcher_LoggerModule:new()
 
                         local buffRecord = nil
                         if (updateInfo.isHelpful) then
-                            buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Buff, updateInfo.spellId, updateInfo.name, unitName)
+                            buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Buff, updateInfo.spellId, updateInfo.name, unitName)
                         else
-                            buffRecord = BuffWatcher_Shared_Singleton.BuildSpellCastRecord(SpellTypes.Debuff, updateInfo.spellId, updateInfo.name, unitName)
+                            buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Debuff, updateInfo.spellId, updateInfo.name, unitName)
                         end
 
                         if (spellRecords[buffRecord.key] == nil) then

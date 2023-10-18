@@ -1,25 +1,35 @@
+---@class BuffWatcher_WeakAuraGenerator
 BuffWatcher_WeakAuraGenerator = {}
 
-function BuffWatcher_WeakAuraGenerator:new()
+---@param configuration BuffWatcher_Configuration
+function BuffWatcher_WeakAuraGenerator:new(configuration)
     self = {};
 
     local baseCustomCastScript = "function(allstates, event, ...)\n    if (BuffWatcher_WeakAuraInterface_Singleton == nil \n        or not BuffWatcher_WeakAuraInterface_Singleton.IsRegistered()) then\n        return false\n    end\n    \n    \n    local castData = {\n        spellId = {0}\n    }\n    \n    return BuffWatcher_WeakAuraInterface_Singleton.DelegateTsu(allstates, event, \"{1}\", castData, ...)\nend"
 
+    ---@param spellId integer
+    ---@param contextName string
+    ---@return string
     local getCustomCastScript = function(spellId, contextName)
         local modified = string.gsub(baseCustomCastScript, "{0}", spellId)
         modified = string.gsub(modified, "{1}", contextName)
         return modified
     end
 
+    ---@param spellId integer
+    ---@param contextName string
+    ---@return table<string, any>
     local getCastTrigger = function(spellId, contextName)
-        local triggerCopy = CopyTable(BuffWatcher_WeakAuraGenerator.CastCustomTrigger)
+        local triggerCopy = BuffWatcher_Shared:CopyTable(BuffWatcher_WeakAuraGenerator.CastCustomTrigger)
         local modifiedScript = getCustomCastScript(spellId, contextName)
-        DevTool:AddData(modifiedScript, "fixme modifiedScript")
+
         triggerCopy.custom = modifiedScript
 
         return triggerCopy
     end
 
+    ---@param incomingAuraIds number[]
+    ---@return table<integer, string>
     local spreadAuraIds = function(incomingAuraIds)
         local result = {}
 
@@ -30,6 +40,8 @@ function BuffWatcher_WeakAuraGenerator:new()
         return result
     end
 
+    ---@param frameType FrameTypes
+    ---@return string
     local unitLabelFromFrameType = function(frameType)
         if frameType == BuffWatcher_Shared_Singleton.FrameTypes.Nameplate then
             return "nameplate"
@@ -40,13 +52,15 @@ function BuffWatcher_WeakAuraGenerator:new()
         elseif frameType == BuffWatcher_Shared_Singleton.FrameTypes.Raid then
             return "raid"
         else
-            error("Unrecognized frame type " .. frameType)
+            error("Unrecognized frame type " .. tostring(frameType))
         end
     end
 
+    ---@param weakAura any
+    ---@param multiplier number
     local addDispelType = function(weakAura, multiplier)
-        local borderSize = BuffWatcher_Configuration_Singleton.GetBorderSize()
-        local borderOffset = BuffWatcher_Configuration_Singleton.GetBorderOffset()
+        local borderSize = configuration.GetBorderSize()
+        local borderOffset = configuration.GetBorderOffset()
 
         local borderSubregions = CopyTable(BuffWatcher_WeakAuraGenerator.DispelTypeBorders)
         for _, subregion in pairs(borderSubregions) do
@@ -59,12 +73,12 @@ function BuffWatcher_WeakAuraGenerator:new()
         local borderConditions = CopyTable(BuffWatcher_WeakAuraGenerator.DispelTypeConditions)
 
         BuffWatcher_Shared_Singleton.MergeIntoOrderedTable(weakAura.conditions, borderConditions)
+    end
 
-        DevTool:AddData({
-            borderSubregions  = borderSubregions,
-            borderConditions = borderConditions,
-            weakAura = weakAura
-        }, "fixme - borders added")
+    ---@param isHostile boolean
+    ---@return string
+    local getHostilityValue = function(isHostile)
+        return (isHostile and "hostile") or "friendly"
     end
 
     self.GenerateDynamicGroup = function(name, frameType)
@@ -81,8 +95,18 @@ function BuffWatcher_WeakAuraGenerator:new()
         return copy
     end
 
-    self.GenerateBuffDebuff = function(buffId, isBuff, name, parent, size, frameType, showDispelType, sizeMultiplier)
-        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BuffDebuffTemplate)
+    ---@param buffId number
+    ---@param isBuff boolean
+    ---@param name string
+    ---@param isHostile boolean
+    ---@param parent string
+    ---@param size number
+    ---@param frameType FrameTypes
+    ---@param showDispelType boolean
+    ---@param sizeMultiplier number
+    ---@param ownOnly boolean
+    self.GenerateBuffDebuff = function(buffId, isBuff, name, isHostile, parent, size, frameType, showDispelType, sizeMultiplier, ownOnly)
+        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BaseAuraTemplate)
 
         copy.id = name
         copy.width = size
@@ -94,6 +118,11 @@ function BuffWatcher_WeakAuraGenerator:new()
         local unitLabel = unitLabelFromFrameType(frameType)
         trigger.unit = unitLabel
         trigger.auraspellids[1] = tostring(buffId)
+        trigger.hostility = (isHostile and "hostile") or "friendly"
+
+        if (ownOnly) then
+            trigger.ownOnly = ownOnly
+        end
 
         local debuffType = "HARMFUL"
         if (isBuff) then
@@ -110,8 +139,17 @@ function BuffWatcher_WeakAuraGenerator:new()
         return copy
     end
 
-    self.GenerateCatchAllBuffDebuff = function(allAuraIds, isBuff, name, parent, size, frameType, showDispelType, sizeMultiplier)
-        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BuffDebuffTemplate)
+    ---@param allAuraIds number[]
+    ---@param isBuff boolean
+    ---@param name string
+    ---@param isHostile boolean
+    ---@param parent string
+    ---@param size number
+    ---@param frameType FrameTypes
+    ---@param showDispelType boolean
+    ---@param sizeMultiplier number
+    self.GenerateCatchAllBuffDebuff = function(allAuraIds, isBuff, name, isHostile, parent, size, frameType, showDispelType, sizeMultiplier)
+        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BaseAuraTemplate)
 
         copy.id = name
         copy.width = size
@@ -123,6 +161,11 @@ function BuffWatcher_WeakAuraGenerator:new()
         local unitLabel = unitLabelFromFrameType(frameType)
         trigger.unit = unitLabel
 
+        -- FIXME
+        if (frameType == BuffWatcher_Shared_Singleton.FrameTypes.Nameplate) then
+            trigger.ownOnly = true
+        end
+
         trigger.ignoreAuraSpellids = spreadAuraIds(allAuraIds)
 
         local debuffType = "HARMFUL"
@@ -130,6 +173,8 @@ function BuffWatcher_WeakAuraGenerator:new()
             debuffType = "HELPFUL"
         end
         trigger.debuffType = debuffType
+        
+        trigger.hostility = (isHostile and "hostile") or "friendly"
 
         copy.triggers[1].trigger = trigger
 
@@ -140,8 +185,15 @@ function BuffWatcher_WeakAuraGenerator:new()
         return copy
     end
 
-    self.GenerateCast = function(name, spellId, parent, size, icon, contextName)
-        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BuffDebuffTemplate)
+    ---@param name string
+    ---@param spellId number
+    ---@param parent string
+    ---@param size number
+    ---@param icon string
+    ---@param contextName string
+    ---@param ownOnly boolean
+    self.GenerateCast = function(name, spellId, parent, size, icon, contextName, ownOnly)
+        local copy = CopyTable(BuffWatcher_WeakAuraGenerator.BaseAuraTemplate)
 
         copy.id = name
         copy.width = size
@@ -151,11 +203,330 @@ function BuffWatcher_WeakAuraGenerator:new()
 
         local trigger = getCastTrigger(spellId, contextName)
 
-        DevTool:AddData(trigger, "fixme cast trigger")
+        if (ownOnly) then
+            trigger.ownOnly = ownOnly
+        end
 
         copy.triggers[1].trigger = trigger
 
         return copy
+    end
+
+
+    --- party 
+    -- ["triggers"] = {
+    --     {
+    --         ["trigger"] = {
+    --             ["auranames"] = {
+    --             },
+    --             ["use_absorbMode"] = true,
+    --             ["useHostility"] = true,
+    --             ["names"] = {
+    --             },
+    --             ["auraspellids"] = {
+    --                 "589", -- [1]
+    --             },
+    --             ["debuffType"] = "HARMFUL",
+    --             ["showClones"] = true,
+    --             ["useName"] = false,
+    --             ["use_absorbHealMode"] = true,
+    --             ["subeventSuffix"] = "_CAST_START",
+    --             ["hostility"] = "hostile",
+    --             ["percenthealth"] = {
+    --                 "0", -- [1]
+    --             },
+    --             ["event"] = "Health",
+    --             ["type"] = "unit",
+    --             ["use_unit"] = true,
+    --             ["spellIds"] = {
+    --             },
+    --             ["useExactSpellId"] = true,
+    --             ["subeventPrefix"] = "SPELL",
+    --             ["use_percenthealth"] = true,
+    --             ["percenthealth_operator"] = {
+    --                 ">", -- [1]
+    --             },
+    --             ["unit"] = "party",
+    --         },
+    --         ["untrigger"] = {
+    --         },
+    --     }, -- [1]
+
+
+
+--- nameplate 
+-- ["triggers"] = {
+--     {
+--         ["trigger"] = {
+--             ["auranames"] = {
+--             },
+--             ["use_absorbMode"] = true,
+--             ["useHostility"] = true,
+--             ["hostility"] = "hostile",
+--             ["nameplateType"] = "hostile",
+--             ["useName"] = false,
+--             ["debuffType"] = "HARMFUL",
+--             ["showClones"] = true,
+--             ["type"] = "unit",
+--             ["use_absorbHealMode"] = true,
+--             ["subeventSuffix"] = "_CAST_START",
+--             ["unit"] = "nameplate",
+--             ["percenthealth"] = {
+--                 "0", -- [1]
+--             },
+--             ["event"] = "Health",
+--             ["names"] = {
+--             },
+--             ["auraspellids"] = {
+--                 "589", -- [1]
+--             },
+--             ["subeventPrefix"] = "SPELL",
+--             ["spellIds"] = {
+--             },
+--             ["useExactSpellId"] = true,
+--             ["use_nameplateType"] = true,
+--             ["use_percenthealth"] = true,
+--             ["percenthealth_operator"] = {
+--                 ">", -- [1]
+--             },
+--             ["use_unit"] = true,
+--         },
+--         ["untrigger"] = {
+--         },
+--     }, -- [1]
+
+
+-- ---@type table<string, any>
+-- BuffWatcher_WeakAuraGenerator.AnchorTrigger = {
+--     ["use_percenthealth"] = true,
+--     ["percenthealth_operator"] = {
+--         ">", -- [1]
+--     },
+--     ["percenthealth"] = {
+--         "0", -- [1]
+--     },
+--     ["unit"] = "INSERT_UNIT_HERE",
+--     ["useHostility"] = true,
+--     ["hostility"] = "INSERT_HOSTILITY_HERE",
+--     ["use_nameplateType"] = "INSERT_NAMEPLATE_TYPE_HERE",
+--     ["nameplateType"] = "hostile",
+-- }
+
+-- ["BuffWatcher Spell - Enemy Nameplate Buffs - Test Anchor - 1"] = {
+--     ["iconSource"] = 0,
+--     ["xOffset"] = 0,
+--     ["yOffset"] = 0,
+--     ["anchorPoint"] = "CENTER",
+--     ["cooldownSwipe"] = true,
+--     ["cooldownEdge"] = false,
+--     ["actions"] = {
+--         ["start"] = {
+--         },
+--         ["init"] = {
+--         },
+--         ["finish"] = {
+--         },
+--     },
+--     ["triggers"] = {
+--         {
+--             ["trigger"] = {
+--                 ["names"] = {
+--                 },
+--                 ["type"] = "aura2",
+--                 ["subeventPrefix"] = "SPELL",
+--                 ["nameplateType"] = "hostile",
+--                 ["subeventSuffix"] = "_CAST_START",
+--                 ["percenthealth"] = {
+--                     "0", -- [1]
+--                 },
+--                 ["event"] = "Health",
+--                 ["unit"] = "nameplate",
+--                 ["useHostility"] = true,
+--                 ["hostility"] = "hostile",
+--                 ["spellIds"] = {
+--                 },
+--                 ["use_unit"] = true,
+--                 ["use_nameplateType"] = true,
+--                 ["use_percenthealth"] = true,
+--                 ["percenthealth_operator"] = {
+--                     ">", -- [1]
+--                 },
+--                 ["debuffType"] = "HELPFUL",
+--             },
+--             ["untrigger"] = {
+--             },
+--         }, -- [1]
+--         ["activeTriggerMode"] = -10,
+--     },
+--     ["internalVersion"] = 68,
+--     ["keepAspectRatio"] = false,
+--     ["selfPoint"] = "CENTER",
+--     ["desaturate"] = false,
+--     ["subRegions"] = {
+--         {
+--             ["type"] = "subbackground",
+--         }, -- [1]
+--         {
+--             ["text_shadowXOffset"] = 0,
+--             ["text_text_format_s_format"] = "none",
+--             ["text_text"] = "%s",
+--             ["text_shadowColor"] = {
+--                 0, -- [1]
+--                 0, -- [2]
+--                 0, -- [3]
+--                 1, -- [4]
+--             },
+--             ["text_selfPoint"] = "AUTO",
+--             ["text_automaticWidth"] = "Auto",
+--             ["text_fixedWidth"] = 64,
+--             ["anchorYOffset"] = 0,
+--             ["text_justify"] = "CENTER",
+--             ["rotateText"] = "NONE",
+--             ["type"] = "subtext",
+--             ["text_color"] = {
+--                 1, -- [1]
+--                 1, -- [2]
+--                 1, -- [3]
+--                 1, -- [4]
+--             },
+--             ["text_font"] = "Friz Quadrata TT",
+--             ["text_shadowYOffset"] = 0,
+--             ["text_wordWrap"] = "WordWrap",
+--             ["text_visible"] = true,
+--             ["text_anchorPoint"] = "INNER_BOTTOMRIGHT",
+--             ["text_fontSize"] = 12,
+--             ["anchorXOffset"] = 0,
+--             ["text_fontType"] = "OUTLINE",
+--         }, -- [2]
+--         {
+--             ["glowFrequency"] = 0.25,
+--             ["type"] = "subglow",
+--             ["glowDuration"] = 1,
+--             ["glowType"] = "buttonOverlay",
+--             ["glowLength"] = 10,
+--             ["glowYOffset"] = 0,
+--             ["glowColor"] = {
+--                 1, -- [1]
+--                 1, -- [2]
+--                 1, -- [3]
+--                 1, -- [4]
+--             },
+--             ["useGlowColor"] = false,
+--             ["glowXOffset"] = 0,
+--             ["glow"] = false,
+--             ["glowScale"] = 1,
+--             ["glowThickness"] = 1,
+--             ["glowLines"] = 8,
+--             ["glowBorder"] = false,
+--         }, -- [3]
+--     },
+--     ["height"] = 32,
+--     ["load"] = {
+--         ["use_never"] = false,
+--         ["talent"] = {
+--             ["multi"] = {
+--             },
+--         },
+--         ["class"] = {
+--             ["multi"] = {
+--             },
+--         },
+--         ["spec"] = {
+--             ["multi"] = {
+--             },
+--         },
+--         ["size"] = {
+--             ["multi"] = {
+--             },
+--         },
+--     },
+--     ["displayIcon"] = 450907,
+--     ["regionType"] = "icon",
+--     ["uid"] = "zF8GjtyD)Hq",
+--     ["parent"] = "BuffWatcher Group - Enemy Nameplate Buffs",
+--     ["useCooldownModRate"] = true,
+--     ["anchorFrameParent"] = false,
+--     ["cooldown"] = true,
+--     ["animation"] = {
+--         ["start"] = {
+--             ["type"] = "none",
+--             ["easeStrength"] = 3,
+--             ["duration_type"] = "seconds",
+--             ["easeType"] = "none",
+--         },
+--         ["main"] = {
+--             ["type"] = "none",
+--             ["easeStrength"] = 3,
+--             ["duration_type"] = "seconds",
+--             ["easeType"] = "none",
+--         },
+--         ["finish"] = {
+--             ["type"] = "none",
+--             ["easeStrength"] = 3,
+--             ["duration_type"] = "seconds",
+--             ["easeType"] = "none",
+--         },
+--     },
+--     ["cooldownTextDisabled"] = false,
+--     ["authorOptions"] = {
+--     },
+--     ["zoom"] = 0,
+--     ["id"] = "BuffWatcher Spell - Enemy Nameplate Buffs - Test Anchor - 1",
+--     ["color"] = {
+--         1, -- [1]
+--         1, -- [2]
+--         1, -- [3]
+--         1, -- [4]
+--     },
+--     ["alpha"] = 1,
+--     ["anchorFrameType"] = "SCREEN",
+--     ["icon"] = true,
+--     ["config"] = {
+--     },
+--     ["inverse"] = false,
+--     ["width"] = 32,
+--     ["conditions"] = {
+--     },
+--     ["information"] = {
+--     },
+--     ["frameStrata"] = 1,
+-- },
+
+    ---@param name string
+    ---@param icon number
+    ---@param isHostile boolean
+    ---@param parent string
+    ---@param size number
+    ---@param frameType FrameTypes
+    self.GenerateAnchor = function(name, icon, isHostile, parent, size, frameType)
+        local auraCopy = CopyTable(BuffWatcher_WeakAuraGenerator.BaseAuraTemplate)
+
+        auraCopy.iconSource = 0
+        auraCopy.id = name
+        auraCopy.width = size
+        auraCopy.height = size
+        auraCopy.parent = parent
+        auraCopy.icon = true
+        auraCopy.displayIcon = icon
+
+        local trigger = CopyTable(BuffWatcher_WeakAuraGenerator.AnchorTrigger)
+
+        local unitLabel = unitLabelFromFrameType(frameType)
+        trigger.unit = unitLabel
+
+        local hostilityValue = getHostilityValue(isHostile)
+        trigger.hostility = hostilityValue
+
+        if (frameType == BuffWatcher_Shared_Singleton.FrameTypes.Nameplate) then
+            trigger.use_nameplateType = true
+            trigger.nameplateType = hostilityValue
+        else
+            trigger.use_nameplateType = false
+        end
+
+        auraCopy.triggers[1].trigger = trigger
+
+        return auraCopy
     end
 
     return self
@@ -307,6 +678,8 @@ BuffWatcher_WeakAuraGenerator.BuffDebuffTrigger = {
     },
     ["unit"] = "INSERT UNIT TYPE HERE",
     ["debuffType"] = "HELPFUL",
+    ["useHostility"] = true,
+    ["hostility"] = "hostile"
 }
 
 BuffWatcher_WeakAuraGenerator.CatchAllTrigger = {
@@ -325,9 +698,11 @@ BuffWatcher_WeakAuraGenerator.CatchAllTrigger = {
     },
     ["useExactSpellId"] = false,
     ["debuffType"] = "HARMFUL",
+    ["useHostility"] = true,
+    ["hostility"] = "hostile",
 }
 
-BuffWatcher_WeakAuraGenerator.BuffDebuffTemplate = {
+BuffWatcher_WeakAuraGenerator.BaseAuraTemplate = {
     ["iconSource"] = -1,
     ["color"] = {
         1, -- [1]
@@ -597,6 +972,7 @@ BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
     }, -- [4]
 }
 
+---@type table<string, any>
 BuffWatcher_WeakAuraGenerator.CastCustomTrigger = {
     ["type"] = "custom",
     ["useIgnoreExactSpellId"] = true,
@@ -608,7 +984,108 @@ BuffWatcher_WeakAuraGenerator.CastCustomTrigger = {
     ["names"] = {
     },
     ["check"] = "event",
-    ["custom_type"] = "stateupdate",
+    ["custom_type"] = "stateupdate"
 }
 
-BuffWatcher_WeakAuraGenerator_Singleton = BuffWatcher_WeakAuraGenerator:new()
+---@type table<string, any>
+BuffWatcher_WeakAuraGenerator.AnchorTrigger = {
+    ["use_percenthealth"] = true,
+    ["percenthealth_operator"] = {
+        ">", -- [1]
+    },
+    ["percenthealth"] = {
+        "0", -- [1]
+    },
+    ["event"] = "Health",
+    ["unit"] = "INSERT_UNIT_HERE",
+    ["type"] = "unit",
+    ["useHostility"] = true,
+    ["hostility"] = "INSERT_HOSTILITY_HERE",
+    ["use_nameplateType"] = "INSERT_NAMEPLATE_TYPE_HERE",
+    ["nameplateType"] = "hostile",
+    ["use_unit"] = true,
+    ["use_absorbMode"] = true,
+	["use_absorbHealMode"] = true,
+}
+
+    --- party 
+    -- ["triggers"] = {
+    --     {
+    --         ["trigger"] = {
+    --             ["auranames"] = {
+    --             },
+    --             ["use_absorbMode"] = true,
+    --             ["useHostility"] = true,
+    --             ["names"] = {
+    --             },
+    --             ["auraspellids"] = {
+    --                 "589", -- [1]
+    --             },
+    --             ["debuffType"] = "HARMFUL",
+    --             ["showClones"] = true,
+    --             ["useName"] = false,
+    --             ["use_absorbHealMode"] = true,
+    --             ["subeventSuffix"] = "_CAST_START",
+    --             ["hostility"] = "hostile",
+    --             ["percenthealth"] = {
+    --                 "0", -- [1]
+    --             },
+    --             ["event"] = "Health",
+    --             ["type"] = "unit",
+    --             ["use_unit"] = true,
+    --             ["spellIds"] = {
+    --             },
+    --             ["useExactSpellId"] = true,
+    --             ["subeventPrefix"] = "SPELL",
+    --             ["use_percenthealth"] = true,
+    --             ["percenthealth_operator"] = {
+    --                 ">", -- [1]
+    --             },
+    --             ["unit"] = "party",
+    --         },
+    --         ["untrigger"] = {
+    --         },
+    --     }, -- [1]
+
+
+
+--- nameplate 
+-- ["triggers"] = {
+--     {
+--         ["trigger"] = {
+--             ["auranames"] = {
+--             },
+--             ["use_absorbMode"] = true,
+--             ["useHostility"] = true,
+--             ["hostility"] = "hostile",
+--             ["nameplateType"] = "hostile",
+--             ["use_nameplateType"] = true,
+--             ["useName"] = false,
+--             ["debuffType"] = "HARMFUL",
+--             ["showClones"] = true,
+--             ["type"] = "unit",
+--             ["use_absorbHealMode"] = true,
+--             ["subeventSuffix"] = "_CAST_START",
+--             ["unit"] = "nameplate",
+--             ["percenthealth"] = {
+--                 "0", -- [1]
+--             },
+--             ["event"] = "Health",
+--             ["names"] = {
+--             },
+--             ["auraspellids"] = {
+--                 "589", -- [1]
+--             },
+--             ["subeventPrefix"] = "SPELL",
+--             ["spellIds"] = {
+--             },
+--             ["useExactSpellId"] = true,
+--             ["use_percenthealth"] = true,
+--             ["percenthealth_operator"] = {
+--                 ">", -- [1]
+--             },
+--             ["use_unit"] = true,
+--         },
+--         ["untrigger"] = {
+--         },
+--     }, -- [1]

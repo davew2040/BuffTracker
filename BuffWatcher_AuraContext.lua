@@ -1,39 +1,61 @@
+---@class BuffWatcher_AuraContext
 BuffWatcher_AuraContext = {}
 
+---@class BuffWatcher_AuraContext_Params
+---@field spellBundle BuffWatcher_SpellBundle
+---@field isNameplate boolean
+---@field name string
+---@field frameType FrameTypes
+---@field includeBuffsAndCasts boolean
+---@field includeDebuffs boolean
+---@field showUnlistedAuras boolean
+---@field showDispelType boolean
+---@field isHostile boolean
+
+BuffWatcher_AuraContext_Params = {}
+
+---@param params BuffWatcher_AuraContext_Params
 function BuffWatcher_AuraContext:new(params)
---function BuffWatcher_AuraContext:new(storedSpells, spellFilterFunction, isNameplate, name, frameType, includeBuffsAndCasts, includeDebuffs, showUnlistedAuras)
     self = {};
 
-    local storedSpells = nil
+    ---@type BuffWatcher_SpellBundle
     local spellBundle = nil
-    local initialized = false
+    ---@type boolean
     local isNameplateValue = false
+    ---@type string
     local name = ""
+    ---@type FrameTypes
     local frameType = nil
-    local includeBuffsAndCasts = nil
-    local includeDebuffs = nil 
-    local showUnlistedAuras = nil
+    ---@type boolean
+    local includeBuffsAndCasts = false
+    ---@type boolean
+    local includeDebuffs = false 
+    ---@type boolean
+    local isHostile = false
+    ---@type boolean
+    local showUnlistedAuras = false
+    ---@type boolean
     local showDispelType = false
-    local spellFilterFunction = function(spells) error("filter function not initialized") end 
 
+    ---@type table<string, table<string, boolean>>
     local guidToStateKeyMap = {}
+    ---@type table<string, string>
     local auraIdToKeyMap = {}
+    ---@type table<string, string>
     local guidToNameplateMap = {}
+    ---@type table<string, string>
     local nameplateToGuidMap = {}
 
+    ---@param params BuffWatcher_AuraContext_Params
     local initializeFromParameters = function(params)
-        if (params.storedSpellsRegistry == nil) then
-            error("Could not find parameter key 'storedSpellsRegistry'.")
-        else
-            storedSpells = params.storedSpellsRegistry
-        end
+        DevTool:AddData(params, "fixme params")
 
-        if (params.spellFilterFunction == nil) then
-            error("Could not find parameter key 'spellFilterFunction'.")
-        else
-            spellFilterFunction = params.spellFilterFunction
+        if (params.spellBundle == nil) then
+            error("Could not find parameter key 'spellBundle'.")
+        else 
+            spellBundle = params.spellBundle
         end
-
+             
         if (params.isNameplate == nil) then
             error("Could not find parameter key 'isNameplate'.")
         else
@@ -75,52 +97,30 @@ function BuffWatcher_AuraContext:new(params)
         else
             showDispelType = params.showDispelType
         end
+
+        if (params.isHostile == nil) then
+            error("Could not find parameter key 'isHostile'.")
+        else
+            isHostile = params.isHostile
+        end
     end
 
     initializeFromParameters(params)
 
-    storedSpells.registerSpellAdded(function() 
-        initialized = false
-    end)
-
-    storedSpells.registerSpellRemoved(function() 
-        initialized = false
-    end)
-
-    self.resetInitializedState = function()
-        initialized = false
-    end
-
-    self.GetWeakAuraBundle = function()
-        if (not initialized) then
-            self.UpdateSpells()
-            initialized = true
-        end
-
-        return spellBundle
-    end
-
-    self.UpdateSpells = function()
-        local spells = storedSpells.getSpells()
-        spellBundle = spellFilterFunction(spells)
-    end
-
+    ---@param targetGuid string
+    ---@param key string
     self.addKeyByGuid = function(targetGuid, key)
         if (guidToStateKeyMap[targetGuid] == nil) then
             guidToStateKeyMap[targetGuid] = {}
         end
 
         guidToStateKeyMap[targetGuid][key] = true 
-
-        DevTool:AddData({ targetGuid = targetGuid, key = key }, "fixme addKeyByGuid")
     end
 
     self.removeKeyByGuid = function(targetGuid, key)
         if (guidToStateKeyMap[targetGuid] == nil) then
             return
         end
-
-        DevTool:AddData({ targetGuid = targetGuid, key = key }, "fixme removeKeyByGuid")
 
         guidToStateKeyMap[targetGuid][key] = nil
 
@@ -193,16 +193,29 @@ function BuffWatcher_AuraContext:new(params)
         return includeDebuffs
     end
 
+    ---@return boolean
     self.showUnlistedAuras = function()
         return showUnlistedAuras
     end
 
+    ---@return FrameTypes
     self.getFrameType = function()
         return frameType
     end
 
+    ---@return boolean
     self.getShowDispelType = function()
         return showDispelType
+    end
+
+    ---@return boolean
+    self.getIsHostile = function()
+        return isHostile
+    end
+
+    ---@return BuffWatcher_SpellBundle
+    self.GetWeakAuraBundle = function()
+        return spellBundle
     end
 
     return self;

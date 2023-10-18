@@ -1,3 +1,5 @@
+
+---@class BuffWatcher_Shared
 BuffWatcher_Shared = {}
 
 function BuffWatcher_Shared:new()
@@ -9,44 +11,10 @@ function BuffWatcher_Shared:new()
         return castRecord.type .. ":" .. castRecord.spellId
     end
 
-    self.GetStoredSpellKey = function(storedSpell) 
-        return storedSpell.buffType .. ":" .. storedSpell.spellId
-    end
-
-    self.BuildSpellCastRecord = function(type, spellId, spellName, sourceName)
-        local record = {
-            type = type,
-            spellId = spellId,
-            loweredName = string.lower(spellName),
-            sourceName = sourceName, 
-            loweredCaster = string.lower(sourceName), 
-            duration = 0
-        }
-
-        record.key = self.GetCastRecordKey(record)
-
-        return record;
-    end
-
-    self.GetDefaultStoredSpell = function()
-        return {
-            spellId = 0,
-            buffType = BuffWatcher_Shared_Singleton.SpellTypes.Any,
-            version = 1,
-            showInParty = true,
-            showInArena = true,
-            showInRaid = true,
-            showOnNameplates = true, 
-            showDispelTypeOutline = true,
-            duration = 10,
-            showGlow = false,
-            sizeMultiplier = 1,
-            priority = 5,
-        }
-    end
-
+    ---@param spellRecord BuffWatcher_CastRecord
+    ---@return BuffWatcher_StoredSpell
     self.StoredSpellFromCastRecord = function(spellRecord)
-        local base = self.GetDefaultStoredSpell()
+        local base = BuffWatcher_Shared.GetDefaultStoredSpell()
 
         base.buffType = spellRecord.type
         base.spellId = spellRecord.spellId
@@ -118,19 +86,13 @@ function BuffWatcher_Shared:new()
         return 'player'
     end
 
-    self.CreateShallowCopy = function(src)
-        local copy = {}
-
-        for index, value in pairs(src) do
-            if type(value) ~= "table" then
-                copy[index] = value
-            end
-        end
-
-        return copy
-    end
-
+    ---@generic T 
+    ---@generic U
+    ---@param src table<T, U> 
+    ---@return table<T, boolean>
     self.CopyKeys = function(src)
+        ---@generic T 
+        ---@type table<T, boolean>
         local copiedKeys = {}
 
         for key, _ in pairs(src) do
@@ -224,6 +186,79 @@ function BuffWatcher_Shared:new()
         return dest
     end
 
+    self.TableValueFilter = function(table, filterFn)
+        local dest = {}
+
+        for k,v in pairs(table) do
+            if (filterFn(v)) then
+                dest[k] = v
+            end
+        end
+
+        return dest
+    end
+
+    self.TableIPairsValueFilter = function(source, filterFn)
+        local dest = {}
+
+        for k,v in ipairs(source) do
+            if (filterFn(v)) then
+                tinsert(dest, v)
+            end
+        end
+
+        return dest
+    end
+
+    self.TransformTable = function(table, keyFn, valueFn)
+        local dest = {}
+
+        for k,v in pairs(table) do
+            dest[keyFn(k,v)] = valueFn(k,v)
+        end
+
+        return dest
+    end
+
+    self.ValidateObjectCopy = function(source, copy)
+        for k,v in pairs(source) do
+            if (copy[k] == nil) then
+                error("Missing object key ".. k)
+            end
+
+            if (type(source[k]) ~= type(copy[k])) then
+                local sourceTypeString = tostring(type(source[k]))
+                local copyTypeString  tostring(type(copy[k]))
+                error("Type mismatch on key " .. k .. " source = " .. sourceTypeString .. " copy = " .. copyTypeString)
+            end
+
+            if (type(source[k]) == "table") then
+                self.ValidateObjectCopy(source[k], copy[k])
+            end
+        end
+
+        return true
+    end
+
+    self.SetBackgroundColor = function(frame, r, g, b, a)
+        Mixin(frame, BackdropTemplateMixin)
+
+        local backdropInfo =
+        {
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true,
+            tileEdge = true,
+            tileSize = 8,
+            edgeSize = 8,
+            insets = { left = 1, right = 1, top = 1, bottom = 1 },
+        }
+
+        frame:SetBackdrop(backdropInfo)
+        frame:SetBackdropColor(r, g, b, a)
+    end
+
+    ---@enum SpellTypes
     self.SpellTypes = {
         Any = 1,
         Cast = 2,
@@ -238,6 +273,7 @@ function BuffWatcher_Shared:new()
         [self.SpellTypes.Debuff] = "Debuff"
     }
 
+    ---@enum FrameTypes
     self.FrameTypes = {
         Party = 1,
         Arena = 2,
@@ -247,5 +283,68 @@ function BuffWatcher_Shared:new()
 
     return self;
 end
+
+---@generic T 
+---@generic U 
+---@param source table<T,U>
+---@return table<T, U> 
+function BuffWatcher_Shared:CopyTable(source)
+    return CopyTable(source)
+end
+
+
+---@param target table<any,any>
+---@param patcher table<any,any>
+function BuffWatcher_Shared:PatchTable(target, patcher)
+    for k,v in pairs(target) do
+        if (patcher[k] ~= nil and type(target[k]) == type(patcher[k])) then
+            target[k] = patcher[k]
+        end
+    end
+end
+
+---@return BuffWatcher_StoredSpell
+function BuffWatcher_Shared.GetDefaultStoredSpell()
+    ---@type BuffWatcher_StoredSpell
+    local default = {
+        spellId = 0,
+        buffType = BuffWatcher_Shared_Singleton.SpellTypes.Any,
+        version = 1,
+        hide = false,
+        showInParty = true,
+        showInArena = true,
+        showInRaid = true,
+        showOnNameplates = true, 
+        showDispelTypeOutline = true,
+        duration = 10,
+        showGlow = false,
+        sizeMultiplier = 1,
+        priority = 5,
+        ownOnly = false
+    }
+    return default
+end
+
+---@generic T, U
+---@param source table<any, T>
+---@param sortPicker fun(input: T): U
+function BuffWatcher_Shared.SortBy(source, sortPicker)
+    table.sort(source, function(a, b)
+        return sortPicker(a) < sortPicker(b)
+    end
+    )
+end
+
+---@generic T, U
+---@param source table<any, T>
+---@param sortPicker fun(input: T): U
+function BuffWatcher_Shared.SortByDescending(source, sortPicker)
+    table.sort(source,
+        function(a, b)
+            return sortPicker(a) > sortPicker(b)
+        end
+    )
+end
+
 
 BuffWatcher_Shared_Singleton = BuffWatcher_Shared:new();

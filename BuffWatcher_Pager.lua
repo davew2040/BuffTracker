@@ -1,3 +1,4 @@
+---@class Pager
 Pager = {}
 
 function Pager:new(pageSize, itemCount)

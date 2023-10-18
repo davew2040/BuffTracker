@@ -1,216 +1,140 @@
 local AceGUI = LibStub("AceGUI-3.0")
 
+---@class BuffWatcher_AddEditSavedCast
 BuffWatcher_AddEditSavedCast = {}
 
-function BuffWatcher_AddEditSavedCast:new(parent)
+function BuffWatcher_AddEditSavedCast:new()
     self = {}
 
     local mainFrame = nil
 
+    local labelSpellname = nil
     local txtSpellName = nil
+    local chkHide = nil
     local chkParty = nil
     local chkArenas = nil
     local chkEnemyNameplates = nil
     local chkGlow = nil
     local chkRaids = nil
+    local chkOwnOnly = nil
     local multiplierSlider = nil
+    ---@type BuffWatcher_StoredSpell
     local activeModel = nil
 
-    local localOnSave = function() end
+    ---@type fun(model: BuffWatcher_StoredSpell)
+    local localOnSave = function(model) end
 
+    ---@param spell BuffWatcher_StoredSpell
     local setSavedSpell = function(spell)
-        DevTool:AddData(spell, "fixme setSavedSpell")
-
         activeModel = CopyTable(spell)
 
         local spellName = GetSpellInfo(spell.spellId)
 
-        txtSpellName:SetText(spellName)
-        chkParty:SetChecked(spell.showInParty)
-        chkArenas:SetChecked(spell.showInArena)
-        chkRaids:SetChecked(spell.showInRaid)
-        chkEnemyNameplates:SetChecked(spell.showOnNameplates)
-        chkGlow:SetChecked(spell.showGlow)
+        mainFrame:SetTitle("Add/Edit Spell - " .. spellName)
+        
+        DevTool:AddData(CopyTable(spell), "fixme add edit spell open")
 
-        multiplierSlider:SetValue(spell.sizeMultiplier)
+        chkHide:SetValue(spell.hide)
+        chkParty:SetValue(spell.showInParty)
+        chkArenas:SetValue(spell.showInArena)
+        chkRaids:SetValue(spell.showInRaid)
+        chkOwnOnly:SetValue(spell.ownOnly)
+        chkEnemyNameplates:SetValue(spell.showOnNameplates)
+        -- chkGlow:SetChecked(spell.showGlow)
+
+        -- multiplierSlider:SetValue(spell.sizeMultiplier)
     end
 
-    local getModel = function()
-        return BuffWatcher_Shared_Singleton.CreateShallowCopy(activeModel)
-    end
+    local initializeActionsBar = function(parent)
+        local actionsBarFrame = AceGUI:Create("SimpleGroup")
+        actionsBarFrame:SetLayout("Manual")
+        actionsBarFrame:SetFullWidth(true)
 
-    local setSizeMultiplier = function(value)
-        activeModel.sizeMultiplier = value
+        local cancelButton = AceGUI:Create("Button")
+        cancelButton:SetText("Cancel")
+        cancelButton:SetWidth(125)
+        cancelButton:SetPoint("BOTTOMRIGHT", parent.frame, "BOTTOMRIGHT", -20, 20)
+        cancelButton:SetCallback("OnClick", function(control, event)
+            mainFrame:Hide()
+        end)
+        actionsBarFrame:AddChild(cancelButton)
+
+        local saveButton = AceGUI:Create("Button")
+        saveButton:SetText("Save")
+        saveButton:SetWidth(125)
+        saveButton:SetPoint("BOTTOMRIGHT", cancelButton.frame, "BOTTOMLEFT", -10, 0)
+        saveButton:SetCallback("OnClick", function(control, event)
+            localOnSave(activeModel)
+        end)
+        actionsBarFrame:AddChild(saveButton)
+
+        return actionsBarFrame
     end
 
     local Initialize = function(parent)
-        local frame = CreateFrame("Frame", "BuffWatcher_AddEditSavedCast", parent, "BackdropTemplate")
+        local frame = AceGUI:Create("Window")
+        frame:SetTitle("Add/Edit Stored Spell")
+        frame:SetLayout("List")
 
-        local backdropInfo =
-        {
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true,
-            tileEdge = true,
-            tileSize = 8,
-            edgeSize = 8,
-            insets = { left = 1, right = 1, top = 1, bottom = 1 },
-        }
+        DevTool:AddData(frame, "fixme addedit cast window frame")
 
-        frame:SetBackdrop(backdropInfo)
-        -- debug color
-        frame:SetBackdropColor(0, 1, 0, 1)
-
-        local vLast = -50
-        local xCol1 = 20
-        local xCol2 = 250
-
-        local spellLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        spellLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        spellLabel:SetText("Spell:") 
-
-        -- filter spell name
-        txtSpellName = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        txtSpellName:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)  
-        txtSpellName:SetText("XYZ") 
-        
-        vLast = vLast - 50
-
-        local showInPartyLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        showInPartyLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        showInPartyLabel:SetText("Show in Party:") 
-
-        chkParty = CreateFrame("CheckButton", "MyCheckButton", frame, "UICheckButtonTemplate")
-        chkParty:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        chkParty:SetScript("OnClick", function(control) 
-            activeModel.showInParty = chkParty:GetChecked()
+        chkHide = AceGUI:Create("CheckBox")
+        chkHide:SetLabel("Hide")
+        chkHide:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.hide = newValue
         end)
+        frame:AddChild(chkHide)
 
-        vLast = vLast - 50
-
-        local showInArenasLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        showInArenasLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        showInArenasLabel:SetText("Show on Arena Enemies:") 
-
-        chkArenas = CreateFrame("CheckButton", "MyCheckButton", frame, "UICheckButtonTemplate")
-        chkArenas:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        chkArenas:SetScript("OnClick", function() 
-            --fixme
+        chkEnemyNameplates = AceGUI:Create("CheckBox")
+        chkEnemyNameplates:SetLabel("Show on Nameplates")
+        chkEnemyNameplates:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.showOnNameplates = newValue
         end)
+        frame:AddChild(chkEnemyNameplates)
 
-        vLast = vLast - 50
-
-        local showOnEnemyNameplates = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        showOnEnemyNameplates:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        showOnEnemyNameplates:SetText("Show on Enemy Nameplates:") 
-
-        chkEnemyNameplates = CreateFrame("CheckButton", "MyCheckButton", frame, "UICheckButtonTemplate")
-        chkEnemyNameplates:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        chkEnemyNameplates:SetScript("OnClick", function() 
-            --fixme
+        chkParty = AceGUI:Create("CheckBox")
+        chkParty:SetLabel("Show on Party Frames")
+        chkParty:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.showInParty = newValue
         end)
+        frame:AddChild(chkParty)
 
-        vLast = vLast - 50
-
-        local showInRaidsLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        showInRaidsLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        showInRaidsLabel:SetText("Show in Raids:") 
-
-        chkRaids = CreateFrame("CheckButton", "MyCheckButton", frame, "UICheckButtonTemplate")
-        chkRaids:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        chkRaids:SetScript("OnClick", function() 
-            --fixme
+        chkArenas = AceGUI:Create("CheckBox")
+        chkArenas:SetLabel("Show on Arena Frames")
+        chkArenas:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.showInArena = newValue
         end)
+        frame:AddChild(chkArenas)
 
-        vLast = vLast - 50
-
-        local glowLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        glowLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        glowLabel:SetText("Glow:") 
-
-        chkGlow = CreateFrame("CheckButton", "MyCheckButton", frame, "UICheckButtonTemplate")
-        chkGlow:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        chkGlow:SetScript("OnClick", function() 
-            print('fixme chkGlow clicked')
+        chkRaids = AceGUI:Create("CheckBox")
+        chkRaids:SetLabel("Show on Raid Frames")
+        chkRaids:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.showInRaid = newValue
         end)
+        frame:AddChild(chkRaids)
 
-        vLast = vLast - 50
-
-        local sizeMultiplierLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        showInRaidsLabel:SetPoint("LEFT", frame, "TOPLEFT", xCol1, vLast)  
-        showInRaidsLabel:SetText("Size Multiplier:") 
-
-        multiplierSlider = CreateFrame("Slider", "MyCheckButton", frame, "MinimalSliderWithSteppersTemplate")
-        multiplierSlider:SetPoint("LEFT", frame, "TOPLEFT", xCol2, vLast)
-        local formatters = {}
-        formatters[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right);
-        multiplierSlider:Init(1, 0.25, 2.0, 7, formatters);
-
-        self.cbrHandles = EventUtil.CreateCallbackHandleContainer();
-        self.cbrHandles:RegisterCallback(
-            multiplierSlider, 
-            MinimalSliderWithSteppersMixin.Event.OnValueChanged, 
-            function(value)
-                setSizeMultiplier(value.Slider:GetValue())
-            end, 
-            multiplierSlider
-        );
-
-        vLast = vLast - 50
-
-        -- start OK button
-        local okayButton = BuffWatcher_Shared_Singleton.GetButton(
-            frame, 
-            "Interface/Buttons/UI-DialogBox-Button-Up", 
-            "Interface/Buttons/UI-DialogBox-Button-Down"
-        )
-        
-        okayButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -150, 0)
-        okayButton:SetWidth(100)
-        okayButton:SetHeight(64)
-        okayButton:SetScript("OnClick", function()
-            local model = getModel()
-            DevTool:AddData(model, "fixme save model")
-            localOnSave(model)
+        chkOwnOnly = AceGUI:Create("CheckBox")
+        chkOwnOnly:SetLabel("Show Own Only")
+        chkOwnOnly:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.ownOnly = newValue
         end)
-    
-        local okayText = okayButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        okayText:SetText("OK")
-        okayText:SetPoint("CENTER", 0, 8)
-        -- end OK button
+        frame:AddChild(chkOwnOnly)
 
-        -- start cancel button
-        local cancelButton = BuffWatcher_Shared_Singleton.GetButton(
-            frame, 
-            "Interface/Buttons/UI-DialogBox-Button-Up", 
-            "Interface/Buttons/UI-DialogBox-Button-Down"
-        )
-        
-        cancelButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -25, 0)
-        cancelButton:SetWidth(100)
-        cancelButton:SetHeight(64)
-        cancelButton:SetScript("OnClick", function()
-            self.Hide()
-        end)
-    
-        local cancelText = cancelButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        cancelText:SetText("Cancel")
-        cancelText:SetPoint("CENTER", 0, 8)
-        -- end cancel button
+        frame:AddChild(initializeActionsBar(frame))
 
         return frame
     end
 
+    ---@param spell BuffWatcher_StoredSpell
+    ---@param onSave fun(model: BuffWatcher_StoredSpell)
     self.Show = function(spell, onSave)
         setSavedSpell(spell)
         localOnSave = onSave
         mainFrame:Show()
-        isShowing = true
     end
 
     self.Hide = function()
         mainFrame:Hide()
-        isShowing = false
     end
 
     self.GetFrame = function()

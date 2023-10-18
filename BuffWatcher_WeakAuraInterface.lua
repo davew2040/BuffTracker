@@ -1,6 +1,7 @@
+---@class BuffWatcher_WeakAuraInterface
 BuffWatcher_WeakAuraInterface = {}
 
-function BuffWatcher_WeakAuraInterface:new()
+function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     self = {};
 
     local storedSpellsRegistry = nil
@@ -22,113 +23,116 @@ function BuffWatcher_WeakAuraInterface:new()
         initialized = true
     end
 
-    local buildContexts = function(storedSpells)
-        local newContexts = {}
+    -- local buildContexts = function(storedSpells)
+    --     local newContexts = {}
 
-        local enemyNameplateDebuffs = BuffWatcher_AuraContext:new(
-            {
-                storedSpellsRegistry = storedSpells, 
-                spellFilterFunction = function(spells)
-                    local buffs = {}
-                    local debuffs = {}
-                    local casts = {}
+    --     local enemyNameplateDebuffs = BuffWatcher_AuraContext:new(
+    --         {
+    --             storedSpellsRegistry = storedSpells, 
+    --             spellFilterFunction = function(spells)
+    --                 local buffs = {}
+    --                 local debuffs = {}
+    --                 local casts = {}
     
-                    for k,spell in pairs(spells) do
-                        local key = spell.spellId
+    --                 for k,spell in pairs(spells) do
+    --                     local key = spell.spellId
     
-                        if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Debuff and spell.showOnNameplates == true) then
-                            debuffs[key] = spell
-                        end
-                    end
+    --                     if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Debuff and spell.showOnNameplates == true) then
+    --                         debuffs[key] = spell
+    --                     end
+    --                 end
     
-                    return {
-                        buffs = buffs,
-                        debuffs = debuffs,
-                        casts = casts
-                    }
-                end,
-                isNameplate = true,
-                name = "EnemyNameplateDebuffs", 
-                frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-                includeBuffsAndCasts = false, 
-                includeDebuffs = true, 
-                showUnlistedAuras = true,
-                showDispelType = true,
-            }
-        )
-        newContexts[enemyNameplateDebuffs.getName()] = enemyNameplateDebuffs
+    --                 return {
+    --                     buffs = buffs,
+    --                     debuffs = debuffs,
+    --                     casts = casts
+    --                 }
+    --             end,
+    --             isNameplate = true,
+    --             name = "EnemyNameplateDebuffs", 
+    --             frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+    --             includeBuffsAndCasts = false, 
+    --             includeDebuffs = true, 
+    --             showUnlistedAuras = true,
+    --             showDispelType = true,
+    --             isHostile = true
+    --         }
+    --     )
+    --     newContexts[enemyNameplateDebuffs.getName()] = enemyNameplateDebuffs
 
-        local friendlyNameplateBuffs = BuffWatcher_AuraContext:new(
-            {
-                storedSpellsRegistry = storedSpells, 
-                spellFilterFunction = function(spells)
-                    local buffs = {}
-                    local debuffs = {}
-                    local casts = {}
+    --     local friendlyNameplateBuffs = BuffWatcher_AuraContext:new(
+    --         {
+    --             storedSpellsRegistry = storedSpells, 
+    --             spellFilterFunction = function(spells)
+    --                 local buffs = {}
+    --                 local debuffs = {}
+    --                 local casts = {}
     
-                    for k,spell in pairs(spells) do
-                        local key = spell.spellId
+    --                 for k,spell in pairs(spells) do
+    --                     local key = spell.spellId
     
-                        if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Buff and spell.showOnNameplates == true) then
-                            buffs[key] = spell
-                        elseif (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Cast and spell.showOnNameplates == true) then
-                            casts[key] = spell
-                        end
-                    end
+    --                     if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Buff and spell.showOnNameplates == true) then
+    --                         buffs[key] = spell
+    --                     elseif (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Cast and spell.showOnNameplates == true) then
+    --                         casts[key] = spell
+    --                     end
+    --                 end
     
-                    return {
-                        buffs = buffs,
-                        debuffs = debuffs,
-                        casts = casts
-                    }
-                end,
-                isNameplate = true,
-                name = "FriendlyNameplateBuffs", 
-                frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-                includeBuffsAndCasts = true, 
-                includeDebuffs = false, 
-                showUnlistedAuras = false,
-                showDispelType = false,
-            }
-        )
-        newContexts[friendlyNameplateBuffs.getName()] = friendlyNameplateBuffs
+    --                 return {
+    --                     buffs = buffs,
+    --                     debuffs = debuffs,
+    --                     casts = casts
+    --                 }
+    --             end,
+    --             isNameplate = true,
+    --             name = "FriendlyNameplateBuffs", 
+    --             frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+    --             includeBuffsAndCasts = true, 
+    --             includeDebuffs = false, 
+    --             showUnlistedAuras = false,
+    --             showDispelType = false,
+    --             isHostile = true
+    --         }
+    --     )
+    --     newContexts[friendlyNameplateBuffs.getName()] = friendlyNameplateBuffs
 
-        local partyBuffs = BuffWatcher_AuraContext:new(
-        {
-            storedSpellsRegistry = storedSpells, 
-            spellFilterFunction = function(spells)
-                local buffs = {}
-                local debuffs = {}
-                local casts = {}
+    --     local partyBuffs = BuffWatcher_AuraContext:new(
+    --     {
+    --         storedSpellsRegistry = storedSpells, 
+    --         spellFilterFunction = function(spells)
+    --             local buffs = {}
+    --             local debuffs = {}
+    --             local casts = {}
 
-                for k,spell in pairs(spells) do
-                    local key = spell.spellId
+    --             for k,spell in pairs(spells) do
+    --                 local key = spell.spellId
 
-                    if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Buff and spell.showInParty == true) then
-                        buffs[key] = spell
-                    elseif (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Cast and spell.showInParty == true) then
-                        casts[key] = spell
-                    end
-                end
+    --                 if (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Buff and spell.showInParty == true) then
+    --                     buffs[key] = spell
+    --                 elseif (spell.buffType == BuffWatcher_Shared_Singleton.SpellTypes.Cast and spell.showInParty == true) then
+    --                     casts[key] = spell
+    --                 end
+    --             end
 
-                return {
-                    buffs = buffs,
-                    debuffs = debuffs,
-                    casts = casts
-                }
-            end,
-            isNameplate = false,
-            name = "PartyBuffs", 
-            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Party,
-            includeBuffsAndCasts = true, 
-            includeDebuffs = false, 
-            showUnlistedAuras = true,
-            showDispelType = false,
-        })
-        newContexts[partyBuffs.getName()] = partyBuffs
+    --             return {
+    --                 buffs = buffs,
+    --                 debuffs = debuffs,
+    --                 casts = casts
+    --             }
+    --         end,
+    --         isNameplate = false,
+    --         name = "PartyBuffs", 
+    --         frameType = BuffWatcher_Shared_Singleton.FrameTypes.Party,
+    --         includeBuffsAndCasts = true, 
+    --         includeDebuffs = false, 
+    --         showUnlistedAuras = true,
+    --         showDispelType = false,
+    --         isHostile = true
+    --     })
+    --     newContexts[partyBuffs.getName()] = partyBuffs
 
-        return newContexts
-    end
+    --     return newContexts
+    -- end
 
     local hasSufPartyFrames = function()
         local firstFrame = BuffWatcher_Shared_Singleton.SufPlayerFramePrefix .. '1'
@@ -138,16 +142,10 @@ function BuffWatcher_WeakAuraInterface:new()
     self.RegisterSpells = function(incomingStoredSpellsRegistry)
         storedSpellsRegistry = incomingStoredSpellsRegistry
 
-        contexts = buildContexts(storedSpellsRegistry)
+        local contexts = contextStore.GetContexts()
 
         for k, context in pairs(contexts) do
             resetNameplatesMap(context)
-        end
-    end
-
-    self.UpdateSpells = function()
-        for k,v in pairs(contexts) do
-            v:UpdateSpells()
         end
     end
 
@@ -217,7 +215,7 @@ function BuffWatcher_WeakAuraInterface:new()
                     caster = addedAura.sourceUnit,
                     autoHide = true,
                     showGlow = false,
-                    sizeMultiplier = BuffWatcher_Configuration_Singleton.GetUnlistedMultiplier(),
+                    sizeMultiplier = configuration.GetUnlistedMultiplier(),
                     index = 10,
                     unit = normalizedUnit,
                     targetGuid = targetGuid
@@ -449,7 +447,8 @@ function BuffWatcher_WeakAuraInterface:new()
     end
 
     self.DelegateTsu = function(allstates, event, contextName, castData, ...)
-        local context = contexts[contextName]
+        local context = contextStore.GetContexts()[contextName]
+
         if (context == nil) then
             return false
         end
@@ -673,5 +672,3 @@ function BuffWatcher_WeakAuraInterface:new()
 
     return self
 end
-
-BuffWatcher_WeakAuraInterface_Singleton = BuffWatcher_WeakAuraInterface:new()

@@ -1,3 +1,4 @@
+---@class BuffWatcher_Callbacks
 BuffWatcher_Callbacks = {}
 
 function BuffWatcher_Callbacks:new()
@@ -14,10 +15,8 @@ function BuffWatcher_Callbacks:new()
     end
 
     self.fire = function(eventName, ...)
-        print("firing event name" .. eventName)
         if (registrations[eventName] ~= nil) then
             for k, v in pairs(registrations[eventName]) do
-                print("firing event name" .. eventName)
                 v(...)
             end
         end

@@ -1,164 +1,96 @@
-local SavedSpellRow = {}
+local AceGUI = LibStub("AceGUI-3.0")
 
-function SavedSpellRow:new(parent)
-    self = {}
-
-    local currentSpell = nil
-    local RemoveEventName = "SPELL_REMOVE"
-    local EditEventName = "SPELL_EDIT"
-    local indexedRecords = {}
-
-    local events = BuffWatcher_Callbacks:new()
-
-    local savedSpellRowFrame = CreateFrame("Frame", "Spell Row", parent)
-
-    local removeButton = BuffWatcher_Shared_Singleton.GetButton(
-        savedSpellRowFrame, 
-        "Interface/Buttons/UI-DialogBox-Button-Up", 
-        "Interface/Buttons/UI-DialogBox-Button-Down"
-    )
-    
-    removeButton:SetPoint("TOPLEFT", savedSpellRowFrame, "TOPLEFT", 0, 13)
-    removeButton:SetWidth(75)
-    removeButton:SetHeight(40)
-    removeButton:SetScript("OnClick", function()
-        events.fire(RemoveEventName, currentSpell)
-    end)
-    
-    local removeButtonText = removeButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    removeButtonText:SetText("Remove")
-    removeButtonText:SetPoint("CENTER", 0, 8)
-
-    local editButton = BuffWatcher_Shared_Singleton.GetButton(
-        savedSpellRowFrame, 
-        "Interface/Buttons/UI-DialogBox-Button-Up", 
-        "Interface/Buttons/UI-DialogBox-Button-Down"
-    )
-    
-    editButton:SetPoint("TOPLEFT", savedSpellRowFrame, "TOPLEFT", 85, 13)
-    editButton:SetWidth(75)
-    editButton:SetHeight(40)
-    editButton:SetScript("OnClick", function()
-        events.fire(EditEventName, currentSpell)
-    end)
-    
-    local editButtonText = editButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    editButtonText:SetText("Edit")
-    editButtonText:SetPoint("CENTER", 0, 8)
-
-    local textureFrame = savedSpellRowFrame:CreateTexture()
-    textureFrame:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 200, 0)
-    textureFrame:SetSize(32, 32)
-
-    local spellTypeText = savedSpellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellTypeText:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 275, 0)
-
-    local spellIdText = savedSpellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellIdText:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 375, 0)
-
-    local spellNameText = savedSpellRowFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    spellNameText:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 475, 0)
-
-    local chkParty = CreateFrame("CheckButton", "MyCheckButton", savedSpellRowFrame, "UICheckButtonTemplate")
-    chkParty:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 625, 0)
-    chkParty:SetEnabled(false)
-
-    local chkArena = CreateFrame("CheckButton", "MyCheckButton", savedSpellRowFrame, "UICheckButtonTemplate")
-    chkArena:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 675, 0)
-    chkArena:SetEnabled(false)
-
-    local chkNameplates = CreateFrame("CheckButton", "MyCheckButton", savedSpellRowFrame, "UICheckButtonTemplate")
-    chkNameplates:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 725, 0)
-    chkNameplates:SetEnabled(false)
-
-    local chkRaids = CreateFrame("CheckButton", "MyCheckButton", savedSpellRowFrame, "UICheckButtonTemplate")
-    chkRaids:SetPoint("LEFT", savedSpellRowFrame, "TOPLEFT", 800, 0)
-    chkRaids:SetEnabled(false)
-
-    self.getFrame = function()
-        return savedSpellRowFrame
-    end
-
-    self.setSpell = function(spell)
-        currentSpell = spell
-
-        local spellName, _ = GetSpellInfo(spell.spellId)
-        local texture = GetSpellTexture(spell.spellId)
-
-        spellIdText:SetText(spell.spellId)
-        spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[spell.buffType])
-        spellNameText:SetText(spellName)
-        textureFrame:SetTexture(texture)
-        chkParty:SetChecked(spell.showInParty)
-    end
-
-    self.clearSpell = function()
-        currentSpell = nil
-
-        spellIdText:SetText('(none)')
-        spellNameText:SetText('(none)')
-        textureFrame:SetTexture(nil)
-    end
-
-    self.getSpell = function()
-        return currentSpell;
-    end
-
-    self.registerRemove = function(fn)
-        events.registerCallback(RemoveEventName, fn)
-    end
-
-    self.registerEdit = function(fn)
-        events.registerCallback(EditEventName, fn)
-    end
-
-    return self
-end
-
+---@class BuffWatcher_SavedSpellsWindow
 BuffWatcher_SavedSpellsWindow = {}
-function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEditCastWindow)
+
+BuffWatcher_SavedSpellsWindow.ColumnWidths = {
+    REMOVE = 125,
+    EDIT = 75, 
+    ICON = 100, 
+    SPELL_TYPE = 125,
+    SPELL_ID = 75, 
+    SPELL_NAME = 250,
+    CHECK_BOX = 50
+}
+
+---@class BuffWatcher_SavedSpellsFilters
+---@field name string
+local BuffWatcher_SavedSpellsFilters = {
+    name = ""
+}
+
+---@param incomingStoredSpells BuffWatcher_StoredSpellsRegistry
+---@param addEditCastWindow BuffWatcher_AddEditSavedCast
+---@param weakAuraInterface BuffWatcher_WeakAuraInterface
+---@param weakAuraExporter BuffWatcher_WeakAuraExporter
+---@param contextStore BuffWatcher_AuraContextStore
+function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWindow, weakAuraInterface, weakAuraExporter, contextStore)
     self = {}
+
+    ---@param input table<integer, BuffWatcher_StoredSpell>
+    local sortByNameAscending = function(input)
+        ---@param spell BuffWatcher_StoredSpell
+        BuffWatcher_Shared.SortBy(input, function(spell)
+            local spellName = GetSpellInfo(spell.spellId)
+            return spellName
+        end)
+    end
+
+    ---@param input table<integer, BuffWatcher_StoredSpell>
+    local sortByNameDescending = function(input)
+        ---@param spell BuffWatcher_StoredSpell
+        BuffWatcher_Shared.SortByDescending(input, function(spell)
+            local spellName = GetSpellInfo(spell.spellId)
+            return spellName
+        end)
+    end
 
     local pageSize = 10
     local mainFrame = nil
     local storedSpellsRegistry = incomingStoredSpells
+    ---@type table<string, BuffWatcher_StoredSpell>
     local activeStoredSpells = {}
     local indexedRecords = {}
+    ---@type table<integer, BuffWatcher_SavedSpellsWindow_SpellRow>
     local uiSpellRows = {}
     local pagerText = nil
     local spellRowHeight = 32
     local pager = Pager:new(pageSize, 0)
+
+    local sorter = sortByNameAscending
+
+    ---@type BuffWatcher_SavedSpellsFilters
+    local spellFilters = {
+        name = "",
+    }
 
     local handleSpellRemove = function(...) 
         storedSpellsRegistry.removeSpell(select(1, ...))
         self.UpdateWindow()
     end
 
-    local handleSpellEdit = function(...) 
+    local handleSpellEdit = function(...)
         local editTarget = select(1, ...)
 
-        DevTool:AddData(editTarget, "fixme editTarget")
+        addEditCastWindow.Show(editTarget, 
+            function(editedModel)
+                DevTool:AddData(editedModel, "fixme editedModel")
+                editTarget.showInParty = editedModel.showInParty
+                editTarget.sizeMultiplier = editedModel.sizeMultiplier
 
-        addEditCastWindow.Show(editTarget, function(editedModel)
-            editTarget.showInParty = editedModel.showInParty
-            editTarget.sizeMultiplier = editedModel.sizeMultiplier
+                local key = BuffWatcher_StoredSpell.GetStoredSpellKey(editedModel)
+                activeStoredSpells[key] = editedModel
+                DevTool:AddData(CopyTable(activeStoredSpells), "fixme activeStoredSpells before save")
+                storedSpellsRegistry.saveSpellsToDatabase(activeStoredSpells)
 
-            local key = BuffWatcher_Shared_Singleton.GetStoredSpellKey(editedModel)
-            activeStoredSpells[key] = editedModel
-            storedSpellsRegistry.saveSpellsToDatabase(activeStoredSpells)
-
-            addEditCastWindow:Hide()
-        end)
-
-        self.UpdateWindow()
-    end
-
-    local Export = function()
-        BuffWatcher_WeakAuraInterface_Singleton.UpdateSpells()
+                addEditCastWindow:Hide()
+                
+                self.UpdateWindow()
+            end
+        )
     end
 
     local handleSpellAdded = function()
-        Export()
         self.UpdateWindow()
     end
 
@@ -167,14 +99,14 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
     
         local rowIndex = 1
         for i=pager.getPageStart(), pager.getPageEnd() do
-            uiSpellRows[rowIndex].setSpell(indexedRecords[i])
-            uiSpellRows[rowIndex].getFrame():Show()
+            uiSpellRows[rowIndex].SetSpell(indexedRecords[i])
+            uiSpellRows[rowIndex].GetFrame().frame:Show()
             rowIndex = rowIndex + 1
         end
     
         while (rowIndex <= pageSize) do
-            uiSpellRows[rowIndex].clearSpell()
-            uiSpellRows[rowIndex].getFrame():Hide()
+            uiSpellRows[rowIndex].ClearSpell()
+            uiSpellRows[rowIndex].GetFrame().frame:Hide()
             rowIndex = rowIndex + 1
         end
     
@@ -184,152 +116,220 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         else
             text = "Showing page " .. pager.getCurrentPage() .. " of " .. pager.getTotalPageCount();
         end
+
         pagerText:SetText(text)
     end
 
+
+    ---@param spellRecord BuffWatcher_StoredSpell
+    ---@param filter BuffWatcher_SavedSpellsFilters
+    ---@return boolean
+    local meetsFilter = function(spellRecord, filter) 
+        if (filter.name ~= nil and filter.name ~= "") then
+            ---@type string
+            local spellName = GetSpellInfo(spellRecord.spellId)
+            if string.find(string.lower(spellName), filter.name) == nil then
+                return false
+            end
+        end
+
+        return true
+    end
+
+    ---@param spellRecords table<string, BuffWatcher_StoredSpell>
+    ---@param filters BuffWatcher_SavedSpellsFilters
+    ---@return table<string, BuffWatcher_StoredSpell>
+    local applyFilters = function(spellRecords, filters)
+        
+        ---@type table<string, BuffWatcher_StoredSpell>
+        local filtered = {}
+
+        for k,v in pairs(spellRecords) do
+            if (meetsFilter(v, filters) == true) then
+                filtered[k] = v
+            end
+        end
+
+        return filtered
+    end
+    
+
+    local setSpellNameFilter = function(newFilter)
+        spellFilters.name = string.lower(newFilter)
+        self.UpdateWindow()
+    end
+
+    local initializeFilters = function(parent)
+        local filtersHolderFrame = AceGUI:Create("SimpleGroup", "Filters Holder Frame")
+        filtersHolderFrame:SetLayout("Flow")
+        filtersHolderFrame:SetFullWidth(true)
+        filtersHolderFrame:SetHeight(50)
+        parent:AddChild(filtersHolderFrame)
+
+        local filterSpellName = AceGUI:Create("EditBox")
+            
+        filterSpellName:SetWidth(100);
+        filterSpellName:SetHeight(25);
+        filterSpellName:SetLabel("Spell Name:");
+        filterSpellName:SetCallback("OnTextChanged", function(control, event, text)
+            setSpellNameFilter(text ~= nil and text or "")
+        end)
+
+        parent:AddChild(filterSpellName)
+    end
+
+    local setNameSortAscending = function()
+        sorter = sortByNameAscending
+        self.UpdateWindow()
+    end
+
+    local setNameSortDescending = function()
+        sorter = sortByNameDescending
+        self.UpdateWindow()
+    end
+
     local initialize = function()
-        local frame = CreateFrame("Frame", "BuffWatcher_LoggerWindow", parent, "BackdropTemplate")
+        local frame = AceGUI:Create("SimpleGroup")
+        frame:SetLayout("List")
+        frame:SetFullWidth(true)
 
         storedSpellsRegistry.registerSpellAdded(handleSpellAdded)
 
-        local backdropInfo =
-        {
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true,
-            tileEdge = true,
-            tileSize = 8,
-            edgeSize = 8,
-            insets = { left = 1, right = 1, top = 1, bottom = 1 },
-        }
-        frame:SetBackdrop(backdropInfo)
-        -- debug color
-        frame:SetBackdropColor(0, 0, 0, 1)
+        initializeFilters(frame)
 
         -- start grid labels
-        local labelsFrame = CreateFrame("Frame", nil, frame)
-        labelsFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -120) 
-        labelsFrame:Show()
-        labelsFrame:SetSize(50, 50)
 
-        local spellTypeLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        spellTypeLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 200, 0)  
-        spellTypeLabel:SetText("TYPE") 
+        local labelsFrame = AceGUI:Create("SimpleGroup")
+        labelsFrame:SetFullWidth(true)
+        labelsFrame:SetLayout("Manual")
+        labelsFrame:SetHeight(50)
+        frame:AddChild(labelsFrame)
 
-        local spellIdLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        spellIdLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 300, 0)  
-        spellIdLabel:SetText("SPELL ID") 
+        local addLabelsFrame = function(text, anchorFrame, width, xOffset)
+            local labelControl = AceGUI:Create("Label")
+            labelControl:SetText(text)
 
-        local spellNameLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        spellNameLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 400, 0)  
-        spellNameLabel:SetText("SPELL NAME") 
+            if (anchorFrame ~= nil) then
+                labelControl:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", xOffset, 0)
+            else
+                labelControl:SetPoint("TOPLEFT", labelsFrame.frame, "TOPLEFT", xOffset, -20)
+            end
+            labelControl:SetWidth(width)
+            labelsFrame:AddChild(labelControl)
 
-        local partyLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        partyLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 600, 0)  
-        partyLabel:SetText("PARTY") 
+            return labelControl
+        end
 
-        local arenaLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        arenaLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 650, 0)  
-        arenaLabel:SetText("ARENA") 
-        
-        local nameplatesLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        nameplatesLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 700, 0)  
-        nameplatesLabel:SetText("ARENA") 
+        local ColumnWidths = BuffWatcher_SavedSpellsWindow.ColumnWidths
 
-        local raidsLabel = labelsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        raidsLabel:SetPoint("LEFT", labelsFrame, "TOPLEFT", 750, 0)  
-        raidsLabel:SetText("RAIDS") 
+        local spellTypeLabel = addLabelsFrame("TYPE", nil, ColumnWidths.SPELL_TYPE, ColumnWidths.REMOVE + ColumnWidths.EDIT + ColumnWidths.ICON)
+
+        local spellIdLabel = addLabelsFrame("SPELL ID", spellTypeLabel.frame, ColumnWidths.SPELL_ID, 0)
+
+        local spellNameLabel = addLabelsFrame("SPELL NAME", spellIdLabel.frame, ColumnWidths.SPELL_NAME, 0)
+
+        local sortUpDown = BuffWatcher_SortUpDown:new()
+        labelsFrame:AddChild(sortUpDown.GetFrame())
+        sortUpDown.GetFrame():SetPoint("LEFT", spellNameLabel.frame, "LEFT", 80, 0)
+        sortUpDown.RegisterSortUp(setNameSortAscending)
+        sortUpDown.RegisterSortDown(setNameSortDescending)
+
+        local partyLabel = addLabelsFrame("PARTY", spellNameLabel.frame, ColumnWidths.CHECK_BOX, 0)
+
+        local arenaLabel = addLabelsFrame("ARENA", partyLabel.frame, ColumnWidths.CHECK_BOX, 0)
+
+        local nameplatesLabel = addLabelsFrame("NAMEPLATES", arenaLabel.frame, ColumnWidths.CHECK_BOX, 0)
+
+        local raidsLabel = addLabelsFrame("RAIDS", nameplatesLabel.frame, ColumnWidths.CHECK_BOX, 0)
 
         -- end grid labels
 
         -- start spell rows
+
         for i=1,pageSize do 
-            local newRow = SavedSpellRow:new(frame)
-    
-            newRow.getFrame():SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -145 - i*spellRowHeight)
-            newRow.getFrame():Show()
-            newRow.getFrame():SetSize(700, 50)
+            local newRow = BuffWatcher_SavedSpellsWindow_SpellRow:new()
+
             newRow.registerRemove(handleSpellRemove)
             newRow.registerEdit(handleSpellEdit)
+
+            frame:AddChild(newRow.GetFrame())
 
             table.insert(uiSpellRows, newRow)
         end
         -- end spell rows
 
-        -- export button start
-        local exportButton = BuffWatcher_Shared_Singleton.GetButton(
-            frame, 
-            "Interface/Buttons/UI-DialogBox-Button-Up", 
-            "Interface/Buttons/UI-DialogBox-Button-Down"
-        )
-        
-        exportButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -400, 5)
-        exportButton:SetWidth(100)
-        exportButton:SetHeight(64)
-        exportButton:SetScript("OnClick", function()
-            --Export()
-            
-            DevTool:AddData(WeakAuras, "WeakAuras")
-            DevTool:AddData(WeakAurasSaved, "WeakAurasSaved")
+        -- start actions frame
+        local actionsHolderFrame = AceGUI:Create("SimpleGroup", "Actions Holder Frame")
+        actionsHolderFrame:SetLayout("Flow")
+        actionsHolderFrame:SetFullWidth(true)
+        frame:AddChild(actionsHolderFrame)
 
-            -- local byKey = BuffWatcher_Shared_Singleton.TableKeyFilter(WeakAurasSaved.displays, 
-            --     function(key) return key == "Buff Watcher Copy Source" end
-            -- )
+        local addAurasButton = AceGUI:Create("Button")
+        addAurasButton:SetText("Update WeakAuras")
+        addAurasButton:SetWidth(100)
+        addAurasButton:SetHeight(64)
+        addAurasButton:SetCallback("OnClick", function()
+            -- DevTool:AddData(WeakAuras, "WeakAuras")
+            -- DevTool:AddData(WeakAurasSaved, "WeakAurasSaved")
 
-            -- --WeakAurasSaved.displays["Buff Watcher Copy Result"] = CopyTable(byKey["Buff Watcher Copy Source"])
+            DevTool:AddData(contextStore.GetContexts(), "fixme contextStore.GetContexts()")
 
-            -- local copied = CopyTable(byKey["Buff Watcher Copy Source"])
-            -- copied.id = "Buff Watcher Copy Result"
-            -- copied.uid = nil
-            -- WeakAuras.Add(copied)
-
-            BuffWatcher_WeakAuraExporter_Singleton.Export(storedSpellsRegistry, BuffWatcher_WeakAuraInterface_Singleton.GetContexts())
+            weakAuraExporter.Export(storedSpellsRegistry, contextStore.GetContexts())
         end)
-    
-        -- start refresh button
-        local refreshText = exportButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        refreshText:SetText("Export")
-        refreshText:SetPoint("CENTER", 0, 8)
-        -- end refresh button
 
-        local nextButton = BuffWatcher_Shared_Singleton.GetButton(
-            frame,
-            "Interface/Buttons/UI-SpellbookIcon-NextPage-Up",
-            "Interface/Buttons/UI-SpellbookIcon-NextPage-Down"
-        )
-        nextButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -25, 25)
-        nextButton:SetWidth(40)
-        nextButton:SetHeight(40)
-        nextButton:SetScript("OnClick", 
-            function()
-                pager.goNextPage()
-                updateSpellRows()
-            end
-        )
-    
-        local prevButton = BuffWatcher_Shared_Singleton.GetButton(
-            frame, 
-            "Interface/Buttons/UI-SpellbookIcon-PrevPage-Up", 
-            "Interface/Buttons/UI-SpellbookIcon-PrevPage-Down"
-        )
-        prevButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -250, 25)
-        prevButton:SetWidth(40)
+        actionsHolderFrame:AddChild(addAurasButton)
+
+        local importButton = AceGUI:Create("Button")
+        importButton:SetText("Import")
+        importButton:SetWidth(100)
+        importButton:SetHeight(64)
+        importButton:SetCallback("OnClick", function()
+            BuffWatcher_ImportJsonDialog:new(storedSpellsRegistry)
+        end)
+
+        actionsHolderFrame:AddChild(importButton)
+
+        local prevButton = AceGUI:Create("Button")
+        prevButton:SetText("Prev")
+        prevButton:SetWidth(60)
         prevButton:SetHeight(40)
-        prevButton:SetScript("OnClick", 
+        prevButton:SetCallback("OnClick", 
             function()
                 pager.goPreviousPage()
                 updateSpellRows()
             end
         )
     
-        pagerText = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        pagerText:SetPoint("CENTER", frame, "BOTTOMRIGHT", -160, 45)
-        pagerText:SetText("test text")
+        actionsHolderFrame:AddChild(prevButton)
+
+        pagerText = AceGUI:Create("Label")
+        pagerText:SetJustifyH("CENTER")
+        pagerText:SetJustifyV("MIDDLE")
+
+        actionsHolderFrame:AddChild(pagerText)
+
+        local nextButton = AceGUI:Create("Button")
+        nextButton:SetText("Next")
+        nextButton:SetWidth(60)
+        nextButton:SetHeight(40)
+        nextButton:SetCallback("OnClick", 
+            function()
+                pager.goNextPage()
+                updateSpellRows()
+            end
+        )
+    
+        actionsHolderFrame:AddChild(nextButton)
+
+        -- end actions frame
 
         return frame
     end
 
-    local GetIndexedRecords = function(sourceRecords)
+    ---@param sourceRecords table<string, BuffWatcher_StoredSpell>
+    ---@return table<integer, BuffWatcher_StoredSpell>
+    local getIndexedRows = function(sourceRecords)
+        ---@type table<number, BuffWatcher_StoredSpell>
         local indexedRecords = {}
 
         local i = 1
@@ -341,22 +341,24 @@ function BuffWatcher_SavedSpellsWindow:new(parent, incomingStoredSpells, addEdit
         return indexedRecords
     end
     
+    ---@param sourceSpells table<string, BuffWatcher_StoredSpell>
+    ---@param sorter fun(input: table<integer, BuffWatcher_StoredSpell>)
+    ---@return table<integer, BuffWatcher_StoredSpell>
+    local sortAndIndexSpells = function(sourceSpells, sorter)
+        ---@type table<integer, BuffWatcher_StoredSpell>
+        local indexed = getIndexedRows(sourceSpells)
+
+        sorter(indexed)
+
+        return indexed
+    end
+
     self.UpdateWindow = function()
-        activeStoredSpells = storedSpellsRegistry.getSpells()
-        indexedRecords = GetIndexedRecords(activeStoredSpells)
+        activeStoredSpells = storedSpellsRegistry.GetSpells()
+        local filteredRecords = applyFilters(activeStoredSpells, spellFilters)
+        indexedRecords = sortAndIndexSpells(filteredRecords, sorter)
         pager = Pager:new(pageSize, #indexedRecords)
         updateSpellRows()
-    end
-
-    self.Show = function()
-        self.UpdateWindow()
-        mainFrame:Show()
-        isShowing = true
-    end
-
-    self.Hide = function()
-        mainFrame:Hide()
-        isShowing = false
     end
 
     self.GetFrame = function()

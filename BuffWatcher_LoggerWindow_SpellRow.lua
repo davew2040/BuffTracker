@@ -7,6 +7,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new()
 
     local currentSpell = nil
     local AddEventName = "SPELL_ADD"
+    local ButtonHeight = 30
 
     local events = BuffWatcher_Callbacks:new()
 
@@ -19,7 +20,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new()
 
     addButton:SetText("Add")
     addButton:SetWidth(75)
-    addButton:SetHeight(20)
+    addButton:SetHeight(ButtonHeight)
     addButton:SetCallback("OnClick", function()
         events.fire(AddEventName, currentSpell)
     end)

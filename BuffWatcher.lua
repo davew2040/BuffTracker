@@ -4,6 +4,7 @@ BuffWatcher = LibStub("AceAddon-3.0"):NewAddon("BuffWatcher", "AceConsole-3.0", 
 local AC = LibStub("AceConfig-3.0")
 local ACD = LibStub("AceConfigDialog-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
+local LibSerialize = LibStub("LibSerialize")
 
 local mainWindow = nil
 
@@ -15,46 +16,34 @@ local defaults = {
 	},
 }
 
-local storedSpellsRegistry = BuffWatcher_StoredSpellsRegistry:new()
-
-local settingsDialog = BuffWatcher_SettingsDialog:new(BuffWatcher_DbAccessor_Singleton)
-
 function BuffWatcher:OnInitialize()
-	-- Called when the addon is loaded
-	--self:Print("Hello World!")
-
-	--AC:RegisterOptionsTable("BuffWatcher_options", options)
-	--self.optionsFrame = ACD:AddToBlizOptions("BuffWatcher_options", "BuffWatcher")
+	self:Print("Loading BuffWatcher addon...")
 
 	self:RegisterChatCommand("bw", "SlashCommand")
 	self:RegisterChatCommand("buffwatcher", "SlashCommand")
-
-    -- local testFrame = AceGUI:Create("Frame", "Test Frame")
-    -- testFrame:SetTitle("Test Frame")
-    -- testFrame:SetLayout("List")
-
-    -- local innerGroup = AceGUI:Create("SimpleGroup")
-    -- innerGroup:SetLayout("List")
-    -- testFrame:AddChild(innerGroup)
-
-    -- local testButton = AceGUI:Create("Button", "Test Button")
-    -- testButton:SetText("Test Button")
-    -- testButton:SetCallback("OnClick", function(control, event) 
-    --     DevTool:AddData(currentConfig.profile, "fixme currentConfig.profile")
-    -- end)
-
-    -- testFrame:AddChild(testButton)
-
-    -- ACD:Open("BuffWatcher_options", innerGroup)
 end
 
 function BuffWatcher:OnEnable()
-    BuffWatcher_DbAccessor_Singleton:OnInitialize();
-    settingsDialog:Initialize(BuffWatcher)
+    local contextDefaults = BuffWatcher_DefaultContextValues:new()
 
-    BuffWatcher_WeakAuraInterface_Singleton.RegisterSpells(storedSpellsRegistry)
+    BuffWatcher_DbAccessor_Singleton.OnInitialize(contextDefaults);
 
-    mainWindow = BuffWatcher_MainWindow:new(storedSpellsRegistry)
+    local loggerModule = BuffWatcher_LoggerModule:new()
+    local storedSpellsRegistry = BuffWatcher_StoredSpellsRegistry:new()
+    local configuration = BuffWatcher_Configuration:new(BuffWatcher_DbAccessor_Singleton)
+    local contextStore = BuffWatcher_AuraContextStore:new(BuffWatcher_DbAccessor_Singleton, storedSpellsRegistry, contextDefaults)
+    local settingsDialog = BuffWatcher_SettingsDialog:new(BuffWatcher_DbAccessor_Singleton, contextStore, contextDefaults)
+    local weakAuraGenerator = BuffWatcher_WeakAuraGenerator:new(configuration)
+    local weakAuraExporter = BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
+    local weakAurasInterface = BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
+    
+    BuffWatcher_WeakAuraInterface_Singleton = weakAurasInterface
+
+    settingsDialog.Initialize(BuffWatcher)
+
+    weakAurasInterface.RegisterSpells(storedSpellsRegistry)
+
+    mainWindow = BuffWatcher_MainWindow:new(storedSpellsRegistry, loggerModule, weakAurasInterface, weakAuraExporter, contextStore)
 
     mainWindow.GetFrame():Hide()
 
@@ -81,5 +70,5 @@ function BuffWatcher:NAME_PLATE_UNIT_ADDED(...)
 end
 
 function BuffWatcher:SlashCommand()
-    mainWindow:GetFrame().frame:Show()
+    mainWindow.Show()
 end
