@@ -1,0 +1,18 @@
+---@class BuffWatcher_Blizzard_AuraData
+---@field name string
+---@field spellId integer
+---@field auraInstanceID integer
+---@field isHelpful boolean
+---@field isHarmful boolean
+---@field sourceUnit string
+---@field duration number
+---@field expirationTime number
+
+---@class BuffWatcher_Blizzard_UnitAura
+---@field name string
+---@field icon string,
+---@field count number
+---@field duration number
+---@field expirationTime number,
+---@field source string
+---@field spellId number

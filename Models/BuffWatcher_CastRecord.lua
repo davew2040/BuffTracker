@@ -9,6 +9,10 @@
 ---@field key string
 BuffWatcher_CastRecord = {}
 
+---@param type SpellTypes
+---@param spellId integer
+---@param spellName string
+---@param sourceName string
 ---@return BuffWatcher_CastRecord
 function BuffWatcher_CastRecord:new(type, spellId, spellName, sourceName)
     ---@type BuffWatcher_CastRecord

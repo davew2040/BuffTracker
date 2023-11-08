@@ -2,12 +2,15 @@ local AceGUI = LibStub("AceGUI-3.0")
 
 BuffWatcher_LoggerWindow = {}
 
+---@param incomingStoredSpells BuffWatcher_StoredSpellsRegistry
+---@param loggerModule BuffWatcher_LoggerModule
 function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     self = {}
 
     local SpellTypes = BuffWatcher_Shared_Singleton.SpellTypes
     local SpellTypeLabels = BuffWatcher_Shared_Singleton.SpellTypeLabels
 
+    ---@class BuffWatcher_LoggerWindow_SpellFilters
     local spellFilters = {
         spellType = SpellTypes.Any,
         name = "",
@@ -45,23 +48,26 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
         storedSpells.addSpell(spellRecord)
     end
 
-    local meetsFilter = function(spellRecord, filter) 
-        if (storedSpells.hasSpell(spellRecord)) then
+    ---@param castRecord BuffWatcher_CastRecord
+    ---@param allSpellRecords table<string, BuffWatcher_StoredSpell>
+    ---@param filter BuffWatcher_LoggerWindow_SpellFilters
+    local meetsFilter = function(castRecord, allSpellRecords, filter) 
+        if (allSpellRecords[castRecord.key] ~= nil) then
             return false
         end
 
-        if (filter.spellType ~= SpellTypes.Any and spellRecord.type ~= filter.spellType) then
+        if (filter.spellType ~= SpellTypes.Any and castRecord.type ~= filter.spellType) then
             return false
         end
 
         if (filter.name ~= nil and filter.name ~= "") then
-            if string.find(spellRecord.loweredName, filter.name) == nil then
+            if string.find(castRecord.loweredName, filter.name) == nil then
                 return false
             end
         end
 
         if (filter.caster ~= nil and filter.caster ~= "") then
-            if string.find(spellRecord.loweredCaster, filter.caster) == nil then
+            if string.find(castRecord.loweredCaster, filter.caster) == nil then
                 return false
             end
         end
@@ -69,11 +75,12 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
         return true
     end
 
-    local applyFilters = function(spellRecords, filters)
+    local applyFilters = function(castRecords, filters)
         local filtered = {}
+        local storedSpells = storedSpells.GetSpells()
 
-        for k,v in pairs(spellRecords) do
-            if (meetsFilter(v, filters) == true) then
+        for k,v in pairs(castRecords) do
+            if (meetsFilter(v, storedSpells, filters) == true) then
                 filtered[k] = v
             end
         end

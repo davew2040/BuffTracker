@@ -7,28 +7,59 @@ function BuffWatcher_DefaultContextValues:new()
     local DefaultIconSize = 32
     local DefaultRaidIconSize = 12
 
+    ---@class BuffWatcher_ContextSettingsValues
+    ---@field key string
+    ---@field friendlyName string
+    ---@field frameType FrameTypes
+    ---@field isBuffs boolean
+    ---@field isHostile boolean
+    ---@field showUnlisted BuffWatcher_ShowUnlistedType
+    ---@field showDispelType boolean
+    ---@field useDefaultIconSize boolean
+    ---@field customIconSize integer
+    ---@field icon integer
+    ---@field xOffset integer
+    ---@field yOffset integer
+    ---@field selfPoint string
+    ---@field anchorPoint string
+    
     -- only used to show the expected structure of the object
-    local BaseContextSettings = {
+    ---@type BuffWatcher_AuraGroupFixedSettings
+    local BaseFixedSettings = {
         friendlyName = "friendly name",
         includeBuffsAndCasts = false,
         includeDebuffs = false,
         isHostile = false,
-        frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena
+        frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena,
+        icon = 0,
+        xOffset = 0,
+        yOffset = 0,
+        anchorPoint = "TOP",
+        selfPoint = "TOP"
     }
 
+    ---@type BuffWatcher_AuraGroupUserSettings
     local BaseUserSettings = {
-        showUnlistedAuras = false,
+        showUnlistedAuras = BuffWatcher_ShowUnlistedType.None,
         showDispelType = false,
         useDefaultIconSize = false,
         customIconSize = 1234,
+        growDirection = BuffWatcher_GrowDirection.Left
     }
 
-    local buildUserSettingsInstance = function(showUnlistedAuras, showDispelType, useDefaultIconSize, customIconSize)
+    ---@param showUnlistedAuras BuffWatcher_ShowUnlistedType
+    ---@param showDispelType boolean
+    ---@param useDefaultIconSize boolean
+    ---@param customIconSize integer
+    ---@param growDirection BuffWatcher_GrowDirection
+    local buildUserSettingsInstance = function(showUnlistedAuras, showDispelType, useDefaultIconSize, customIconSize, growDirection)
+        ---@type BuffWatcher_AuraGroupUserSettings
         local newUserSettings = {
             showUnlistedAuras = showUnlistedAuras,
             showDispelType = showDispelType,
             useDefaultIconSize = useDefaultIconSize,
-            customIconSize = customIconSize
+            customIconSize = customIconSize,
+            growDirection = growDirection
         }
 
         BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseUserSettings, newUserSettings)
@@ -36,173 +67,233 @@ function BuffWatcher_DefaultContextValues:new()
         return newUserSettings
     end
 
-    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile)
+    ---@param friendlyName string
+    ---@param frameType FrameTypes
+    ---@param includeBuffsAndCasts boolean
+    ---@param includeDebuffs boolean
+    ---@param isHostile boolean
+    ---@param icon integer
+    ---@param xOffset integer
+    ---@param yOffset integer
+    ---@param selfPoint string
+    ---@param anchorPoint string
+    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile, icon, xOffset, yOffset, selfPoint, anchorPoint)
+        ---@type BuffWatcher_AuraGroupFixedSettings
         local settingsObject = {
             friendlyName = friendlyName,
             includeBuffsAndCasts = includeBuffsAndCasts,
             includeDebuffs = includeDebuffs,
             isHostile = isHostile,
-            frameType = frameType
+            frameType = frameType,
+            icon = icon,
+            xOffset = xOffset,
+            yOffset = yOffset,
+            selfPoint = selfPoint,
+            anchorPoint = anchorPoint
         }
 
-        BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseContextSettings, settingsObject)
+        BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseFixedSettings, settingsObject)
 
         return settingsObject
     end
 
     local keys = BuffWatcher_AuraContextStore.ContextKeys
 
-    local DefaultUserSettings = {
-        [keys.EnemyNameplateBuffs] = buildUserSettingsInstance(
-            true,
-            true, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.EnemyNameplateDebuffs] = buildUserSettingsInstance(
-            false,
-            false, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.FriendlyNameplateBuffs] = buildUserSettingsInstance(
-            false,
-            false, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.FriendlyNameplateDebuffs] = buildUserSettingsInstance(
-            false,
-            true, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.PartyBuffs] = buildUserSettingsInstance(
-            true,
-            false, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.PartyDebuffs] = buildUserSettingsInstance(
-            true,
-            true, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.ArenaEnemyBuffs] = buildUserSettingsInstance(
-            true,
-            true, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.ArenaEnemyDebuffs] = buildUserSettingsInstance(
-            true,
-            false, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.RaidBuffs] = buildUserSettingsInstance(
-            false,
-            true, 
-            true,
-            DefaultIconSize
-        ),
-        [keys.RaidDebuffs] = buildUserSettingsInstance(
-            false,
-            false, 
-            true,
-            DefaultRaidIconSize
-        )
-    }
+    ---@type table<string, BuffWatcher_AuraGroupUserSettings>
+    local DefaultUserSettings = {}
+    ---@type table<string, BuffWatcher_AuraGroupFixedSettings>
+    local DefaultFixedContextSettings = {}
 
-    local DefaultFixedContextSettings = {
-        [keys.EnemyNameplateBuffs] = buildFixedSettingsInstance(
-            "Enemy Nameplate Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            false,
-            false,
-            true
-        ),
-        [keys.EnemyNameplateDebuffs] = buildFixedSettingsInstance(
-            "Enemy Nameplate Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            false,
-            true,
-            true
-        ),
-        [keys.FriendlyNameplateBuffs] = buildFixedSettingsInstance(
-            "Friendly Nameplate Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            false,
-            false,
-            false
-        ),
-        [keys.FriendlyNameplateDebuffs] = buildFixedSettingsInstance(
-            "Friendly Nameplate Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            false,
-            true,
-            false
-        ),
-        [keys.FriendlyNameplateBuffs] = buildFixedSettingsInstance(
-            "Friendly Nameplate Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            true,
-            false,
-            false
-        ),
-        [keys.FriendlyNameplateDebuffs] = buildFixedSettingsInstance(
-            "Friendly Nameplate Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
-            false,
-            true,
-            false
-        ),
-        [keys.PartyBuffs] = buildFixedSettingsInstance(
-            "Party Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Party,
-            true,
-            false,
-            false
-        ),
-        [keys.PartyDebuffs] = buildFixedSettingsInstance(
-            "Party Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Party,
-            false,
-            true,
-            false
-        ),
-        [keys.ArenaEnemyBuffs] = buildFixedSettingsInstance(
-            "Arena Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Arena,
-            true,
-            false,
-            false
-        ),
-        [keys.ArenaEnemyDebuffs] = buildFixedSettingsInstance(
-            "Arena Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Arena,
-            false,
-            true,
-            false
-        ),
-        [keys.RaidBuffs] = buildFixedSettingsInstance(
-            "Raid Buffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Raid,
-            true,
-            false,
-            false
-        ),
-        [keys.RaidDebuffs] = buildFixedSettingsInstance(
-            "Raid Debuffs",
-            BuffWatcher_Shared_Singleton.FrameTypes.Raid,
-            false,
-            true,
-            false
-        )
-    }
+    ---@param params BuffWatcher_ContextSettingsValues
+    local addDefaultSettingsEntry = function(params)
+        local newEntry = buildFixedSettingsInstance(
+            params.friendlyName, params.frameType, params.isBuffs, not params.isBuffs, params.isHostile, params.icon, params.xOffset, params.yOffset, params.selfPoint, params.anchorPoint
+        );
+        DefaultFixedContextSettings[params.key] = newEntry
 
-    self.GetDefaultUserSettings = function()
+        ---@type BuffWatcher_GrowDirection
+        local direction = (params.isBuffs and BuffWatcher_GrowDirection.Left) or BuffWatcher_GrowDirection.Right
+
+        DefaultUserSettings[params.key] = buildUserSettingsInstance(params.showUnlisted, params.showDispelType, params.useDefaultIconSize, params.customIconSize, direction)
+    end
+
+    local addDefaultSettings = function()
+        addDefaultSettingsEntry({
+            key = keys.EnemyNameplateBuffs,
+            friendlyName = "Enemy Nameplate Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+            isBuffs = true,
+            isHostile = true,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = true,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178499,
+            xOffset = 80,
+            yOffset = 10,
+            selfPoint = "BOTTOMRIGHT",
+            anchorPoint = "TOPLEFT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.EnemyNameplateDebuffs,
+            friendlyName = "Enemy Nameplate Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+            isBuffs = false,
+            isHostile = true,
+            showUnlisted = BuffWatcher_ShowUnlistedType.OwnOnly, 
+            showDispelType = false,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178492,
+            xOffset = -80,
+            yOffset = 10,
+            selfPoint = "BOTTOMLEFT",
+            anchorPoint = "TOPRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.FriendlyNameplateBuffs,
+            friendlyName = "Friendly Nameplate Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+            isBuffs = true,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.OwnOnly, 
+            showDispelType = false,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178493,
+            xOffset = 80,
+            yOffset = 15,
+            selfPoint = "BOTTOMRIGHT",
+            anchorPoint = "TOPLEFT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.FriendlyNameplateDebuffs,
+            friendlyName = "Friendly Nameplate Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Nameplate,
+            isBuffs = false,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = false,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178494,
+            xOffset = -80,
+            yOffset = 15,
+            selfPoint = "BOTTOMLEFT",
+            anchorPoint = "TOPRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.PartyBuffs,
+            friendlyName = "Party Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Party,
+            isBuffs = true,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.Any, 
+            showDispelType = false,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178495,
+            xOffset = -10,
+            yOffset = 15,
+            selfPoint = "BOTTOMRIGHT",
+            anchorPoint = "BOTTOMRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.PartyDebuffs,
+            friendlyName = "Party Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Party,
+            isBuffs = false,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.Any, 
+            showDispelType = true,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178496,
+            xOffset = -10,
+            yOffset = -10,
+            selfPoint = "TOPRIGHT",
+            anchorPoint = "TOPRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.ArenaEnemyBuffs,
+            friendlyName = "Arena Enemy Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena,
+            isBuffs = true,
+            isHostile = true,
+            showUnlisted = BuffWatcher_ShowUnlistedType.Any, 
+            showDispelType = true,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178497,
+            xOffset = -10,
+            yOffset = 15,
+            selfPoint = "BOTTOMRIGHT",
+            anchorPoint = "BOTTOMRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.ArenaEnemyDebuffs,
+            friendlyName = "Arena Enemy Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena,
+            isBuffs = false,
+            isHostile = true,
+            showUnlisted = BuffWatcher_ShowUnlistedType.Any, 
+            showDispelType = false,
+            useDefaultIconSize = true,
+            customIconSize = 32,
+            icon = 2178498,
+            xOffset = -10,
+            yOffset = -10,
+            selfPoint = "TOPRIGHT",
+            anchorPoint = "TOPRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.RaidBuffs,
+            friendlyName = "Raid Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Raid,
+            isBuffs = true,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = false,
+            useDefaultIconSize = false,
+            customIconSize = DefaultRaidIconSize,
+            icon = 3717310,
+            xOffset = -5,
+            yOffset = 5,
+            selfPoint = "BOTTOMRIGHT",
+            anchorPoint = "BOTTOMRIGHT"
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.RaidDebuffs,
+            friendlyName = "Raid Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Raid,
+            isBuffs = false,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = true,
+            useDefaultIconSize = false,
+            customIconSize = DefaultRaidIconSize,
+            icon = 3717303,
+            xOffset = -5,
+            yOffset = -5,
+            selfPoint = "TOPRIGHT",
+            anchorPoint = "TOPRIGHT"
+        })
+    end
+
+    -- we want to just initialize immediately
+    addDefaultSettings()
+
+    ---@return table<
+    self.GetDefaultContextUserSettings = function()
         return CopyTable(DefaultUserSettings)
     end
 
@@ -211,13 +302,32 @@ function BuffWatcher_DefaultContextValues:new()
         return CopyTable(DefaultFixedContextSettings)
     end
 
+    ---@param userSettings table<string, BuffWatcher_AuraGroupUserSettings>
+    ---@return table<string, BuffWatcher_AuraGroupMergedSettings>
     self.MergeFixedAndUserSettings = function(userSettings)
+        ---@type table<string, BuffWatcher_AuraGroupMergedSettings>
         local merged = {}
 
-        for k,v in pairs(DefaultFixedContextSettings) do
-            local fixedValues = CopyTable(v)
-            local userValues = CopyTable(userSettings[k])
-            merged[k] = BuffWatcher_Shared_Singleton.SimpleTableMerge(fixedValues, userValues)
+        for k,fixedSettings in pairs(DefaultFixedContextSettings) do
+            local userValues = userSettings[k]
+            ---@type BuffWatcher_AuraGroupMergedSettings
+            merged[k] = {
+                friendlyName = fixedSettings.friendlyName,
+                includeBuffsAndCasts = fixedSettings.includeBuffsAndCasts,
+                includeDebuffs = fixedSettings.includeDebuffs,
+                isHostile = fixedSettings.isHostile,
+                frameType = fixedSettings.frameType,
+                showUnlistedAuras = userValues.showUnlistedAuras,
+                showDispelType = userValues.showDispelType,
+                useDefaultIconSize = userValues.useDefaultIconSize,
+                customIconSize = userValues.customIconSize,
+                growDirection = userValues.growDirection,
+                icon = fixedSettings.icon,
+                xOffset = fixedSettings.xOffset,
+                yOffset = fixedSettings.yOffset,
+                selfPoint = fixedSettings.selfPoint,
+                anchorPoint = fixedSettings.anchorPoint,
+            }
         end
 
         return merged

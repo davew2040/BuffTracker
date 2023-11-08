@@ -3,28 +3,37 @@ BuffWatcher_AuraContext = {}
 
 ---@class BuffWatcher_AuraContext_Params
 ---@field spellBundle BuffWatcher_SpellBundle
----@field isNameplate boolean
 ---@field name string
----@field frameType FrameTypes
+---@field key string
+---@field frameType BuffWatcher_FrameTypes
 ---@field includeBuffsAndCasts boolean
 ---@field includeDebuffs boolean
----@field showUnlistedAuras boolean
+---@field showUnlistedAuras BuffWatcher_ShowUnlistedType
 ---@field showDispelType boolean
 ---@field isHostile boolean
+---@field growDirection BuffWatcher_GrowDirection
+---@field useDefaultIconSize boolean
+---@field customIconSize integer
+---@field icon integer
+---@field xOffset integer,
+---@field yOffset integer,
+---@field selfPoint string,
+---@field anchorPoint string
 
 BuffWatcher_AuraContext_Params = {}
 
 ---@param params BuffWatcher_AuraContext_Params
-function BuffWatcher_AuraContext:new(params)
+---@param configuration BuffWatcher_Configuration
+function BuffWatcher_AuraContext:new(params, configuration)
     self = {};
 
     ---@type BuffWatcher_SpellBundle
     local spellBundle = nil
-    ---@type boolean
-    local isNameplateValue = false
     ---@type string
     local name = ""
-    ---@type FrameTypes
+    ---@type string
+    local key = ""
+    ---@type BuffWatcher_FrameTypes
     local frameType = nil
     ---@type boolean
     local includeBuffsAndCasts = false
@@ -32,11 +41,29 @@ function BuffWatcher_AuraContext:new(params)
     local includeDebuffs = false 
     ---@type boolean
     local isHostile = false
-    ---@type boolean
-    local showUnlistedAuras = false
+    ---@type BuffWatcher_ShowUnlistedType
+    local showUnlistedAuras = BuffWatcher_ShowUnlistedType.Any
     ---@type boolean
     local showDispelType = false
+    ---@type BuffWatcher_GrowDirection
+    local growDirection = BuffWatcher_GrowDirection.Left
+    ---@type boolean
+    local useDefaultIconSize = false
+    ---@type integer
+    local customIconSize = 0
+    ---@type integer
+    local icon = 0
+    ---@type integer
+    local xOffset = 0
+    ---@type integer
+    local yOffset = 0
+    ---@type string
+    local selfPoint = ""
+    ---@type string
+    local anchorPoint = ""
 
+    ---@type table<string, true> 
+    local activeGuids = {}
     ---@type table<string, table<string, boolean>>
     local guidToStateKeyMap = {}
     ---@type table<string, string>
@@ -46,63 +73,30 @@ function BuffWatcher_AuraContext:new(params)
     ---@type table<string, string>
     local nameplateToGuidMap = {}
 
+    ---@type table<string, boolean>
+    self.seenGuids = {}
+
     ---@param params BuffWatcher_AuraContext_Params
     local initializeFromParameters = function(params)
+        spellBundle = params.spellBundle
+        name = params.name
+        key = params.key
+        frameType = params.frameType
+        includeBuffsAndCasts = params.includeBuffsAndCasts
+        includeDebuffs = params.includeDebuffs
+        showUnlistedAuras = params.showUnlistedAuras
+        showDispelType = params.showDispelType
+        isHostile = params.isHostile
+        growDirection = params.growDirection
+        useDefaultIconSize = params.useDefaultIconSize
+        customIconSize = params.customIconSize
+        icon = params.icon
+        xOffset = params.xOffset
+        yOffset = params.yOffset
+        selfPoint = params.selfPoint
+        anchorPoint = params.anchorPoint
+
         DevTool:AddData(params, "fixme params")
-
-        if (params.spellBundle == nil) then
-            error("Could not find parameter key 'spellBundle'.")
-        else 
-            spellBundle = params.spellBundle
-        end
-             
-        if (params.isNameplate == nil) then
-            error("Could not find parameter key 'isNameplate'.")
-        else
-            isNameplateValue = params.isNameplate
-        end
-
-        if (params.name == nil) then
-            error("Could not find parameter key 'name'.")
-        else
-            name = params.name
-        end
-
-        if (params.frameType == nil) then
-            error("Could not find parameter key 'frameType'.")
-        else
-            frameType = params.frameType
-        end
-
-        if (params.includeBuffsAndCasts == nil) then
-            error("Could not find parameter key 'includeBuffsAndCasts'.")
-        else
-            includeBuffsAndCasts = params.includeBuffsAndCasts
-        end
-
-        if (params.includeDebuffs == nil) then
-            error("Could not find parameter key 'includeDebuffs'.")
-        else
-            includeDebuffs = params.includeDebuffs
-        end
-
-        if (params.showUnlistedAuras == nil) then
-            error("Could not find parameter key 'showUnlistedAuras'.")
-        else
-            showUnlistedAuras = params.showUnlistedAuras
-        end
-
-        if (params.showDispelType == nil) then
-            error("Could not find parameter key 'showDispelType'.")
-        else
-            showDispelType = params.showDispelType
-        end
-
-        if (params.isHostile == nil) then
-            error("Could not find parameter key 'isHostile'.")
-        else
-            isHostile = params.isHostile
-        end
     end
 
     initializeFromParameters(params)
@@ -130,18 +124,27 @@ function BuffWatcher_AuraContext:new(params)
         end
     end
 
+    ---@param targetGuid string
+    ---@return table<string, boolean>
     self.getKeysByGuid = function(targetGuid) 
+        ---@type table<string, boolean>
         local keys = {}
+        
         if (guidToStateKeyMap[targetGuid] == nil) then
-            return pairs(keys)
+            return keys
         end
-        return pairs(guidToStateKeyMap[targetGuid])
+
+        return guidToStateKeyMap[targetGuid]
     end
 
+    ---@param auraId string
+    ---@return string
     self.getKeyByAuraId = function(auraId)
         return auraIdToKeyMap[auraId]
     end
 
+    ---@param auraId string
+    ---@param key string
     self.addAuraIdToKeyEntry = function(auraId, key)
         auraIdToKeyMap[auraId] = key
     end
@@ -174,7 +177,7 @@ function BuffWatcher_AuraContext:new(params)
     end
 
     self.isNameplate = function()
-        return isNameplateValue
+        return frameType == BuffWatcher_FrameTypes.Nameplate
     end
 
     self.isUnitframe = function()
@@ -193,12 +196,12 @@ function BuffWatcher_AuraContext:new(params)
         return includeDebuffs
     end
 
-    ---@return boolean
+    ---@return BuffWatcher_ShowUnlistedType
     self.showUnlistedAuras = function()
         return showUnlistedAuras
     end
 
-    ---@return FrameTypes
+    ---@return BuffWatcher_FrameTypes
     self.getFrameType = function()
         return frameType
     end
@@ -216,6 +219,75 @@ function BuffWatcher_AuraContext:new(params)
     ---@return BuffWatcher_SpellBundle
     self.GetWeakAuraBundle = function()
         return spellBundle
+    end
+
+    ---@return BuffWatcher_GrowDirection
+    self.GetGrowthDirection = function()
+        return growDirection
+    end
+
+    ---@return table<string, boolean>
+    self.GetActiveGuids = function()
+        return activeGuids
+    end
+
+    ---@param newActiveGuids table<string, boolean>
+    self.SetActiveGuids = function(newActiveGuids)
+        activeGuids = newActiveGuids
+    end
+    
+    ---@return boolean
+    self.GetUseDefaultIconSize = function()
+        return useDefaultIconSize
+    end
+    
+    ---@return integer
+    self.GetCustomIconSize = function()
+        return customIconSize
+    end
+
+    ---@return integer
+    self.GetIconSize = function()
+        if (useDefaultIconSize) then 
+            return configuration.GetDefaultSize()
+        else 
+            return customIconSize
+        end
+    end
+
+    ---@return string
+    self.GetKey = function()
+        return key
+    end
+
+    ---@return integer
+    self.GetIcon = function()
+        return icon
+    end
+
+    ---@return integer
+    self.GetXOffset = function()
+        return xOffset
+    end
+
+    ---@return integer
+    self.GetYOffset = function()
+        return yOffset
+    end
+
+    ---@return string
+    self.GetSelfPoint = function()
+        return selfPoint
+    end
+
+    ---@return string
+    self.GetAnchorPoint = function()
+        return anchorPoint
+    end
+
+    ---@return integer
+    self.GetUnlistedRows = function()
+        return 2
     end
 
     return self;

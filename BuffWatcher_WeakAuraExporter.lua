@@ -73,6 +73,8 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
                 end
             end
 
+            DevTool:AddData(toDelete, "fixme toDelete")
+
             for k, _ in pairs(toDelete) do
                 weakAurasRoot[k] = nil
 
@@ -90,8 +92,9 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param auraName string
     ---@param groupName string
     ---@param weakAurasRoot any
-    local addWeakAura = function(newAura, auraName, groupName, weakAurasRoot)
+    local addWeakAuraToGroup = function(newAura, auraName, groupName, weakAurasRoot)
         weakAurasRoot[auraName] = newAura
+        table.insert(weakAurasRoot[groupName].controlledChildren, auraName)
     end
 
     ---@param context BuffWatcher_AuraContext
@@ -165,7 +168,9 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param groupName string
     ---@param exporterContext WeakAuraExporterContext
     local addAllTestAnchors = function(context, groupName, exporterContext)
-        addSingleTestAnchor(getTestAnchorName(context, 1), Icons.Up, context, configuration.GetDefaultSize(), groupName, exporterContext)
+        DevTool:AddData("fixme adding test anchors")
+
+        addSingleTestAnchor(getTestAnchorName(context, 1), context.GetIcon(), context, configuration.GetDefaultSize(), groupName, exporterContext)
         addSingleTestAnchor(getTestAnchorName(context, 2), Icons.Left, context, configuration.GetDefaultSize(), groupName, exporterContext)
         addSingleTestAnchor(getTestAnchorName(context, 3), Icons.Right, context, configuration.GetDefaultSize(), groupName, exporterContext)
     end
@@ -205,6 +210,36 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param bundle BuffWatcher_SpellBundle
     ---@param groupName string
     ---@param exporterContext WeakAuraExporterContext
+    local addAurasMulti = function(context, bundle, groupName, exporterContext)
+        local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
+
+        if (context.includeBuffsAndCasts()) then
+            local auraName = getAuraName(context, 'MULTI-GROUP', 'BUFFS') 
+
+            local buffIds = BuffWatcher_Shared_Singleton.CopyKeys(bundle.buffs)
+            local castIds = BuffWatcher_Shared_Singleton.CopyKeys(bundle.casts)
+            local merged = BuffWatcher_Shared_Singleton.SimpleTableMerge(buffIds, castIds)
+
+            local newAura = weakAuraGenerator.GenerateMultiBuffDebuff(merged, true, auraName, context.getIsHostile(), groupName, 
+                size, context.getFrameType(), context.getShowDispelType())
+
+            table.insert(exporterContext.addedAuras, ExporterContextEntry:new(auraName, 1, newAura))
+        elseif (context.includeDebuffs()) then
+            local auraName = getAuraName(context, 'MULTI-GROUP', 'DEBUFFS') 
+
+            local debuffIds = BuffWatcher_Shared_Singleton.CopyKeys(bundle.debuffs)
+
+            local newAura = weakAuraGenerator.GenerateMultiBuffDebuff(debuffIds, false, auraName, context.getIsHostile(), groupName, 
+                size, context.getFrameType(), context.getShowDispelType())
+
+            table.insert(exporterContext.addedAuras, ExporterContextEntry:new(auraName, 1, newAura))
+        end
+    end
+
+    ---@param context BuffWatcher_AuraContext
+    ---@param bundle BuffWatcher_SpellBundle
+    ---@param groupName string
+    ---@param exporterContext WeakAuraExporterContext
     local addDebuffs = function(context, bundle, groupName, exporterContext)
         for key, debuff in pairs(bundle.debuffs) do
             if (not debuff.hide) then
@@ -224,7 +259,8 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param groupName string
     ---@param exporterContext WeakAuraExporterContext
     local addCatchAlls = function(context, bundle, groupName, exporterContext)
-        if (context.showUnlistedAuras()) then
+        local showUnlisted = context.showUnlistedAuras()
+        if (showUnlisted ~= BuffWatcher_ShowUnlistedType.None) then
             local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
 
             if (context.includeBuffsAndCasts()) then
@@ -235,7 +271,8 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
                 local merged = BuffWatcher_Shared_Singleton.SimpleTableMerge(buffIds, castIds)
 
                 local catchAllBuffs = weakAuraGenerator.GenerateCatchAllBuffDebuff(merged, true, auraName, context.getIsHostile(), groupName, 
-                    size, context.getFrameType(), context.getShowDispelType(), configuration.GetUnlistedMultiplier())
+                    size, context.getFrameType(), context.getShowDispelType(), configuration.GetUnlistedMultiplier(), 
+                    showUnlisted == BuffWatcher_ShowUnlistedType.OwnOnly)
     
                 table.insert(exporterContext.addedAuras, ExporterContextEntry:new(auraName, 1, catchAllBuffs))
             elseif (context.includeDebuffs()) then
@@ -244,7 +281,8 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
                 local debuffIds = BuffWatcher_Shared_Singleton.CopyKeys(bundle.debuffs)
 
                 local catchAllDebuffs = weakAuraGenerator.GenerateCatchAllBuffDebuff(debuffIds, false, auraName, context.getIsHostile(), groupName, 
-                    size, context.getFrameType(), context.getShowDispelType(), configuration.GetUnlistedMultiplier())
+                    size, context.getFrameType(), context.getShowDispelType(), configuration.GetUnlistedMultiplier(),
+                    showUnlisted == BuffWatcher_ShowUnlistedType.OwnOnly)
     
                 table.insert(exporterContext.addedAuras, ExporterContextEntry:new(auraName, 1, catchAllDebuffs))
             end
@@ -273,11 +311,23 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
         end
 
         for i,v in ipairs(exporterContext.addedAuras) do
-            addWeakAura(v.weakAuraContent, v.name, groupName, weakAurasRoot)
+            addWeakAuraToGroup(v.weakAuraContent, v.name, groupName, weakAurasRoot)
             table.insert(newChildren, v.name)
         end
 
         weakAurasRoot[groupName]["controlledChildren"] = newChildren
+    end
+
+    ---@param context BuffWatcher_AuraContext
+    ---@param groupName string
+    ---@param weakAurasRoot any
+    local addScriptAura = function(context, groupName, weakAurasRoot)
+        local auraName =  getAuraName(context, 'SCRIPT', 'ALL')
+        local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
+        local aura = weakAuraGenerator.GenerateScriptAura(auraName, groupName, context, size, configuration.GetUnlistedMultiplier())
+
+        DevTool:AddData(aura, "fixme created new script aura")
+        addWeakAuraToGroup(aura, auraName, groupName, weakAurasRoot)
     end
 
     ---@param context BuffWatcher_AuraContext
@@ -293,7 +343,7 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
         deleteAurasInGroup(weakAurasRoot, groupName)
 
         if (weakAurasRoot[groupName] == nil) then
-            local dynamicGroup = weakAuraGenerator.GenerateDynamicGroup(groupName, context.getFrameType())
+            local dynamicGroup = weakAuraGenerator.GenerateDynamicGroup(groupName, context.getFrameType(), context.GetKey(), context, true)
             weakAurasRoot[groupName] = dynamicGroup
         end
 
@@ -304,23 +354,54 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
             addAllTestAnchors(context, groupName, exporterContext)
         end
 
-        addBuffsAndCasts(context, bundle, groupName, exporterContext)
-        addDebuffs(context, bundle, groupName, exporterContext)
-        addCatchAlls(context, bundle, groupName, exporterContext)
+        addScriptAura(context, groupName, weakAurasRoot)
+        -- addAurasMulti(context, bundle, groupName, exporterContext)
+
+        -- if (context.showUnlistedAuras() ~= BuffWatcher_ShowUnlistedType.None) then
+        --     addCatchAlls(context, bundle, groupName, exporterContext)
+        -- end
 
         exportAllAuras(exporterContext, groupName, weakAurasRoot)
     end
+
+    ---@param context BuffWatcher_AuraContext
+    ---@param spellRegistry BuffWatcher_StoredSpellsRegistry
+    ---@param weakAurasRoot any
+    local exportDynamicContext = function(context, spellRegistry, weakAurasRoot)
+        local groupName = buffWatcherGroupPrefix .. context.getName()
+
+        DevTool:AddData(groupName, "fixme exporting context")
+
+        -- if (WeakAurasSaved.displays[tempGroupName] ~= nil) then
+        --     WeakAuras.Delete(WeakAurasSaved.displays[tempGroupName])
+        -- end
+
+        deleteAurasInGroup(weakAurasRoot, groupName)
+
+        if (weakAurasRoot[groupName] == nil) then
+            local dynamicGroup = weakAuraGenerator.GenerateDynamicGroup(groupName, context.getFrameType(), context.GetKey(), context, true)
+            weakAurasRoot[groupName] = dynamicGroup
+        end
+
+        addScriptAura(context, groupName, weakAurasRoot)
+    end
+
 
     ---@param spellRegistry BuffWatcher_StoredSpellsRegistry
     ---@param contextMap table<string, BuffWatcher_AuraContext>
     self.Export = function(spellRegistry, contextMap)
         local weakAuraRoot = WeakAurasSaved.displays
 
-        DevTool:AddData(CopyTable(contextMap), "fixme exporting contexts")
+        DevTool:AddData(CopyTable(weakAuraRoot, true), "fixme exporting contexts")
 
         for k,context in pairs(contextMap) do 
             exportContext(context, spellRegistry, weakAuraRoot)
+            --exportDynamicContext(context, spellRegistry, weakAuraRoot)
         end
+
+        local edited = CopyTable(weakAuraRoot, true)
+
+        DevTool:AddData(edited, "fixme after export")
     end
 
     return self

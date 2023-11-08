@@ -43,9 +43,14 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                 childGroups = "tree",
                 args = {
                     showUnlistedAuras = {
-                        type = "toggle",
                         name = "Show Other Auras",
                         desc = "Toggles whether relevant auras not associated with this group to also be displayed.",
+                        type = "select",
+                        values = {
+                            [BuffWatcher_ShowUnlistedType.None] = "None",
+                            [BuffWatcher_ShowUnlistedType.Any] = "Any",
+                            [BuffWatcher_ShowUnlistedType.OwnOnly] = "Own Only",
+                        },
                         get = self.BuildGenericAuraGroupGetter("showUnlistedAuras"),
                         set = self.BuildGenericAuraGroupSetter("showUnlistedAuras")
                     },
@@ -71,7 +76,22 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         max = 128,
                         step = 1,
                         get = self.BuildGenericAuraGroupGetter("customIconSize"),
-                        set = self.BuildGenericAuraGroupSetter("customIconSize")
+                        set = self.BuildGenericAuraGroupSetter("customIconSize"),
+                        disabled = function(info)
+                            local groupKey = info[2]
+                            return currentModel.groupUserSettings[groupKey].useDefaultIconSize
+                        end
+                    },
+                    growDirection = {
+                        name = "Grow Direction",
+                        desc = "Whether the aura group should grow left or right",
+                        type = "select",
+                        values = {
+                            [BuffWatcher_GrowDirection.Left] = "Left",
+                            [BuffWatcher_GrowDirection.Right] = "Right"
+                        },
+                        get = self.BuildGenericAuraGroupGetter("growDirection"),
+                        set = self.BuildGenericAuraGroupSetter("growDirection"),
                     }
                 }
             }
@@ -125,53 +145,12 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         }
     end
 
-    local initializeHandlers = function(addonRoot) 
-        function addonRoot:GetMessage(info)
-            return currentModel.message
-        end
-
-        function addonRoot:SetMessage(info, value)
-            DevTool:AddData(CopyTable(info), "fixme info SetMessage")
-            currentModel.message = value
-        end
-
-        function addonRoot:IsShowOnScreen(info)
-            return currentModel.showOnScreen
-        end
-
-        function addonRoot:ToggleShowOnScreen(info, value)
-            DevTool:AddData(CopyTable(info), "fixme info ToggleShowOnScreen")
-            currentModel.showOnScreen = value
-        end
-
-        function addonRoot:GetIconSize(info)
-            return currentModel.iconSize
-        end
-
-        function addonRoot:SetIconSize(info, value)
-            DevTool:AddData(CopyTable(info), "fixme info SetIconSize")
-            currentModel.iconSize = value
-        end
-
-        function addonRoot:GetUnlistedMultiplier(info)
-            return currentModel.unlistedMultiplier
-        end
-
-        function addonRoot:SetUnlistedMultiplier(info, value)
-            DevTool:AddData(CopyTable(info), "fixme info SetUnlistedMultiplier")
-            currentModel.unlistedMultiplier = value
-            
-        end
-    end
-
     self.Initialize = function(addonRoot)
         currentModel = dbAccessor.GetOptions()
 
         if (currentModel ~= nil) then
             --DevTool:AddData(CopyTable(currentModel), "fixme dbaccessor result")
         end
-
-        initializeHandlers(addonRoot)
 
         AceConfig:RegisterOptionsTable("BuffWatcher_options", getOptions())
         local optionsFrame = AceConfigDialog:AddToBlizOptions("BuffWatcher_options", "BuffWatcher")
@@ -187,9 +166,13 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         return getter
     end
 
+    ---@param settingName string
+    ---@return fun(info: any, value: any)
     self.BuildGenericAuraGroupSetter = function(settingName)
+        ---@type fun(info: any, value: any)
         local setter = function(info, value)
             local groupKey = info[2]
+            DevTool:AddData(value, "fixme new value")
             currentModel.groupUserSettings[groupKey][settingName] = value
             dbAccessor.SetOptions(currentModel)
         end

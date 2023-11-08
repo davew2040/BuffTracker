@@ -22,10 +22,19 @@ lua_linq/Enumerable.lua
 lua_linq/KeyValuePair.lua
 lua_linq/PredicateParser.lua
 Libs\Json\json.lua
+Libs\LibGetFrame\LibGetFrame-1.0.lua
 
+Enums/BuffWatcher_FrameTypes.lua
+Enums/BuffWatcher_GrowDirection.lua
+Enums/BuffWatcher_ShowUnlistedType.lua
+Enums/BuffWatcher_TriggerType.lua
+
+Models/BuffWatcher_Color.lua
+Models/BuffWatcher_AuraGroupFixedSettings.lua
 Models/BuffWatcher_AuraGroupUserSettings.lua
 Models/BuffWatcher_StoredSpell.lua
 Models/BuffWatcher_CastRecord.lua
+Models/BuffWatcher_WeakAura_StateEntry.lua
 
 BuffWatcher_Shared.lua
 BuffWatcher_Callbacks.lua

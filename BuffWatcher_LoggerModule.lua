@@ -14,6 +14,7 @@ function BuffWatcher_LoggerModule:new()
     }
 
     local mainFrame = nil
+    ---@type table<string, BuffWatcher_CastRecord>
     local spellRecords = {}
 
     local addUnitAura = function(isBuff, sourceUnit, auraInfo)

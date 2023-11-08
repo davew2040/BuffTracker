@@ -16,7 +16,7 @@ function BuffWatcher_DbAccessor:new()
     ---@param contextStore BuffWatcher_DefaultContextValues
     ---@return BuffWatcher_SavedDbRootSettings
     local GetDefaultDb = function(contextStore)
-        local groupUserSettings = contextStore.GetDefaultUserSettings()
+        local groupUserSettings = contextStore.GetDefaultContextUserSettings()
 
         ---@type BuffWatcher_SavedDbRootSettings
         local defaults = {

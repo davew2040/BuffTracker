@@ -1,0 +1,17 @@
+---@class BuffWatcher_AuraGroupMergedSettings
+---@field friendlyName string
+---@field includeBuffsAndCasts boolean
+---@field includeDebuffs boolean
+---@field isHostile boolean
+---@field frameType FrameTypes
+---@field showUnlistedAuras BuffWatcher_ShowUnlistedType
+---@field showDispelType boolean
+---@field useDefaultIconSize boolean
+---@field customIconSize number
+---@field growDirection BuffWatcher_GrowDirection
+---@field icon integer
+---@field xOffset integer,
+---@field yOffset integer,
+---@field selfPoint string,
+---@field anchorPoint string
+BuffWatcher_AuraGroupMergedSettings = {}

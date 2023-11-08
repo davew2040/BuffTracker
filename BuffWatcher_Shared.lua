@@ -5,7 +5,19 @@ BuffWatcher_Shared = {}
 function BuffWatcher_Shared:new()
     self = {};
 
-    self.SufPlayerFramePrefix = 'SUFHeaderpartyUnitButton';
+    self.SufPartyFramePrefix = 'SUFHeaderpartyUnitButton';
+    self.SufRaidFramePrefix = 'SUFHeaderraidUnitButton';
+
+    ---@type table<integer, string>
+    self.partyUnits = {}
+    ---@type table<integer, string>
+    self.raidUnits = {}
+    ---@type table<integer, string>
+    self.arenaUnits = {}
+    ---@type table<integer, string>
+    self.partySufFrameMap = {}
+    ---@type table<integer, string>
+    self.raidSufFrameMap = {}
 
     self.GetCastRecordKey = function(castRecord) 
         return castRecord.type .. ":" .. castRecord.spellId
@@ -34,6 +46,8 @@ function BuffWatcher_Shared:new()
         return string.find(unitName, 'arena') == 1
     end
 
+    ---@param unitName string
+    ---@return boolean
     self.IsNameplateUnit = function(unitName) 
         return string.find(unitName, 'nameplate') == 1
     end
@@ -186,7 +200,12 @@ function BuffWatcher_Shared:new()
         return dest
     end
 
+    ---@generic T, U
+    ---@param table table<T,U>
+    ---@param filterFn fun(input: T): boolean
+    ---@return table<T, U>
     self.TableValueFilter = function(table, filterFn)
+        ---@table<T, U>
         local dest = {}
 
         for k,v in pairs(table) do
@@ -281,6 +300,30 @@ function BuffWatcher_Shared:new()
         Nameplate = 4
     }
 
+    local initialize = function()
+        for i=1, 20 do
+            self.partyUnits[i] = "party" .. i
+        end
+
+        for i=1, 40 do
+            self.raidUnits[i] = "raid" .. i
+        end
+
+        for i=1, 25 do
+            self.arenaUnits[i] = "arena" .. i
+        end
+
+        for i=1, 20 do
+            self.partySufFrameMap[i] = self.SufPartyFramePrefix .. tostring(i)
+        end
+
+        for i=1, 40 do
+            self.raidSufFrameMap[i] = self.SufRaidFramePrefix .. tostring(i)
+        end
+    end
+
+    initialize()
+
     return self;
 end
 
@@ -346,5 +389,194 @@ function BuffWatcher_Shared.SortByDescending(source, sortPicker)
     )
 end
 
+---@return boolean
+function BuffWatcher_Shared.PlayerInBattleground()
+    local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
+
+    local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
+
+    return instanceType == "pvp" and instanceType ~= "arena"
+end
+
+---@return boolean
+function BuffWatcher_Shared.PlayerInArena()
+    local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
+
+    return instanceType == "pvp" and instanceType == "arena"
+end
+
+---@return BuffWatcher_Blizzard_AuraData[]
+function BuffWatcher_Shared.GetUnitAuras(unitName)
+    ---@type BuffWatcher_Blizzard_AuraData[]
+    local result = {}
+
+    local i = 1
+    while true do
+        local unitAuraData = {UnitBuff(unitName, i)}
+
+        DevTool:AddData(unitAuraData, "fixme unitAuraData")
+
+        if (#unitAuraData == 0) then
+            break
+        end
+        
+        ---@type BuffWatcher_Blizzard_AuraData
+        local newUnitAura = {
+            name = unitAuraData[1],
+            auraInstanceID = 0,
+            isHelpful = true,
+            isHarmful = false,
+            icon = unitAuraData[2],
+            count = unitAuraData[3],
+            duration = unitAuraData[5],
+            expirationTime = unitAuraData[6],
+            sourceUnit = unitAuraData[7],
+            spellId = unitAuraData[10]
+        }
+
+        table.insert(result, newUnitAura)
+        i = i+1
+    end
+
+    i=1
+    while true do
+        local unitAuraData = {UnitDebuff(unitName, i)}
+
+        if (#unitAuraData == 0) then
+            break
+        end
+        
+        ---@type BuffWatcher_Blizzard_AuraData
+        local newUnitAura = {
+            name = unitAuraData[1],
+            auraInstanceID = 0,
+            isHelpful = false,
+            isHarmful = true,
+            icon = unitAuraData[2],
+            count = unitAuraData[3],
+            duration = unitAuraData[5],
+            expirationTime = unitAuraData[6],
+            sourceUnit = unitAuraData[7],
+            spellId = unitAuraData[10]
+        }
+
+        table.insert(result, newUnitAura)
+        i = i+1
+    end
+
+    return result
+end
+
+---@return table<string, string>
+function BuffWatcher_Shared.GetGroupUnits()
+    ---@type table<string, string>
+    local result = {}
+
+    if GetNumGroupMembers() == 0 then
+        return result
+    end
+
+    local playerGuid = UnitGUID('player')
+    DevTool:AddData(playerGuid, "fixme playerGuid")
+
+    result['player'] = playerGuid
+
+    for i=1, GetNumGroupMembers() do
+        if IsInRaid() then
+            local raidUnit = BuffWatcher_Shared_Singleton.raidUnits[i]
+            local raidUnitGuid = UnitGUID(raidUnit)
+            if (raidUnitGuid ~= nil and raidUnitGuid ~= playerGuid) then
+                result[raidUnit] = raidUnitGuid 
+            end
+        elseif IsInGroup() then
+            local partyUnit = BuffWatcher_Shared_Singleton.partyUnits[i]
+            local partyUnitGuid = UnitGUID(partyUnit)
+            if (partyUnitGuid ~= nil and partyUnitGuid ~= playerGuid) then
+                result[partyUnit] = partyUnitGuid 
+            end
+        end
+    end
+
+    return result
+end
+
+---@param frames table<string, any[]>
+local addSufPartyFrames = function(framesByUnit)
+    for i=1, GetNumGroupMembers() do
+        local frameName = BuffWatcher_Shared_Singleton.partySufFrameMap[i]-- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
+        local frame = _G[frameName]
+        if (frame ~= nil and frame.unit ~= nil) then
+            local unitName = frame.unit
+            framesByUnit[unitName] = framesByUnit[unitName] or {}
+            table.insert(framesByUnit[unitName], frame)
+        end
+    end
+end
+
+---@return table<string, any[]>
+function BuffWatcher_Shared.GetFramesByUnit()
+    ---@type table<string, any[]>
+    local framesByUnit = {}
+
+    -- if (IsInGroup() and not IsInRaid()) then
+    --     DevTool:AddData("trying standard party frames")
+    --     for i=1, GetNumGroupMembers() do
+    --         local frameName = 'PartyFrame.MemberFrame' .. i-- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
+    --         DevTool:AddData(frameName, "fixme trying framename")
+    --         local frame = _G[frameName]
+    --         if (_G["PartyFrame"] and _G["PartyFrame"]["MemberFrame1"]) then
+    --             DevTool:AddData(CopyTable(_G["PartyFrame"]["MemberFrame1"], true), "fixme trying framename")
+    --             -- local unitName = frame.unit
+    --             -- framesByUnit[unitName] = framesByUnit[unitName] or {}
+    --             -- table.insert(framesByUnit[unitName], frame)
+    --         end
+    --     end
+    -- end
+
+    if (IsInGroup() and not IsInRaid()) then
+        addSufPartyFrames(framesByUnit)
+    end
+
+    if (IsInRaid()) then
+        local groupIndex = 1
+        local groupOffset = 1
+        for i=1, GetNumGroupMembers() do
+            local frameName = 'CompactRaidGroup' .. groupIndex .. 'Member' .. groupOffset -- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
+            local frame = _G[frameName]
+            if (frame ~= nil and frame.unit ~= nil) then
+                local unitName = frame.unit
+                framesByUnit[unitName] = framesByUnit[unitName] or {}
+                table.insert(framesByUnit[unitName], frame)
+            end
+            groupOffset = groupOffset + 1
+            if (groupOffset > 5) then
+                groupIndex = groupIndex + 1
+                groupOffset = 1
+            end
+        end
+    end
+    
+    if (IsInRaid()) then
+        for i=1, GetNumGroupMembers() do
+            local frameName = BuffWatcher_Shared_Singleton.raidSufFrameMap[i] -- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
+            local frame = _G[frameName]
+            if (frame ~= nil and frame.unit ~= nil) then
+                local unitName = frame.unit
+                framesByUnit[unitName] = framesByUnit[unitName] or {}
+                table.insert(framesByUnit[unitName], frame)
+            end
+        end
+    end
+
+    return framesByUnit
+end
+
+---@type table<BuffWatcher_TriggerType, string>
+BuffWatcher_Shared.TriggerTypeLabels = {
+    [BuffWatcher_TriggerType.Buff] = "Buffs",
+    [BuffWatcher_TriggerType.Debuff] = "Debuffs",
+    [BuffWatcher_TriggerType.Cast] = "Casts",
+    [BuffWatcher_TriggerType.CatchAll] = "Catch All",
+}
 
 BuffWatcher_Shared_Singleton = BuffWatcher_Shared:new();
