@@ -92,7 +92,28 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         },
                         get = self.BuildGenericAuraGroupGetter("growDirection"),
                         set = self.BuildGenericAuraGroupSetter("growDirection"),
-                    }
+                    },                    
+                    useDefaultUnlistedMultiplier = {
+                        type = "toggle",
+                        name = "Use Default Unlisted Multiplier",
+                        desc = "Toggles whether the default unlisted multiplier should be used",
+                        get = self.BuildGenericAuraGroupGetter("useDefaultUnlistedMultiplier"),
+                        set = self.BuildGenericAuraGroupSetter("useDefaultUnlistedMultiplier")
+                    },
+                    customUnlistedMultiplier = {
+                        name = "Custom Unlisted Multiplier",
+                        desc = "The custom unlisted icon multiplier to be used, if applicable",
+                        type = "range",
+                        min = 0.1,
+                        max = 5,
+                        step = 0.1,
+                        get = self.BuildGenericAuraGroupGetter("customUnlistedMultiplier"),
+                        set = self.BuildGenericAuraGroupSetter("customUnlistedMultiplier"),
+                        disabled = function(info)
+                            local groupKey = info[2]
+                            return currentModel.groupUserSettings[groupKey].useDefaultUnlistedMultiplier
+                        end
+                    },
                 }
             }
         end

@@ -1,3 +1,8 @@
+---@class BuffWatcher_BorderConfiguration
+---@field index integer
+---@field color BuffWatcher_Color
+BuffWatcher_BorderConfiguration = {}
+
 ---@class BuffWatcher_WeakAuraGenerator
 BuffWatcher_WeakAuraGenerator = {}
 
@@ -5,7 +10,7 @@ BuffWatcher_WeakAuraGenerator = {}
 function BuffWatcher_WeakAuraGenerator:new(configuration)
     self = {};
 
-    local BuffDebuffBorderIndex = 4
+    local InitialSubregionIndex = 4
 
     local baseCustomCastScript = "function(allstates, event, ...)\n    if (BuffWatcher_WeakAuraInterface_Singleton == nil \n        or not BuffWatcher_WeakAuraInterface_Singleton.IsRegistered()) then\n        return false\n    end\n    \n    \n    local castData = {\n        spellId = {0}\n    }\n    \n    return BuffWatcher_WeakAuraInterface_Singleton.DelegateTsu(allstates, event, \"{1}\", castData, ...)\nend"
     local baseCustomGrowScript = "function(newPositions, activeRegions, ...)\n    if (BuffWatcher_WeakAuraInterface_Singleton == nil \n        or not BuffWatcher_WeakAuraInterface_Singleton.IsRegistered()) then\n        return\n    end\n    \n    return BuffWatcher_WeakAuraInterface_Singleton.DelegateCustomGrow(\"{0}\", newPositions, activeRegions, ...)\nend"
@@ -23,6 +28,23 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
         }
     }
     ]]
+
+    local BorderConfigurationKeys = {
+        buff = "buff",
+        debuff = "debuff"
+    }
+
+    ---@type table<string, BuffWatcher_BorderConfiguration>
+    local BorderConfigurations = {
+        [BorderConfigurationKeys.buff] = {
+            index = 1,
+            color = BuffWatcher_Color:new(0, 1, 0, 1)
+        },
+        [BorderConfigurationKeys.debuff] = {
+            index = 2,
+            color = BuffWatcher_Color:new(1, 0, 0, 1)
+        }
+    }
 
     ---@param spellId integer
     ---@param contextName string
@@ -45,6 +67,16 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
     local getCustomGeneralScript = function(contextName)
         local modified = string.gsub(baseCustomGeneralScript, "{0}", contextName)
         return modified
+    end
+
+    ---@param index integer
+    ---@return string
+    local getBorderVisibilityPropertyTag = function(index)
+        return "sub." .. tostring(index) .. ".border_visible"
+    end
+
+    local getScriptTriggerEvents = function()
+        return "UNIT_AURA, ARENA_TEAM_ROSTER_UPDATE, GROUP_ROSTER_UPDATE, NAME_PLATE_UNIT_REMOVED, NAME_PLATE_UNIT_ADDED, COMBAT_LOG_EVENT_UNFILTERED:SPELL_CAST_SUCCESS, STATUS, CLEU:UNIT_DIED, PLAYER_ENTERING_WORLD, PARTY_CONVERTED_TO_RAID"
     end
 
     ---@param type BuffWatcher_TriggerType
@@ -114,6 +146,76 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
         end
     end
 
+    ---@param borders any[]
+    ---@param borderColor BuffWatcher_Color
+    ---@param borderSize integer
+    ---@param borderOffset integer
+    local addBorder = function(borders, borderColor, borderSize, borderOffset)
+        local borderCopy = CopyTable(BuffWatcher_WeakAuraGenerator.BorderTemplate)
+
+        borderCopy.border_size = borderSize
+        borderCopy.border_offset = borderOffset
+        borderCopy.border_color[1] = borderColor.red
+        borderCopy.border_color[2] = borderColor.green
+        borderCopy.border_color[3] = borderColor.blue
+
+        table.insert(borders, borderCopy)
+    end
+
+    ---@param conditions any[]
+    ---@param borderIndices table<string, integer>
+    local addConditionsBuffDebuff = function(conditions, borderIndices)
+        local buff = CopyTable(BuffWatcher_WeakAuraGenerator.ConditionBuffDebuffOutlineTemplate)
+        buff["check"]["value"] = "buff"
+        buff["changes"][1]["property"] = getBorderVisibilityPropertyTag(borderIndices[BorderConfigurationKeys.buff])
+
+        table.insert(conditions, buff)
+
+        local debuff = CopyTable(BuffWatcher_WeakAuraGenerator.ConditionBuffDebuffOutlineTemplate)
+        debuff["check"]["value"] = "debuff"
+        debuff["changes"][1]["property"] = getBorderVisibilityPropertyTag(borderIndices[BorderConfigurationKeys.debuff])
+
+        table.insert(conditions, debuff)
+
+        DevTool:AddData(CopyTable(borderIndices, true), "fixme borderIndices")
+    end
+
+    ---@param weakAura any
+    ---@param multiplier number
+    local addBorderAndConditions = function(weakAura, multiplier)
+        local borderSize = configuration.GetBorderSize()
+        local borderOffset = configuration.GetBorderOffset()
+        ---@type any[]
+        local newSubregions = {}
+        ---@type table<string, integer>
+        local borderIndices = {}
+
+        DevTool:AddData(CopyTable(weakAura, true), "fixme initial aura")
+
+        local orderedKeys = {
+            [1] = BorderConfigurationKeys.buff,
+            [2] = BorderConfigurationKeys.debuff
+        }
+        local borderIndex = InitialSubregionIndex
+        for _,orderedKey in ipairs(orderedKeys) do
+            addBorder(newSubregions, BorderConfigurations[orderedKey].color, configuration.GetBorderSize(), configuration.GetBorderOffset())
+
+            borderIndices[orderedKey] = borderIndex
+            borderIndex = borderIndex + 1
+        end
+
+        BuffWatcher_Shared_Singleton.MergeIntoOrderedTable(weakAura.subRegions, newSubregions)
+
+        ---@type any[]
+        local borderConditions = {}
+    
+        addConditionsBuffDebuff(borderConditions, borderIndices)
+
+        BuffWatcher_Shared_Singleton.MergeIntoOrderedTable(weakAura.conditions, borderConditions)
+
+        DevTool:AddData(CopyTable(weakAura, true), "fixme after border add")
+    end
+
     ---@param weakAura any
     ---@param multiplier number
     local addDispelType = function(weakAura, multiplier)
@@ -129,7 +231,7 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
 
         BuffWatcher_Shared_Singleton.MergeIntoOrderedTable(weakAura.subRegions, borderSubregions)
 
-        local borderConditions = CopyTable(BuffWatcher_WeakAuraGenerator.DispelTypeConditions)
+        local borderConditions = CopyTable(BuffWatcher_WeakAuraGenerator.BorderConditions)
 
         BuffWatcher_Shared_Singleton.MergeIntoOrderedTable(weakAura.conditions, borderConditions)
     end
@@ -421,13 +523,18 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
         
         copy.triggers[1].trigger = trigger
 
-        addDispelType(copy, sizeMultiplier)
+        addBorderAndConditions(copy, sizeMultiplier)
 
         return copy
     end
 
     return self
 end
+
+BuffWatcher_WeakAuraGenerator.GetScriptTriggerEvents = function()
+    return "UNIT_AURA, ARENA_TEAM_ROSTER_UPDATE, GROUP_ROSTER_UPDATE, NAME_PLATE_UNIT_REMOVED, NAME_PLATE_UNIT_ADDED, COMBAT_LOG_EVENT_UNFILTERED:SPELL_CAST_SUCCESS, STATUS, CLEU:UNIT_DIED, PLAYER_ENTERING_WORLD, PARTY_CONVERTED_TO_RAID"
+end
+
 
 BuffWatcher_WeakAuraGenerator.DynamicGroupTemplate = {
     ["grow"] = "RIGHT",
@@ -615,7 +722,7 @@ BuffWatcher_WeakAuraGenerator.ScriptTrigger = {
     ["spellIds"] = {
     },
     ["custom"] = "INSERT SCRIPT HERE",
-    ["events"] = "UNIT_AURA, ARENA_TEAM_ROSTER_UPDATE, GROUP_ROSTER_UPDATE, NAME_PLATE_UNIT_REMOVED, NAME_PLATE_UNIT_ADDED, COMBAT_LOG_EVENT_UNFILTERED:SPELL_CAST_SUCCESS",
+    ["events"] = BuffWatcher_WeakAuraGenerator.GetScriptTriggerEvents(),
     ["useExactSpellId"] = true,
     ["check"] = "event",
     ["type"] = "custom",
@@ -707,19 +814,6 @@ BuffWatcher_WeakAuraGenerator.BaseAuraTemplate = {
             ["glowLines"] = 8,
             ["glowBorder"] = false,
         }, -- [3]
-        {
-            ["border_offset"] = 0,
-            ["type"] = "subborder",
-            ["border_color"] = {
-                1, -- [1]
-                1, -- [2]
-                1, -- [3]
-                1, -- [4]
-            },
-            ["border_visible"] = false,
-            ["border_edge"] = "Square Full White",
-            ["border_size"] = 1,
-        },
     },
     ["height"] = -1,
     ["load"] = {
@@ -807,6 +901,20 @@ BuffWatcher_WeakAuraGenerator.BaseAuraTemplate = {
     },
 }
 
+BuffWatcher_WeakAuraGenerator.BorderTemplate ={
+    ["border_size"] = 2,
+    ["border_offset"] = 3,
+    ["border_color"] = {
+        1, -- [1]
+        1, -- [2]
+        1, -- [3]
+        1, -- [4]
+    },
+    ["border_visible"] = false,
+    ["border_edge"] = "1 Pixel",
+    ["type"] = "subborder",
+}
+
 BuffWatcher_WeakAuraGenerator.DispelTypeBorders = {
     {
         ["border_size"] = 2,
@@ -862,7 +970,65 @@ BuffWatcher_WeakAuraGenerator.DispelTypeBorders = {
     }
 }
 
-BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
+BuffWatcher_WeakAuraGenerator.ConditionBuffDebuffOutlineTemplate = {
+    ["check"] = {
+        ["trigger"] = 1,
+        ["variable"] = "outlineType",
+        ["op"] = "==",
+        ["value"] = "buff",
+    },
+    ["changes"] = {
+        {
+            ["value"] = true,
+            ["property"] = "sub.1.border_visible",
+        }, -- [1]
+    }
+}
+
+BuffWatcher_WeakAuraGenerator.ConditionDispelTypeTemplate = {
+    ["check"] = {
+        ["trigger"] = 1,
+        ["variable"] = "debuffClass",
+        ["value"] = "INSERT_DISPEL_TYPE",
+        ["op"] = "==",
+    },
+    ["changes"] = {
+        {
+            ["value"] = true,
+            ["property"] = "sub.1.border_visible",
+        }, -- [1]
+    },
+}
+
+BuffWatcher_WeakAuraGenerator.BorderConditions = {
+    {
+        ["check"] = {
+            ["trigger"] = 1,
+            ["variable"] = "outlineType",
+            ["op"] = "==",
+            ["value"] = "buff",
+        },
+        ["changes"] = {
+            {
+                ["value"] = true,
+                ["property"] = "sub.1.border_visible",
+            }, -- [1]
+        },
+    }, -- [1]
+    {
+        ["check"] = {
+            ["trigger"] = 1,
+            ["variable"] = "outlineType",
+            ["value"] = "debuff",
+            ["op"] = "==",
+        },
+        ["changes"] = {
+            {
+                ["value"] = true,
+                ["property"] = "sub.1.border_visible",
+            }, -- [1]
+        },
+    }, -- [2]
     {
         ["check"] = {
             ["trigger"] = 1,
@@ -873,10 +1039,10 @@ BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
         ["changes"] = {
             {
                 ["value"] = true,
-                ["property"] = "sub.5.border_visible",
+                ["property"] = "sub.1.border_visible",
             }, -- [1]
         },
-    }, -- [1]
+    }, -- [3]
     {
         ["check"] = {
             ["trigger"] = 1,
@@ -887,10 +1053,10 @@ BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
         ["changes"] = {
             {
                 ["value"] = true,
-                ["property"] = "sub.6.border_visible",
+                ["property"] = "sub.1.border_visible",
             }, -- [1]
         },
-    }, -- [2]
+    }, -- [4]
     {
         ["check"] = {
             ["trigger"] = 1,
@@ -901,10 +1067,10 @@ BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
         ["changes"] = {
             {
                 ["value"] = true,
-                ["property"] = "sub.7.border_visible",
+                ["property"] = "sub.1.border_visible",
             }, -- [1]
         },
-    }, -- [3]
+    }, -- [5]
     {
         ["check"] = {
             ["trigger"] = 1,
@@ -915,10 +1081,10 @@ BuffWatcher_WeakAuraGenerator.DispelTypeConditions = {
         ["changes"] = {
             {
                 ["value"] = true,
-                ["property"] = "sub.8.border_visible",
+                ["property"] = "sub.1.border_visible",
             }, -- [1]
         },
-    }, -- [4]
+    }, -- [6]
 }
 
 ---@type table<string, any>
@@ -926,7 +1092,7 @@ BuffWatcher_WeakAuraGenerator.CastCustomTrigger = {
     ["type"] = "custom",
     ["useIgnoreExactSpellId"] = true,
     ["subeventPrefix"] = "SPELL",
-    ["events"] = "export_watcher_data CLEU:SPELL_CAST_SUCCESS UNIT_AURA NAME_PLATE_UNIT_ADDED NAME_PLATE_UNIT_REMOVED",
+    ["events"] = BuffWatcher_WeakAuraGenerator.GetScriptTriggerEvents(),
     ["spellIds"] = {
     },
     ["custom"] = "function(allstates, event, ...)\n    if (BuffWatcher_WeakAuraInterface_Singleton == nil \n        or not BuffWatcher_WeakAuraInterface_Singleton.IsRegistered()) then\n        return false\n    end\n    \n    return BuffWatcher_WeakAuraInterface_Singleton.DelegateTsu(allstates, event, \"PartyBuffs\", ...)\nend",

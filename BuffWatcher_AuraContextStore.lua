@@ -157,7 +157,10 @@ function BuffWatcher_AuraContextStore:new(
             xOffset = settings.xOffset,
             yOffset = settings.yOffset,
             selfPoint = settings.selfPoint,
-            anchorPoint = settings.anchorPoint
+            anchorPoint = settings.anchorPoint,
+            unlistedRowCount = settings.unlistedRowCount,
+            useDefaultUnlistedMultiplier = settings.useDefaultUnlistedMultiplier,
+            customUnlistedMultiplier = settings.customUnlistedMultiplier
         }
 
         local context = BuffWatcher_AuraContext:new(params, configuration)
@@ -168,7 +171,7 @@ function BuffWatcher_AuraContextStore:new(
     ---@param settings table<string, BuffWatcher_AuraGroupMergedSettings>
     ---@param spells table<string, BuffWatcher_StoredSpell>
     ---@return table<string, BuffWatcher_AuraContext>
-    local buildContextsFromSettings = function(settings, spells)
+    local buildAllContextsFromSettings = function(settings, spells)
         ---@type table<string, BuffWatcher_AuraContext>
         local result = {}
 
@@ -184,7 +187,7 @@ function BuffWatcher_AuraContextStore:new(
         local userSettings = dbAccessor.GetOptions().groupUserSettings
         local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
 
-        contexts = buildContextsFromSettings(newContextSettings, spells)
+        contexts = buildAllContextsFromSettings(newContextSettings, spells)
     end
 
     local initialize = function()

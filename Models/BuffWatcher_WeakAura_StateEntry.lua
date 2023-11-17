@@ -15,4 +15,6 @@
 ---@field size integer
 ---@field index integer
 ---@field targetGuid string
+---@field auraInstanceID (integer | nil)
+---@field outlineType string
 BuffWatcher_WeakAura_StateEntry = {}

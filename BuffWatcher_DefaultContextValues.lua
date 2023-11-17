@@ -22,6 +22,9 @@ function BuffWatcher_DefaultContextValues:new()
     ---@field yOffset integer
     ---@field selfPoint string
     ---@field anchorPoint string
+    ---@field unlistedRowCount integer
+    ---@field useDefaultUnlistedMultiplier boolean
+    ---@field customUnlistedMultiplier number
     
     -- only used to show the expected structure of the object
     ---@type BuffWatcher_AuraGroupFixedSettings
@@ -44,7 +47,10 @@ function BuffWatcher_DefaultContextValues:new()
         showDispelType = false,
         useDefaultIconSize = false,
         customIconSize = 1234,
-        growDirection = BuffWatcher_GrowDirection.Left
+        growDirection = BuffWatcher_GrowDirection.Left,
+        unlistedRowCount = 0,
+        useDefaultUnlistedMultiplier = true,
+        customUnlistedMultiplier = 0.5
     }
 
     ---@param showUnlistedAuras BuffWatcher_ShowUnlistedType
@@ -52,14 +58,30 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param useDefaultIconSize boolean
     ---@param customIconSize integer
     ---@param growDirection BuffWatcher_GrowDirection
-    local buildUserSettingsInstance = function(showUnlistedAuras, showDispelType, useDefaultIconSize, customIconSize, growDirection)
+    ---@param unlistedRowCount integer
+    ---@param useDefaultUnlistedMultiplier boolean,
+    ---@param customUnlistedMultiplier number
+    ---@return BuffWatcher_AuraGroupUserSettings
+    local buildUserSettingsInstance = function(
+        showUnlistedAuras, 
+        showDispelType, 
+        useDefaultIconSize, 
+        customIconSize, 
+        growDirection, 
+        unlistedRowCount,
+        useDefaultUnlistedMultiplier,
+        customUnlistedMultiplier
+    )
         ---@type BuffWatcher_AuraGroupUserSettings
         local newUserSettings = {
             showUnlistedAuras = showUnlistedAuras,
             showDispelType = showDispelType,
             useDefaultIconSize = useDefaultIconSize,
             customIconSize = customIconSize,
-            growDirection = growDirection
+            growDirection = growDirection,
+            unlistedRowCount = unlistedRowCount,
+            useDefaultUnlistedMultiplier = useDefaultUnlistedMultiplier,
+            customUnlistedMultiplier = customUnlistedMultiplier
         }
 
         BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseUserSettings, newUserSettings)
@@ -114,7 +136,16 @@ function BuffWatcher_DefaultContextValues:new()
         ---@type BuffWatcher_GrowDirection
         local direction = (params.isBuffs and BuffWatcher_GrowDirection.Left) or BuffWatcher_GrowDirection.Right
 
-        DefaultUserSettings[params.key] = buildUserSettingsInstance(params.showUnlisted, params.showDispelType, params.useDefaultIconSize, params.customIconSize, direction)
+        DefaultUserSettings[params.key] = buildUserSettingsInstance(
+            params.showUnlisted, 
+            params.showDispelType, 
+            params.useDefaultIconSize, 
+            params.customIconSize, 
+            direction, 
+            params.unlistedRowCount, 
+            params.useDefaultUnlistedMultiplier,
+            params.customUnlistedMultiplier
+        )
     end
 
     local addDefaultSettings = function()
@@ -132,7 +163,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = 80,
             yOffset = 10,
             selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "TOPLEFT"
+            anchorPoint = "TOPLEFT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -149,7 +183,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -80,
             yOffset = 10,
             selfPoint = "BOTTOMLEFT",
-            anchorPoint = "TOPRIGHT"
+            anchorPoint = "TOPRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -166,7 +203,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = 80,
             yOffset = 15,
             selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "TOPLEFT"
+            anchorPoint = "TOPLEFT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -183,7 +223,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -80,
             yOffset = 15,
             selfPoint = "BOTTOMLEFT",
-            anchorPoint = "TOPRIGHT"
+            anchorPoint = "TOPRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -200,7 +243,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -10,
             yOffset = 15,
             selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT"
+            anchorPoint = "BOTTOMRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -217,7 +263,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -10,
             yOffset = -10,
             selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT"
+            anchorPoint = "TOPRIGHT",
+            unlistedRowCount = 1,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -234,7 +283,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -10,
             yOffset = 15,
             selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT"
+            anchorPoint = "BOTTOMRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -251,7 +303,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -10,
             yOffset = -10,
             selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT"
+            anchorPoint = "TOPRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -268,7 +323,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -5,
             yOffset = 5,
             selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT"
+            anchorPoint = "BOTTOMRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
 
         addDefaultSettingsEntry({
@@ -285,7 +343,10 @@ function BuffWatcher_DefaultContextValues:new()
             xOffset = -5,
             yOffset = -5,
             selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT"
+            anchorPoint = "TOPRIGHT",
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
         })
     end
 
@@ -327,6 +388,9 @@ function BuffWatcher_DefaultContextValues:new()
                 yOffset = fixedSettings.yOffset,
                 selfPoint = fixedSettings.selfPoint,
                 anchorPoint = fixedSettings.anchorPoint,
+                unlistedRowCount = userValues.unlistedRowCount,
+                useDefaultUnlistedMultiplier = userValues.useDefaultUnlistedMultiplier,
+                customUnlistedMultiplier = userValues.customUnlistedMultiplier
             }
         end
 

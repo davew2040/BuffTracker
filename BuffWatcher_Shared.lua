@@ -131,7 +131,8 @@ function BuffWatcher_Shared:new()
 
         return merged
     end
-
+    ---@param destination table
+    ---@param toMerge table
     self.MergeIntoOrderedTable = function(destination, toMerge)
         for _,v in pairs(toMerge) do
             table.insert(destination, v)
@@ -500,76 +501,35 @@ function BuffWatcher_Shared.GetGroupUnits()
     return result
 end
 
----@param frames table<string, any[]>
-local addSufPartyFrames = function(framesByUnit)
-    for i=1, GetNumGroupMembers() do
-        local frameName = BuffWatcher_Shared_Singleton.partySufFrameMap[i]-- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
-        local frame = _G[frameName]
-        if (frame ~= nil and frame.unit ~= nil) then
-            local unitName = frame.unit
-            framesByUnit[unitName] = framesByUnit[unitName] or {}
-            table.insert(framesByUnit[unitName], frame)
-        end
+---@param table table
+---@return boolean
+function BuffWatcher_Shared.TableHasKeys(table)
+    for _ in pairs(table) do
+        return true
     end
+    return false
 end
 
----@return table<string, any[]>
-function BuffWatcher_Shared.GetFramesByUnit()
-    ---@type table<string, any[]>
-    local framesByUnit = {}
-
-    -- if (IsInGroup() and not IsInRaid()) then
-    --     DevTool:AddData("trying standard party frames")
-    --     for i=1, GetNumGroupMembers() do
-    --         local frameName = 'PartyFrame.MemberFrame' .. i-- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
-    --         DevTool:AddData(frameName, "fixme trying framename")
-    --         local frame = _G[frameName]
-    --         if (_G["PartyFrame"] and _G["PartyFrame"]["MemberFrame1"]) then
-    --             DevTool:AddData(CopyTable(_G["PartyFrame"]["MemberFrame1"], true), "fixme trying framename")
-    --             -- local unitName = frame.unit
-    --             -- framesByUnit[unitName] = framesByUnit[unitName] or {}
-    --             -- table.insert(framesByUnit[unitName], frame)
-    --         end
-    --     end
-    -- end
-
-    if (IsInGroup() and not IsInRaid()) then
-        addSufPartyFrames(framesByUnit)
-    end
-
-    if (IsInRaid()) then
-        local groupIndex = 1
-        local groupOffset = 1
-        for i=1, GetNumGroupMembers() do
-            local frameName = 'CompactRaidGroup' .. groupIndex .. 'Member' .. groupOffset -- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
-            local frame = _G[frameName]
-            if (frame ~= nil and frame.unit ~= nil) then
-                local unitName = frame.unit
-                framesByUnit[unitName] = framesByUnit[unitName] or {}
-                table.insert(framesByUnit[unitName], frame)
-            end
-            groupOffset = groupOffset + 1
-            if (groupOffset > 5) then
-                groupIndex = groupIndex + 1
-                groupOffset = 1
-            end
-        end
-    end
-    
-    if (IsInRaid()) then
-        for i=1, GetNumGroupMembers() do
-            local frameName = BuffWatcher_Shared_Singleton.raidSufFrameMap[i] -- 'CompactRaidGroup1Member1', 'PartyFrame.MemberFrame1'
-            local frame = _G[frameName]
-            if (frame ~= nil and frame.unit ~= nil) then
-                local unitName = frame.unit
-                framesByUnit[unitName] = framesByUnit[unitName] or {}
-                table.insert(framesByUnit[unitName], frame)
-            end
-        end
-    end
-
-    return framesByUnit
+---@param guid string
+---@return boolean
+function BuffWatcher_Shared.GuidIsNpc(guid)
+    local prefix = guid:sub(1,8);
+    return prefix == "Creature"
 end
+
+---@param unit string
+---@return boolean
+function BuffWatcher_Shared.UnitIsMinor(unit)
+    if (unit ~= nil) then
+        local classification = UnitClassification(unit)
+        if (classification == "minus" or classification == "trivial") then
+            return true
+        end
+    end
+
+    return false
+end
+
 
 ---@type table<BuffWatcher_TriggerType, string>
 BuffWatcher_Shared.TriggerTypeLabels = {

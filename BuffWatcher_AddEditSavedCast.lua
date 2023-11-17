@@ -14,6 +14,7 @@ function BuffWatcher_AddEditSavedCast:new()
     local chkParty = nil
     local chkArenas = nil
     local chkEnemyNameplates = nil
+    local chkBattlegrounds = nil
     local chkGlow = nil
     local chkRaids = nil
     local chkOwnOnly = nil
@@ -40,6 +41,7 @@ function BuffWatcher_AddEditSavedCast:new()
         chkRaids:SetValue(spell.showInRaid)
         chkOwnOnly:SetValue(spell.ownOnly)
         chkEnemyNameplates:SetValue(spell.showOnNameplates)
+        chkBattlegrounds:SetValue(spell.showInBattlegrounds)
         -- chkGlow:SetChecked(spell.showGlow)
 
         -- multiplierSlider:SetValue(spell.sizeMultiplier)
@@ -112,6 +114,13 @@ function BuffWatcher_AddEditSavedCast:new()
             activeModel.showInRaid = newValue
         end)
         frame:AddChild(chkRaids)
+
+        chkBattlegrounds = AceGUI:Create("CheckBox")
+        chkBattlegrounds:SetLabel("Show on Battleground Frames")
+        chkBattlegrounds:SetCallback("OnValueChanged", function(control, event, newValue)
+            activeModel.showInBattlegrounds = newValue
+        end)
+        frame:AddChild(chkBattlegrounds)
 
         chkOwnOnly = AceGUI:Create("CheckBox")
         chkOwnOnly:SetLabel("Show Own Only")

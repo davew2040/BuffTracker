@@ -19,7 +19,9 @@ BuffWatcher_AuraContext = {}
 ---@field yOffset integer,
 ---@field selfPoint string,
 ---@field anchorPoint string
-
+---@field unlistedRowCount integer
+---@field useDefaultUnlistedMultiplier boolean
+---@field customUnlistedMultiplier number
 BuffWatcher_AuraContext_Params = {}
 
 ---@param params BuffWatcher_AuraContext_Params
@@ -61,20 +63,28 @@ function BuffWatcher_AuraContext:new(params, configuration)
     local selfPoint = ""
     ---@type string
     local anchorPoint = ""
+    ---@type integer
+    local unlistedRowCount = 0
+    ---@type boolean
+    local isLoaded = false
 
     ---@type table<string, true> 
     local activeGuids = {}
     ---@type table<string, table<string, boolean>>
     local guidToStateKeyMap = {}
-    ---@type table<string, string>
-    local auraIdToKeyMap = {}
+    ---@type table<integer, string>
+    local auraIdToStateKeyMap = {}  
+    ---@type table<string, table<integer, boolean>>
+    local stateKeyToAuraIdMap = {}  
     ---@type table<string, string>
     local guidToNameplateMap = {}
     ---@type table<string, string>
     local nameplateToGuidMap = {}
 
-    ---@type table<string, boolean>
-    self.seenGuids = {}
+    ---@type boolean
+    self.useDefaultUnlistedMultiplier = false
+    ---@type number
+    self.customUnlistedMultiplier = 0.5
 
     ---@param params BuffWatcher_AuraContext_Params
     local initializeFromParameters = function(params)
@@ -95,11 +105,15 @@ function BuffWatcher_AuraContext:new(params, configuration)
         yOffset = params.yOffset
         selfPoint = params.selfPoint
         anchorPoint = params.anchorPoint
+        unlistedRowCount = params.unlistedRowCount
+        self.useDefaultUnlistedMultiplier = params.useDefaultUnlistedMultiplier
+        self.customUnlistedMultiplier = params.customUnlistedMultiplier
 
         DevTool:AddData(params, "fixme params")
     end
 
     initializeFromParameters(params)
+
 
     ---@param targetGuid string
     ---@param key string
@@ -111,7 +125,9 @@ function BuffWatcher_AuraContext:new(params, configuration)
         guidToStateKeyMap[targetGuid][key] = true 
     end
 
-    self.removeKeyByGuid = function(targetGuid, key)
+    ---@param targetGuid string
+    ---@param key string
+    self.removeKeyFromGuid = function(targetGuid, key)
         if (guidToStateKeyMap[targetGuid] == nil) then
             return
         end
@@ -129,7 +145,7 @@ function BuffWatcher_AuraContext:new(params, configuration)
     self.getKeysByGuid = function(targetGuid) 
         ---@type table<string, boolean>
         local keys = {}
-        
+
         if (guidToStateKeyMap[targetGuid] == nil) then
             return keys
         end
@@ -140,18 +156,52 @@ function BuffWatcher_AuraContext:new(params, configuration)
     ---@param auraId string
     ---@return string
     self.getKeyByAuraId = function(auraId)
-        return auraIdToKeyMap[auraId]
+        return auraIdToStateKeyMap[auraId]
     end
 
-    ---@param auraId string
+    ---@param auraId integer
     ---@param key string
-    self.addAuraIdToKeyEntry = function(auraId, key)
-        auraIdToKeyMap[auraId] = key
+    self.linkAuraIdToStateKey = function(auraId, key)
+        auraIdToStateKeyMap[auraId] = key
+        if (stateKeyToAuraIdMap[key] == nil) then
+            stateKeyToAuraIdMap[key] = {}
+        end
+        stateKeyToAuraIdMap[key][auraId] = true
     end
 
-    self.removeAuraIdToKeyEntry = function(auraId)
-        auraIdToKeyMap[auraId] = nil
+    ---@param auraId integer
+    ---@param key string
+    self.unlinkAuraIdToStateKey = function(auraId, key)
+        auraIdToStateKeyMap[auraId] = nil
+
+        if (stateKeyToAuraIdMap[key] ~= nil) then
+            stateKeyToAuraIdMap[key][auraId] = nil
+        end
+
+        if not BuffWatcher_Shared.TableHasKeys(stateKeyToAuraIdMap[key]) then
+            stateKeyToAuraIdMap[key] = nil
+        end
     end
+
+    ---@param key string
+    ---@return integer[]
+    self.getAurasIdsByStateKey = function(key)
+        ---@type integer[]
+        local auraIds = {}
+
+        if (stateKeyToAuraIdMap[key] ~= nil) then
+            for k,v in pairs(stateKeyToAuraIdMap[key]) do
+                table.insert(auraIds, k)
+            end
+        end
+
+        return auraIds
+    end
+
+
+    -- self.removeAuraIdToKeyEntry = function(auraId)
+    --     auraIdToStateKeyMap[auraId] = nil
+    -- end
 
     self.unlinkAllNameplates = function(nameplate, guid)
         guidToNameplateMap = {}
@@ -227,7 +277,7 @@ function BuffWatcher_AuraContext:new(params, configuration)
     end
 
     ---@return table<string, boolean>
-    self.GetActiveGuids = function()
+    self.GetActiveGuidsSet = function()
         return activeGuids
     end
 
@@ -287,7 +337,150 @@ function BuffWatcher_AuraContext:new(params, configuration)
 
     ---@return integer
     self.GetUnlistedRows = function()
-        return 2
+        return unlistedRowCount
+    end
+
+    ---@return boolean
+    self.GetIsLoaded = function()
+        return isLoaded
+    end
+
+    ---@return table<string, string>
+    local getGroupUnits = function() 
+        ---@type table<string, string>
+        local result = {}
+
+        if GetNumGroupMembers() == 0 then
+            return result
+        end
+
+        local playerGuid = UnitGUID('player')
+
+        result['player'] = playerGuid
+
+        for i=1, GetNumGroupMembers() do
+            if IsInRaid() then
+                local raidUnit = BuffWatcher_Shared_Singleton.raidUnits[i]
+                local raidUnitGuid = UnitGUID(raidUnit)
+                if (raidUnitGuid ~= nil and raidUnitGuid ~= playerGuid) then
+                    result[raidUnit] = raidUnitGuid 
+                end
+            elseif IsInGroup() then
+                local partyUnit = BuffWatcher_Shared_Singleton.partyUnits[i]
+                local partyUnitGuid = UnitGUID(partyUnit)
+                if (partyUnitGuid ~= nil and partyUnitGuid ~= playerGuid) then
+                    result[partyUnit] = partyUnitGuid 
+                end
+            end
+        end
+
+        return result
+    end
+
+    ---@return table<string, string>
+    local getArenaUnits = function() 
+        ---@type table<string, string>
+        local result = {}
+
+        for i=1, GetNumArenaOpponents() do
+            local arenaUnit = BuffWatcher_Shared_Singleton.arenaUnits[i]
+            local arenaUnitGuid = UnitGUID(arenaUnit)
+            if (arenaUnitGuid) then
+                result[arenaUnitGuid] = arenaUnitGuid 
+            end
+        end
+
+        return result
+    end
+
+    ---@return table<string, string>
+    local getNameplateUnits = function() 
+        ---@type any[]
+        local nameplates = C_NamePlate.GetNamePlates()
+
+        ---@type table<string, string>
+        local result = {}
+
+        for i,nameplate in ipairs(nameplates) do
+            result[nameplate.namePlateUnitToken] = UnitGUID(nameplate.namePlateUnitToken)
+        end
+
+        return result
+    end
+
+    ---@return table<string, string>
+    self.GetUnits = function()
+        if (frameType == BuffWatcher_FrameTypes.Party or frameType == BuffWatcher_FrameTypes.Raid) then
+            return getGroupUnits()
+        elseif (frameType == BuffWatcher_FrameTypes.Arena) then
+            return getArenaUnits()
+        elseif (frameType == BuffWatcher_FrameTypes.Nameplate) then
+            return getNameplateUnits()
+        end
+
+        ---@type table<string, string>
+        local result = {}
+
+        return result
+    end
+
+    ---@return boolean
+    self.IncludeNpcs = function() 
+        return true
+    end
+
+    ---@return boolean
+    local usePartyFrames = function()
+        if (BuffWatcher_Shared.PlayerInBattleground()) then
+            return false
+        elseif (IsInRaid()) then
+            return false
+        else
+            return IsInGroup()
+        end
+    end
+
+    ---@return boolean
+    local useRaidFrames = function()
+        if (BuffWatcher_Shared.PlayerInArena()) then
+            return false
+        end
+
+        return IsInRaid()
+    end
+
+    ---@return boolean
+    local determineIsLoaded = function()
+        if (frameType == BuffWatcher_FrameTypes.Nameplate) then
+            return true
+        elseif (frameType == BuffWatcher_FrameTypes.Arena) then
+            return BuffWatcher_Shared.PlayerInArena()
+        elseif (frameType == BuffWatcher_FrameTypes.Party) then
+            return usePartyFrames()
+        elseif (frameType == BuffWatcher_FrameTypes.Raid) then
+            return useRaidFrames()
+        elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
+            return BuffWatcher_Shared.PlayerInBattleground()
+        end
+
+        error("Encountered unrecognized frame type: " .. frameType)
+    end
+
+    ---@return boolean -- true if the loaded state has changed
+    self.UpdateLoaded = function()
+        local previousIsLoaded = isLoaded
+        isLoaded = determineIsLoaded()
+
+        return isLoaded ~= previousIsLoaded
+    end
+
+    self.ResetAuraState = function()
+        activeGuids = {}
+        guidToStateKeyMap = {}
+        auraIdToStateKeyMap = {}
+        stateKeyToAuraIdMap = {}
+        guidToNameplateMap = {}
+        nameplateToGuidMap = {}
     end
 
     return self;

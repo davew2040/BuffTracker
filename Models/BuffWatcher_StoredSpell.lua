@@ -7,6 +7,7 @@
 ---@field showInArena boolean
 ---@field showInRaid boolean
 ---@field showOnNameplates boolean
+---@field showInBattlegrounds boolean
 ---@field showDispelTypeOutline boolean
 ---@field duration number
 ---@field showGlow boolean
@@ -27,6 +28,7 @@ function BuffWatcher_StoredSpell:new()
         showInArena = false,
         showInRaid = false,
         showOnNameplates = false,
+        showInBattlegrounds = false,
         showDispelTypeOutline = false,
         duration = 0,
         showGlow = false,

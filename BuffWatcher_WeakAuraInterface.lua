@@ -11,14 +11,12 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     local GroupSpacingWidth = 10
 
     local storedSpellsRegistry = nil
-    local initialized = false
 
     ---@type table<integer, string>
     local partySufFrameMap = {}
     ---@type table<integer, string>
     local raidSufFrameMap = {}
 
-    local activeGuids 
     local resetNameplatesMap = function(context)
         context.unlinkAllNameplates()
         for i=1, 40 do
@@ -70,6 +68,16 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         return type .. ":" .. spellId .. ":" .. sourceGuid .. ":" .. contextName
     end
 
+    ---@param auraInfo BuffWatcher_Blizzard_AuraData
+    ---@return string
+    local getOutlineType = function(auraInfo)
+        if (auraInfo.isHelpful) then
+            return BuffWatcher_OutlineType.Buff
+        else
+            return BuffWatcher_OutlineType.Debuff
+        end 
+    end
+
     ---@param allstates table<string, any>
     ---@param context BuffWatcher_AuraContext
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
@@ -83,8 +91,6 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local auraId = auraInfo.auraInstanceID
         local spellInfo = {GetSpellInfo(auraInfo.spellId)}
 
-        DevTool:AddData(allstates, "fixme adding buff 3")
-
         if (watcherInfo.hide) then
             return false
         end
@@ -96,9 +102,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local key = getBuffDebuffStateKey(watcherInfo.buffType, watcherInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
 
         if (allstates[key] == nil) then
-            DevTool:AddData(allstates, "fixme adding buff 4")
-
-            context.addAuraIdToKeyEntry(auraId, key)
+            context.linkAuraIdToStateKey(auraId, key)
             context.addKeyByGuid(targetGuid, key)
 
             local autoHide = true
@@ -106,11 +110,13 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 autoHide = false
             end
 
-            allstates[key] = {
+            ---@type BuffWatcher_WeakAura_StateEntry
+            local newState = {
                 show = true,
                 changed = true,
                 progressType = auraInfo.duration == 0 and "static" or "timed",
                 duration = auraInfo.duration,
+                expirationTime = GetTime() + auraInfo.duration,
                 name = auraInfo.name,
                 icon = spellInfo[3],
                 caster = auraInfo.sourceUnit,
@@ -121,19 +127,32 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 size = configuration.GetDefaultSize(),
                 index = BuffWatcher_Shared_Singleton.GetAuraIndexByPriority(watcherInfo.priority),
                 targetGuid = targetGuid,
-                auraInstanceID = auraInfo.auraInstanceID
+                auraInstanceID = auraInfo.auraInstanceID,
+                triggerType = BuffWatcher_TriggerType.Buff,
+                outlineType = getOutlineType(auraInfo)
             }
+
+            allstates[key] = newState
         else
             allstates[key].duration = auraInfo.duration
             allstates[key].expirationTime = auraInfo.expirationTime
             allstates[key].changed = true
         end
 
-        DevTool:AddData(CopyTable(allstates), "fixme after stored add")
         return true
     end
 
-    ---@param allstates table<string, any>
+    ---@param auraInfo BuffWatcher_Blizzard_AuraData
+    ---@return boolean -- true if passes filter, false if fails
+    local catchAllFilter = function(auraInfo)
+        if (auraInfo.duration == 0) then 
+            return false
+        end
+
+        return true
+    end
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
     ---@param context BuffWatcher_AuraContext
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
@@ -141,36 +160,30 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     ---@param targetGuid string
     ---@param sourceGuid string
     ---@return boolean
-    local function handleBuffOrDebuffCatchAll(allstates, context, auraInfo,  targetUnit, normalizedUnit, targetGuid, sourceGuid)
+    local function handleBuffOrDebuffNpc(allstates, context, auraInfo, targetUnit, normalizedUnit, targetGuid, sourceGuid)
         local auraId = auraInfo.auraInstanceID
         local spellInfo = {GetSpellInfo(auraInfo.spellId)}
-
-        if (context.showUnlistedAuras() == BuffWatcher_ShowUnlistedType.OwnOnly and sourceGuid ~= UnitGUID("player")) then
-            return false
-        end
             
         local key = getBuffDebuffStateKey(BuffWatcher_Shared_Singleton.SpellTypes.Buff, auraInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
             
-        context.addAuraIdToKeyEntry(auraId, key)
-        context.addKeyByGuid(targetGuid, key)
-
-
-        DevTool:AddData(allstates, "fixme adding buff 4")
-
-        context.addAuraIdToKeyEntry(auraId, key)
-        context.addKeyByGuid(targetGuid, key)
-
         local autoHide = true
         if (auraInfo.duration == 0) then
             autoHide = false
         end
 
+        local triggerType = BuffWatcher_TriggerType.Buff
+        if (auraInfo.isHarmful) then
+            triggerType = BuffWatcher_TriggerType.Debuff
+        end
+
         if (allstates[key] == nil) then
-            allstates[key] = {
+            ---@type BuffWatcher_WeakAura_StateEntry
+            local newState = {
                 show = true,
                 changed = true,
                 progressType = auraInfo.duration == 0 and "static" or "timed",
                 duration = auraInfo.duration,
+                expirationTime = auraInfo.duration + GetTime(),
                 name = auraInfo.name,
                 icon = spellInfo[3],
                 caster = auraInfo.sourceUnit,
@@ -181,10 +194,14 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 unit = targetUnit,
                 size = configuration.GetDefaultSize(),
                 showDispelOutline = true,
-                targetGuid = targetGuid
+                targetGuid = targetGuid,
+                triggerType = triggerType,
+                outlineType = getOutlineType(auraInfo)
             }
-
-            DevTool:AddData(CopyTable(allstates), "fixme after catch all add")
+            allstates[key] = newState
+            context.linkAuraIdToStateKey(auraId, key)
+            context.addKeyByGuid(targetGuid, key)
+    
         else
             allstates[key].duration = auraInfo.duration
             allstates[key].expirationTime = auraInfo.expirationTime
@@ -194,7 +211,76 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         return true
     end
 
----@param allstates table<string, any>
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    ---@param auraInfo BuffWatcher_Blizzard_AuraData
+    ---@param targetUnit string
+    ---@param normalizedUnit string
+    ---@param targetGuid string
+    ---@param sourceGuid string
+    ---@return boolean
+    local function handleBuffOrDebuffCatchAll(allstates, context, auraInfo, targetUnit, normalizedUnit, targetGuid, sourceGuid)
+        local auraId = auraInfo.auraInstanceID
+        local spellInfo = {GetSpellInfo(auraInfo.spellId)}
+
+        if (context.showUnlistedAuras() == BuffWatcher_ShowUnlistedType.OwnOnly and sourceGuid ~= UnitGUID("player")) then
+            return false
+        end
+            
+        if (not catchAllFilter(auraInfo)) then
+            return false
+        end
+
+        local key = getBuffDebuffStateKey(BuffWatcher_Shared_Singleton.SpellTypes.Buff, auraInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
+
+        local autoHide = true
+        if (auraInfo.duration == 0) then
+            autoHide = false
+        end
+
+        if (allstates[key] == nil) then
+            ---@type BuffWatcher_WeakAura_StateEntry
+            local newState = {
+                show = true,
+                changed = true,
+                progressType = auraInfo.duration == 0 and "static" or "timed",
+                duration = auraInfo.duration,
+                expirationTime = auraInfo.duration + GetTime(),
+                name = auraInfo.name,
+                icon = spellInfo[3],
+                caster = auraInfo.sourceUnit,
+                autoHide = autoHide,
+                showGlow = false,
+                sizeMultiplier = configuration.GetUnlistedMultiplier(),
+                index = 10,
+                unit = targetUnit,
+                size = configuration.GetDefaultSize(),
+                showDispelOutline = true,
+                targetGuid = targetGuid,
+                triggerType = BuffWatcher_TriggerType.CatchAll,
+                outlineType = getOutlineType(auraInfo)
+            }
+            allstates[key] = newState
+            context.linkAuraIdToStateKey(auraId, key)
+            context.addKeyByGuid(targetGuid, key)
+        else
+            allstates[key].duration = auraInfo.duration
+            allstates[key].expirationTime = auraInfo.expirationTime
+            allstates[key].changed = true
+        end
+
+        return true
+    end
+
+    ---@param context BuffWatcher_AuraContext
+    ---@param sourceGuid string
+    ---@return boolean
+    local useNpcAura = function(context, sourceGuid)
+        return context.IncludeNpcs() and context.getFrameType() == BuffWatcher_FrameTypes.Nameplate 
+            and sourceGuid ~= nil and BuffWatcher_Shared.GuidIsNpc(sourceGuid)
+    end
+
+    ---@param allstates table<string, any>
     ---@param context BuffWatcher_AuraContext
     ---@param addedAura BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
@@ -208,6 +294,8 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         if (weakAuraBundle.buffs[addedAura.spellId] ~= nil) then
             local watcherInfo = weakAuraBundle.buffs[addedAura.spellId]
             return handleBuffOrDebuffAddOrUpdateStoredSpell(allstates, context, addedAura, watcherInfo, targetUnit, normalizedUnit, targetGuid, sourceGuid)
+        elseif (useNpcAura(context, sourceGuid)) then
+            return handleBuffOrDebuffNpc(allstates, context, addedAura, targetUnit, normalizedUnit, targetGuid, sourceGuid)
         elseif (context.showUnlistedAuras() ~= BuffWatcher_ShowUnlistedType.None) then
             return handleBuffOrDebuffCatchAll(allstates, context, addedAura, targetUnit, normalizedUnit, targetGuid, sourceGuid)
         end
@@ -230,6 +318,8 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             local watcherInfo = weakAuraBundle.debuffs[addedAura.spellId]
 
             return handleBuffOrDebuffAddOrUpdateStoredSpell(allstates, context, addedAura, watcherInfo, targetUnit, normalizedUnit, targetGuid, sourceGuid)
+        elseif (useNpcAura(context, sourceGuid)) then
+            return handleBuffOrDebuffNpc(allstates, context, addedAura, targetUnit, normalizedUnit, targetGuid, sourceGuid)
         elseif (context.showUnlistedAuras() ~= BuffWatcher_ShowUnlistedType.None) then
             return handleBuffOrDebuffCatchAll(allstates, context, addedAura, targetUnit, normalizedUnit, targetGuid, sourceGuid)
         end
@@ -298,35 +388,29 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         return false
     end
 
-    
-    ---@param allstates any
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
     ---@param context BuffWatcher_AuraContext
     ---@param guid string
+    ---@return boolean
     local removeAurasByGuid = function(allstates, context, guid)
-
-        local stateKeysByGuid = context.getKeysByGuid(guid)
-        
         ---@type table<string, boolean>
-        local auraInstanceIds = {}
+        local stateKeysByGuid = CopyTable(context.getKeysByGuid(guid))
 
         for key,_ in pairs(stateKeysByGuid) do
-            allstates[key].changed = true
-            allstates[key].show = false
+            if (allstates[key] ~= nil) then
+                allstates[key].changed = true
+                allstates[key].show = false
+            end
 
-            if (allstates[key].auraInstanceID ~= nil) then
-                auraInstanceIds[allstates[key].auraInstanceID] = true
+            context.removeKeyFromGuid(guid, key)
+
+            local auraIds = context.getAurasIdsByStateKey(key)
+            for _, auraId in ipairs(auraIds) do
+                context.unlinkAuraIdToStateKey(auraId, key)
             end
         end
 
-        local keysCopy = CopyTable(stateKeysByGuid)
-
-        for key,_ in keysCopy do
-            context.removeKeyByGuid(guid, key)
-        end
-
-        for auraInstanceId, _ in auraInstanceIds do
-            context.removeAuraIdToKeyEntry(auraInstanceId)
-        end
+        return true
     end
 
     ---@param allstates any
@@ -341,6 +425,8 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         if (auraData.sourceUnit ~= nil) then
             sourceGuid = UnitGUID(auraData.sourceUnit)
         end
+
+        --fixme - filter npc minor units
 
         if (auraData.isHelpful and context.includeBuffsAndCasts()) then
             local result = handleBuffAddOrUpdate(allstates, context, auraData, targetUnit, targetUnit, targetGuid, sourceGuid)
@@ -374,15 +460,6 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             return false 
         end
 
-        if (normalizedUnit == nil) then
-            DevTool:AddData("ignoring unit " .. normalizedUnit)
-            return false
-        end
-
-        if (not filterByInstanceType(normalizedUnit, context.getFrameType())) then
-            return false
-        end
-
         if (not filterByUnit(targetUnit, context.getFrameType())) then
             return false
         end
@@ -391,8 +468,11 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             return false
         end
 
+        if (BuffWatcher_Shared.UnitIsMinor(targetUnit)) then
+            return false
+        end
+
         local targetGuid = UnitGUID(targetUnit)
-        local weakAuraBundle = context.GetWeakAuraBundle()
 
         if (auraData.addedAuras ~= nil) then
             for i,addedAura in ipairs(auraData.addedAuras) do 
@@ -420,14 +500,14 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 local key = context.getKeyByAuraId(removedAuraId) 
 
                 if (key ~= nil) then
+                    context.unlinkAuraIdToStateKey(removedAuraId, key)
+
                     if (allstates[key] ~= nil) then
                         allstates[key].show = false
                         allstates[key].changed = true
-                        context.removeKeyByGuid(allstates[key].targetGuid, key)
+                        context.removeKeyFromGuid(allstates[key].targetGuid, key)
                         hasUpdates = true
                     end
-
-                    context.removeAuraIdToKeyEntry(removedAuraId)
                 end
             end
         end
@@ -444,16 +524,14 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         end
 
         if (IsInRaid()) then
-            for i=1, GetNumRaidMembers() do
+            for i=1, GetNumGroupMembers() do
                 local unit = BuffWatcher_Shared_Singleton.raidUnits[i]
                 local unitGuid = UnitGUID(unit)
                 if (unitGuid == sourceGuid) then
                     return unit
                 end
             end
-        end
-
-        if (IsInGroup()) then
+        elseif (IsInGroup()) then
             for i=1, GetNumGroupMembers() do
                 local unit = BuffWatcher_Shared_Singleton.partyUnits[i]
                 local unitGuid = UnitGUID(unit)
@@ -521,6 +599,10 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             local watcherInfo = weakAuraBundle.casts[spellId]
             local key = getCastStateKey(watcherInfo.buffType, spellId, sourceGuid, context.getName())
 
+            if (watcherInfo.hide) then
+                return false
+            end
+    
             if (allstates[key] == nil) then
                 context.addKeyByGuid(sourceGuid, key)
 
@@ -541,7 +623,10 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                     unit = sourceUnit,
                     size = configuration.GetDefaultSize(),
                     index = BuffWatcher_Shared_Singleton.GetAuraIndexByPriority(watcherInfo.priority),
-                    targetGuid = sourceGuid
+                    targetGuid = sourceGuid,
+                    auraInstanceID = 0,
+                    triggerType = BuffWatcher_TriggerType.Cast,
+                    outlineType = BuffWatcher_OutlineType.Buff
                 }
                 allstates[key] = newState
             else
@@ -551,6 +636,96 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             end
 
             hasUpdates = true
+        end
+
+        return hasUpdates
+    end
+
+        ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    ---@param unitGuid string
+    ---@param unitLabel string
+    ---@return true
+    local forceAurasByGuid = function(allstates, context, unitGuid, unitLabel) 
+        local activeGuids = context.GetActiveGuidsSet()
+
+        AuraUtil.ForEachAura(unit, "HELPFUL", nil, 
+            function(auraInfo) 
+                ---@cast auraInfo BuffWatcher_Blizzard_AuraData
+                if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unitLabel, unitGuid)) then
+                    hasUpdates = true
+                end
+            end,
+            true
+        )
+        AuraUtil.ForEachAura(unit, "HARMFUL", nil, 
+            function(auraInfo) 
+                ---@cast auraInfo BuffWatcher_Blizzard_AuraData
+                if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unitLabel, unitGuid)) then
+                    hasUpdates = true
+                end
+            end,
+            true
+        )
+    end
+
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    ---@param unitGuid string
+    ---@param unitLabel string
+    ---@return boolean
+    local forceAurasByGuid = function(allstates, context, unitGuid, unitLabel) 
+        local hasUpdates = false
+
+        AuraUtil.ForEachAura(unitLabel, "HELPFUL", nil, 
+            function(auraInfo) 
+                ---@cast auraInfo BuffWatcher_Blizzard_AuraData
+                if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unitLabel, unitGuid)) then
+                    hasUpdates = true
+                end
+            end,
+            true
+        )
+        AuraUtil.ForEachAura(unitLabel, "HARMFUL", nil, 
+            function(auraInfo) 
+                ---@cast auraInfo BuffWatcher_Blizzard_AuraData
+                if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unitLabel, unitGuid)) then
+                    hasUpdates = true
+                end
+            end,
+            true
+        )
+
+        return hasUpdates
+    end
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    local doAuraPartialUpdate = function(allstates, context) 
+        local hasUpdates = false
+
+        local currentUnits = context.GetUnits()
+        local activeGuids = context.GetActiveGuidsSet()
+
+        ---@type table<string, boolean>
+        local currentGuids = {}
+
+        for unit, unitGuid in pairs(currentUnits) do
+            currentGuids[unitGuid] = true
+
+            if (activeGuids[unitGuid] == nil) then
+                forceAurasByGuid(allstates, context, unitGuid, unit)
+
+                activeGuids[unitGuid] = true
+            end
+        end
+
+        for seenGuid, _ in pairs(activeGuids) do
+            if (currentGuids[seenGuid] == nil) then
+                removeAurasByGuid(allstates, context, seenGuid)
+                hasUpdates = true
+            end
         end
 
         return hasUpdates
@@ -569,58 +744,76 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             return false
         end
 
-        local groupUnits = BuffWatcher_Shared.GetGroupUnits()
-
-        DevTool:AddData(groupUnits, "fixme finding group members")
-
-        ---@type table<string, boolean>
-        local currentGuids = {}
-
-        for unit, unitGuid in pairs(groupUnits) do
-            currentGuids[unitGuid]= true
-
-            DevTool:AddData("fixme processing unit " .. unit)
-            if (context.seenGuids[unitGuid] == nil) then
-                AuraUtil.ForEachAura(unit, "HELPFUL", nil, 
-                    function(auraInfo) 
-                        ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                        if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unit, unitGuid)) then
-                            hasUpdates = true
-                        end
-                    end,
-                    true
-                )
-                AuraUtil.ForEachAura(unit, "HARMFUL", nil, 
-                    function(auraInfo) 
-                        ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                        if (handleBuffOrDebuffAddOrUpdate(allstates, context, auraInfo, unit, unitGuid)) then
-                            hasUpdates = true
-                        end
-                    end,
-                    true
-                )
-
-                context.seenGuids[unitGuid] = true
-            end
+        if (doAuraPartialUpdate(allstates, context, ...)) then
+            hasUpdates = true
         end
-        
-        DevTool:AddData(context.seenGuids, "fixme seenGuids")
-        DevTool:AddData(currentGuids, "fixme currentGuids")
-
-        for seenGuid, _ in pairs(context.seenGuids) do
-            if (currentGuids[seenGuid] == nil) then
-                DevTool:AddData(seenGuid, "fixme removing guid")
-                removeAurasByGuid(allstates, context, seenGuid)
-            end
-        end
-
-        DevTool:AddData(hasUpdates, "fixme after auras loop")
 
         return hasUpdates
     end
 
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    local clearAllAuras = function(allstates, context)
+        for k,v in pairs(allstates) do
+            allstates[k].show = false
+            allstates[k].changed = true 
+            allstates[k] = nil
+        end
+
+        context.ResetAuraState()
+    end
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    local doFullUpdate = function(allstates, context)
+        clearAllAuras(allstates, context)
+
+        doAuraPartialUpdate(allstates, context)
+
+        return true
+    end
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    ---@param guid string 
+    local clearGuidAuras = function(allstates, context, guid)
+    end
+
     self.IsRegistered = function()
         return storedSpellsRegistry ~= nil
+    end
+
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    ---@param unitGuid string
+    ---@param unitName string
+    local refreshUnitAuras = function(allstates, context, unitGuid, unitName)
+        removeAurasByGuid(allstates, context, unitGuid)
+
+        forceAurasByGuid(allstates, context, unitGuid, unitName)
+
+        return true
+    end
+
+    ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
+    ---@param context BuffWatcher_AuraContext
+    local refreshLoaded = function(allstates, context)
+        local loadedChanged = context.UpdateLoaded()
+
+        if (loadedChanged) then
+            if (context.GetIsLoaded()) then
+                DevTool:AddData("loading context " .. context.getName())
+                doFullUpdate(allstates, context)
+            else
+                DevTool:AddData("unloading context " .. context.getName())
+                clearAllAuras(allstates, context)
+            end
+
+            return true
+        end
+
+        return false
     end
 
     self.DelegateTsu = function(allstates, event, contextName, ...)
@@ -633,42 +826,52 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local hasUpdates = false
         local eventSubtype = select(2, ...)
 
-        if (event == "COMBAT_LOG_EVENT_UNFILTERED" and eventSubtype == "SPELL_CAST_SUCCESS") then
-            local result = handleCasts(allstates, context, ...) 
-            if (result == true) then
-                hasUpdates = true
+        if (event == "STATUS" 
+                or event == "PLAYER_ENTERING_WORLD"
+                or event == "GROUP_ROSTER_UPDATE"
+                or event == "PARTY_CONVERTED_TO_RAID") then
+            if refreshLoaded(allstates, context) then
+                return true
+            end
+        end
+
+        if (not context.GetIsLoaded()) then
+            return false
+        end
+
+        if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
+            if (eventSubtype == "SPELL_CAST_SUCCESS") then
+                local result = handleCasts(allstates, context, ...)
+                if (result == true) then
+                    hasUpdates = true
+                end
+            elseif (eventSubtype == "UNIT_DIED") then
+                local unitGuid = select(9, ...)
+                removeAurasByGuid(allstates, context, unitGuid)
             end
         elseif (event == "UNIT_AURA") then
             return handleBuffsAndDebuffs(allstates, context, ...)
         elseif (event == "NAME_PLATE_UNIT_ADDED") then
+            if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
+                return false
+            end
+
             local nameplate = select(1, ...)
             local unitGuid = UnitGUID(nameplate)
 
-            for stateKey,_ in pairs(context.getKeysByGuid(unitGuid)) do
-                if (allstates[stateKey] ~= nil) then
-                    allstates[stateKey].unit = nameplate
-                    allstates[stateKey].show = true
-                    allstates[stateKey].changed = true
-                    hasUpdates = true
-                end
-            end
+            hasUpdates = refreshUnitAuras(allstates, context, unitGuid, nameplate)
 
             context.linkNameplateToGuid(nameplate, unitGuid)
         elseif (event == "NAME_PLATE_UNIT_REMOVED") then
-            local nameplate = select(1, ...)
+            if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
+                return false
+            end
 
+            local nameplate = select(1, ...)
             local guid = context.getGuidByNameplate(nameplate)
 
             if (guid ~= nil) then
-                for stateKey, _ in pairs(context.getKeysByGuid(guid)) do
-                    if (allstates[stateKey] ~= nil) then
-                        allstates[stateKey].unit = nil
-                        allstates[stateKey].show = false
-                        allstates[stateKey].changed = true
-                        hasUpdates = true
-                    end
-                end
-    
+                hasUpdates = removeAurasByGuid(allstates, context, guid)
                 context.unlinkNameplateFromGuid(nameplate, guid)
             end
         elseif (event == "GROUP_ROSTER_UPDATE") then
@@ -686,16 +889,22 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     ---@param regionData any
     ---@return number
     local getAuraSize = function(context, regionData)
-        if (not regionData.data.config.triggerType) then
+        if (not regionData.region.state.triggerType) then
             return regionData.data.width
         end
 
         ---@type BuffWatcher_TriggerType
-        local type = regionData.data.config.triggerType
+        local type = regionData.region.state.triggerType
         local defaultSize = context.GetIconSize()
 
         if (type == BuffWatcher_TriggerType.CatchAll) then
-            return defaultSize * configuration.GetUnlistedMultiplier()
+            local multiplier = configuration.GetUnlistedMultiplier()
+
+            if (not context.useDefaultUnlistedMultiplier) then
+                multiplier = context.customUnlistedMultiplier
+            end
+
+            return defaultSize * multiplier
         else
             return defaultSize
         end
@@ -714,7 +923,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
             for _, regionData in ipairs(frameRegions) do
                 ---@type BuffWatcher_TriggerType
-                local triggerType = regionData.data.config.triggerType
+                local triggerType = regionData.region.state.triggerType
 
                 if (triggerType ~= BuffWatcher_TriggerType.CatchAll) then
                     local size = getAuraSize(context, regionData)
@@ -750,19 +959,9 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             local currentRow = 1
             y = 0
 
-            if (growthDirection == BuffWatcher_GrowDirection.Right) then
-                if (x < 32) then
-                    x = 32
-                end
-            else 
-                if (x > -32) then
-                    x = -32
-                end
-            end
-
             for _, regionData in ipairs(frameRegions) do
                 ---@type BuffWatcher_TriggerType
-                local triggerType = regionData.data.config.triggerType
+                local triggerType = regionData.region.state.triggerType
 
                 if (triggerType == BuffWatcher_TriggerType.CatchAll) then
                     local size = getAuraSize(context, regionData)
@@ -831,9 +1030,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 if (state.unit ~= nil) then
                     local frame = C_NamePlate.GetNamePlateForUnit(state.unit)
 
-                    if (frame == nil) then
-                        DevTool:AddData({frame = frame, unit = state.unit}, "fixme nil nameplate")
-                    else 
+                    if (frame ~= nil) then
                         framesToRegion[frame] = framesToRegion[frame] or {}
                         table.insert(framesToRegion[frame], activeRegion)
                     end
@@ -849,8 +1046,6 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     ---@param activeRegions any
     self.DelegateCustomGrow = function(contextName, newPositions, activeRegions)
         local context = contextStore.GetContexts()[contextName]
-
-        -- DevTool:AddData(CopyTable(activeRegions, true), "performing custom grow")
 
         if (context == nil) then
             error("Couldn't find context " .. contextName)

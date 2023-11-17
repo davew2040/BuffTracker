@@ -390,7 +390,10 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param spellRegistry BuffWatcher_StoredSpellsRegistry
     ---@param contextMap table<string, BuffWatcher_AuraContext>
     self.Export = function(spellRegistry, contextMap)
+        -- live
         local weakAuraRoot = WeakAurasSaved.displays
+        -- -- debug
+        -- local weakAuraRoot = CopyTable(WeakAurasSaved.displays, true)
 
         DevTool:AddData(CopyTable(weakAuraRoot, true), "fixme exporting contexts")
 

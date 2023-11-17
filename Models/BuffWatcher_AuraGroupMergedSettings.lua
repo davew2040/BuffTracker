@@ -14,4 +14,7 @@
 ---@field yOffset integer,
 ---@field selfPoint string,
 ---@field anchorPoint string
+---@field unlistedRowCount integer
+---@field useDefaultUnlistedMultiplier boolean
+---@field customUnlistedMultiplier number
 BuffWatcher_AuraGroupMergedSettings = {}
