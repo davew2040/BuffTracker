@@ -9,15 +9,23 @@ function BuffWatcher_Shared:new()
     self.SufRaidFramePrefix = 'SUFHeaderraidUnitButton';
 
     ---@type table<integer, string>
+    self.partyUnitsByIndex = {}
+    ---@type table<integer, string>
+    self.raidUnitsByIndex = {}
+    ---@type table<integer, string>
+    self.arenaUnitsByIndex = {}
+    ---@type table<integer, string>
+    self.nameplateUnitsByIndex = {}
+
+    ---@type table<string, boolean>
     self.partyUnits = {}
-    ---@type table<integer, string>
+    ---@type table<string, boolean>
     self.raidUnits = {}
-    ---@type table<integer, string>
+    ---@type table<string, boolean>
     self.arenaUnits = {}
-    ---@type table<integer, string>
-    self.partySufFrameMap = {}
-    ---@type table<integer, string>
-    self.raidSufFrameMap = {}
+    ---@type table<string, boolean>
+    self.nameplateUnits = {}
+
 
     self.GetCastRecordKey = function(castRecord) 
         return castRecord.type .. ":" .. castRecord.spellId
@@ -35,21 +43,21 @@ function BuffWatcher_Shared:new()
     end
 
     self.IsPartyUnit = function(unitName) 
-        return string.find(unitName, 'party') == 1
+        return self.partyUnits[unitName] ~= nil
     end
 
     self.IsRaidUnit = function(unitName) 
-        return string.find(unitName, 'raid') == 1
+        return self.raidUnits[unitName] ~= nil
     end
 
     self.IsArenaUnit = function(unitName) 
-        return string.find(unitName, 'arena') == 1
+        return self.arenaUnits[unitName] ~= nil
     end
 
     ---@param unitName string
     ---@return boolean
     self.IsNameplateUnit = function(unitName) 
-        return string.find(unitName, 'nameplate') == 1
+        return self.nameplateUnits[unitName] ~= nil
     end
 
     self.IsPartyOrRaidUnit = function(unitName) 
@@ -303,23 +311,23 @@ function BuffWatcher_Shared:new()
 
     local initialize = function()
         for i=1, 20 do
-            self.partyUnits[i] = "party" .. i
+            self.partyUnitsByIndex[i] = "party" .. i
+            self.partyUnits["party" .. i] = true
         end
 
         for i=1, 40 do
-            self.raidUnits[i] = "raid" .. i
+            self.raidUnitsByIndex[i] = "raid" .. i
+            self.raidUnits["raid" .. i] = true
         end
 
         for i=1, 25 do
-            self.arenaUnits[i] = "arena" .. i
-        end
-
-        for i=1, 20 do
-            self.partySufFrameMap[i] = self.SufPartyFramePrefix .. tostring(i)
+            self.arenaUnitsByIndex[i] = "arena" .. i
+            self.arenaUnits["arena" .. i] = true
         end
 
         for i=1, 40 do
-            self.raidSufFrameMap[i] = self.SufRaidFramePrefix .. tostring(i)
+            self.nameplateUnitsByIndex[i] = "nameplate" .. i
+            self.nameplateUnits["nameplate" .. i] = true
         end
     end
 
@@ -392,18 +400,22 @@ end
 
 ---@return boolean
 function BuffWatcher_Shared.PlayerInBattleground()
-    local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
+    -- local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
 
-    local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
+    -- local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
 
-    return instanceType == "pvp" and instanceType ~= "arena"
+    -- return instanceType == "pvp" and instanceType ~= "arena"
+
+    local isBattleground = C_PvP.IsBattleground()
+
+    return isBattleground
 end
 
 ---@return boolean
 function BuffWatcher_Shared.PlayerInArena()
-    local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
+    local isArena, _ = IsActiveBattlefieldArena()
 
-    return instanceType == "pvp" and instanceType == "arena"
+    return isArena
 end
 
 ---@return BuffWatcher_Blizzard_AuraData[]
@@ -484,13 +496,13 @@ function BuffWatcher_Shared.GetGroupUnits()
 
     for i=1, GetNumGroupMembers() do
         if IsInRaid() then
-            local raidUnit = BuffWatcher_Shared_Singleton.raidUnits[i]
+            local raidUnit = BuffWatcher_Shared_Singleton.raidUnitsByIndex[i]
             local raidUnitGuid = UnitGUID(raidUnit)
             if (raidUnitGuid ~= nil and raidUnitGuid ~= playerGuid) then
                 result[raidUnit] = raidUnitGuid 
             end
         elseif IsInGroup() then
-            local partyUnit = BuffWatcher_Shared_Singleton.partyUnits[i]
+            local partyUnit = BuffWatcher_Shared_Singleton.partyUnitsByIndex[i]
             local partyUnitGuid = UnitGUID(partyUnit)
             if (partyUnitGuid ~= nil and partyUnitGuid ~= playerGuid) then
                 result[partyUnit] = partyUnitGuid 

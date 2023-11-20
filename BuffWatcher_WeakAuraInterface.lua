@@ -456,19 +456,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local normalizedUnit = BuffWatcher_Shared_Singleton.NormalizeUnit(targetUnit)
         local auraData = select(2, ...)
 
-        if (targetUnit == 'target' or targetUnit == 'softenemy') then
-            return false 
-        end
-
-        if (not filterByUnit(targetUnit, context.getFrameType())) then
-            return false
-        end
-
-        if (filterByHostility(targetUnit, context.getFrameType(), context.getIsHostile())) then
-            return false
-        end
-
-        if (BuffWatcher_Shared.UnitIsMinor(targetUnit)) then
+        if (not context.FilterEvent(targetUnit)) then
             return false
         end
 
@@ -525,7 +513,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
         if (IsInRaid()) then
             for i=1, GetNumGroupMembers() do
-                local unit = BuffWatcher_Shared_Singleton.raidUnits[i]
+                local unit = BuffWatcher_Shared_Singleton.raidUnitsByIndex[i]
                 local unitGuid = UnitGUID(unit)
                 if (unitGuid == sourceGuid) then
                     return unit
@@ -533,7 +521,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             end
         elseif (IsInGroup()) then
             for i=1, GetNumGroupMembers() do
-                local unit = BuffWatcher_Shared_Singleton.partyUnits[i]
+                local unit = BuffWatcher_Shared_Singleton.partyUnitsByIndex[i]
                 local unitGuid = UnitGUID(unit)
                 if (unitGuid == sourceGuid) then
                     return unit
@@ -543,7 +531,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
         if (BuffWatcher_Shared.PlayerInArena()) then
             for i=1, 20 do
-                local unit = BuffWatcher_Shared_Singleton.arenaUnits[i]
+                local unit = BuffWatcher_Shared_Singleton.arenaUnitsByIndex[i]
                 local unitGuid = UnitGUID(unit)
                 if (unitGuid == nil) then
                     return nil
@@ -579,15 +567,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             return false
         end
 
-        if (not filterByInstanceType(sourceUnit, context.getFrameType())) then
-            return false
-        end
-
-        if (not filterByUnit(sourceUnit, context.getFrameType())) then
-            return false
-        end
-
-        if (filterByHostility(sourceUnit, context.getFrameType(), context.getIsHostile())) then
+        if (not context.FilterEvent(sourceUnit)) then
             return false
         end
 
@@ -895,7 +875,11 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
         ---@type BuffWatcher_TriggerType
         local type = regionData.region.state.triggerType
-        local defaultSize = context.GetIconSize()
+        local size = context.GetIconSize()
+
+        if (context.getFrameType() == BuffWatcher_FrameTypes.Nameplate) then
+            size = size * 0.5
+        end
 
         if (type == BuffWatcher_TriggerType.CatchAll) then
             local multiplier = configuration.GetUnlistedMultiplier()
@@ -904,9 +888,9 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 multiplier = context.customUnlistedMultiplier
             end
 
-            return defaultSize * multiplier
+            return size * multiplier
         else
-            return defaultSize
+            return size
         end
     end
 
@@ -943,15 +927,15 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
             if (not isNameplate) then
                 if (growthDirection == BuffWatcher_GrowDirection.Right) then
+                    if (x < context.GetIconSize()) then
+                        x = context.GetIconSize()
+                    end
                     x = x + GroupSpacingWidth
-                    if (x < 32) then
-                        x = 32
-                    end
                 else 
-                    x = x - GroupSpacingWidth
-                    if (x > -32) then
-                        x = -32
+                    if (x > -context.GetIconSize()) then
+                        x = -context.GetIconSize()
                     end
+                    x = x - GroupSpacingWidth
                 end
             end
 
@@ -994,7 +978,6 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     local doCustomGrowUnitFrames = function(context, newPositions, activeRegions)
         ---@type table<any, any>
         local framesToRegions = {}
-        local bundle = context.GetWeakAuraBundle()
 
         for i = 1, #activeRegions do
             local activeRegion = activeRegions[i]

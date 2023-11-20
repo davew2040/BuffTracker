@@ -360,13 +360,13 @@ function BuffWatcher_AuraContext:new(params, configuration)
 
         for i=1, GetNumGroupMembers() do
             if IsInRaid() then
-                local raidUnit = BuffWatcher_Shared_Singleton.raidUnits[i]
+                local raidUnit = BuffWatcher_Shared_Singleton.raidUnitsByIndex[i]
                 local raidUnitGuid = UnitGUID(raidUnit)
                 if (raidUnitGuid ~= nil and raidUnitGuid ~= playerGuid) then
                     result[raidUnit] = raidUnitGuid 
                 end
             elseif IsInGroup() then
-                local partyUnit = BuffWatcher_Shared_Singleton.partyUnits[i]
+                local partyUnit = BuffWatcher_Shared_Singleton.partyUnitsByIndex[i]
                 local partyUnitGuid = UnitGUID(partyUnit)
                 if (partyUnitGuid ~= nil and partyUnitGuid ~= playerGuid) then
                     result[partyUnit] = partyUnitGuid 
@@ -383,7 +383,7 @@ function BuffWatcher_AuraContext:new(params, configuration)
         local result = {}
 
         for i=1, GetNumArenaOpponents() do
-            local arenaUnit = BuffWatcher_Shared_Singleton.arenaUnits[i]
+            local arenaUnit = BuffWatcher_Shared_Singleton.arenaUnitsByIndex[i]
             local arenaUnitGuid = UnitGUID(arenaUnit)
             if (arenaUnitGuid) then
                 result[arenaUnitGuid] = arenaUnitGuid 
@@ -472,6 +472,92 @@ function BuffWatcher_AuraContext:new(params, configuration)
         isLoaded = determineIsLoaded()
 
         return isLoaded ~= previousIsLoaded
+    end
+
+
+    ---@param unitName string
+    ---@param frameType BuffWatcher_FrameTypes
+    ---@return boolean
+    local filterByInstanceType = function(unitName, frameType)
+        if (frameType == BuffWatcher_FrameTypes.Raid) then
+            local isArena = IsActiveBattlefieldArena()
+            if (isArena) then
+                return true
+            end
+            return IsInRaid()
+        elseif (frameType == BuffWatcher_FrameTypes.Party) then
+            if (BuffWatcher_Shared:PlayerInBattleground()) then
+                return not IsInRaid()
+            end
+
+            local isGroup = not IsInRaid() and IsInGroup()
+            return isGroup
+        elseif (frameType == BuffWatcher_FrameTypes.Arena) then
+            local isArena = IsActiveBattlefieldArena()
+            return isArena
+        end
+
+        return true
+    end
+
+    ---@param unitName string
+    ---@param frameType BuffWatcher_FrameTypes
+    ---@return boolean
+    local filterByUnit = function(unitName, frameType)
+        if (frameType == BuffWatcher_FrameTypes.Raid) then
+            local isRaid = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName) or
+                BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+                or unitName == 'player'
+            return isRaid 
+        elseif (frameType == BuffWatcher_FrameTypes.Party) then
+            local isGroup = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName) or
+                BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+                or unitName == 'player'
+            return isGroup
+        elseif (frameType == BuffWatcher_FrameTypes.Arena) then
+            return BuffWatcher_Shared_Singleton.IsArenaUnit(unitName)
+        elseif (frameType == BuffWatcher_FrameTypes.Nameplate) then
+            return BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)
+        elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
+            return BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
+        end
+
+        return false
+    end
+
+    ---@param unitName string
+    ---@param frameType BuffWatcher_FrameTypes
+    ---@param contextIsHostile boolean
+    ---@return boolean
+    local filterByHostility = function(unitName, frameType, contextIsHostile)
+        if (frameType == BuffWatcher_FrameTypes.Nameplate and BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)) then
+            local unitIsHostile = not UnitIsFriend('player', unitName)
+            return unitIsHostile ~= contextIsHostile
+        end
+
+        return false
+    end
+
+    ---@param targetUnit string
+    ---@return boolean -- false if the filter fails and event should not be processed
+    self.FilterEvent = function(targetUnit)
+        if (targetUnit == 'target' or targetUnit == 'softenemy') then
+            return false
+        end
+
+        if (not filterByUnit(targetUnit, frameType)) then
+            return false
+        end
+
+        if (filterByHostility(targetUnit, frameType, isHostile)) then
+            return false
+        end
+
+        if (BuffWatcher_Shared.UnitIsMinor(targetUnit)) then
+            return false
+        end
+
+        return true
     end
 
     self.ResetAuraState = function()
