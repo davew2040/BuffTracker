@@ -1,11 +1,11 @@
 local LGF = LibStub("LibGetFrame-1.0")
 
----@class BuffWatcher_WeakAuraInterface
-BuffWatcher_WeakAuraInterface = {}
+---@class BuffWatcher_WatcherService
+BuffWatcher_WatcherService = {}
 
 ---@param configuration BuffWatcher_Configuration
 ---@param contextStore BuffWatcher_AuraContextStore
-function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
+function BuffWatcher_WatcherService:new(configuration, contextStore)
     self = {};
 
     local GroupSpacingWidth = 10
@@ -431,18 +431,17 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         return hasUpdates
     end
 
-    ---@param allstates any
     ---@param context BuffWatcher_AuraContext
-    ---@param ... any
+    ---@param targetUnit string
+    ---@param eventData BuffWatcher_Blizzard_UnitAuraUpdateInfo
     local handleBuffsAndDebuffs = function(
-        allstates,
-        context,
-        ...)
-        local hasUpdates = false
+            context,
+            targetUnit,
+            eventData
+        )
 
-        local targetUnit = select(1, ...)
-        local normalizedUnit = BuffWatcher_Shared_Singleton.NormalizeUnit(targetUnit)
-        local auraData = select(2, ...)
+        DevTool:AddData(eventData, "fixme inside handleBuffsAndDebuffs")
+
 
         if (not context.FilterEvent(targetUnit)) then
             return false
@@ -450,45 +449,113 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
 
         local targetGuid = UnitGUID(targetUnit)
 
-        if (auraData.addedAuras ~= nil) then
-            for i,addedAura in ipairs(auraData.addedAuras) do 
-                if (handleBuffOrDebuffAddOrUpdate(allstates, context, addedAura, targetUnit, targetGuid)) then
-                    hasUpdates = true
-                end
-            end
-        end
+        if (eventData.addedAuras ~= nil) then
+            for i,addedAura in ipairs(eventData.addedAuras) do 
+                -- if (handleBuffOrDebuffAddOrUpdate(allstates, context, addedAura, targetUnit, targetGuid)) then
+                --     hasUpdates = true
+                -- end
+                local parentFrame = LGF.GetUnitFrame("player", 
+                    { 
+                        ignorePlayerFrame = true, 
+                        ignoreTargetFrame = true, 
+                        ignoreTargettargetFrame = true 
+                    })
 
-        if (auraData.updatedAuraInstanceIDs ~= nil) then
-            for i,updatedAuraId in ipairs(auraData.updatedAuraInstanceIDs) do
-                local updateInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(targetUnit, updatedAuraId)
-                ---@cast updateInfo BuffWatcher_Blizzard_AuraData
+                DevTool:AddData(parentFrame, "fixme parentFrame")
 
-                if (updateInfo ~= nil) then
-                    if (handleBuffOrDebuffAddOrUpdate(allstates, context, updateInfo, targetUnit, targetGuid)) then
-                        hasUpdates = true
+                local spellInfo = { GetSpellInfo(addedAura.spellId) }
+
+                if (spellInfo[3] ~= 0 and parentFrame ~= nil) then
+                    for x=1,10 do
+                        for y=1,10 do
+                            DevTool:AddData(spellInfo, "fixme spellInfo")
+
+                            local frame = CreateFrame("Frame", "test spell frame", parentFrame)
+                            frame:SetFrameLevel(100)
+                            frame:SetSize(64, 64)
+                            frame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", x*80, -y*80)
+                            frame.texture = frame:CreateTexture("test texture frame", "OVERLAY", nil, -8)
+                            frame.texture:SetTexture(spellInfo[3])
+                            frame.texture:SetAllPoints(frame)
+        
+                            local border1 = CreateFrame("Frame", "MyAddonBorder1", frame)
+                            Mixin(border1, BackdropTemplateMixin)
+
+                            border1:SetPoint("TOPLEFT", frame, "TOPLEFT", -x, x)
+                            border1:SetPoint("TOPRIGHT", frame, "TOPRIGHT", x, x)
+                            border1:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -x, -x)
+                            border1:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", x, -x)
+                            border1:SetBackdrop({
+                                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                                edgeSize = x*4
+                            })
+                            border1:SetBackdropBorderColor(1, 0, 0, 1)
+                        end
                     end
+                    -- DevTool:AddData(spellInfo, "fixme spellInfo")
+
+                    -- local frame = CreateFrame("Frame", "test spell frame", parentFrame)
+                    -- frame:SetFrameLevel(100)
+                    -- frame:SetSize(64, 64)
+                    -- frame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 200, -200)
+                    -- frame.texture = frame:CreateTexture("test texture frame", "OVERLAY", nil, -8)
+                    -- frame.texture:SetTexture(spellInfo[3])
+                    -- frame.texture:SetAllPoints(frame)
+
+                    -- local border1 = CreateFrame("Frame", "MyAddonBorder1", frame)
+                    -- Mixin(border1, BackdropTemplateMixin)
+                    -- border1:SetAllPoints(frame)
+                    -- border1:SetBackdrop({
+                    --     edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+                    --     edgeSize = 8
+                    -- })
+                    -- border1:SetBackdropBorderColor(1, 0, 0, 1)
+
+                    -- local border2 = CreateFrame("Frame", "MyAddonBorder2", border1)
+                    -- Mixin(border2, BackdropTemplateMixin)
+                    -- border2:SetAllPoints(frame)
+                    -- border2:SetBackdrop({
+                    --     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                    --     tile = false,
+                    --     tileSize = 16,
+                    --     edgeSize = 2,
+                    --     insets = { left = 100, right = 100, top = 100, bottom = 100 },
+                    -- })
+                    -- border2:SetBackdropBorderColor(0, 1, 0, 1)
                 end
+
             end
         end
 
-        if (auraData.removedAuraInstanceIDs ~= nil) then
-            for i,removedAuraId in ipairs(auraData.removedAuraInstanceIDs) do
-                local key = context.getKeyByAuraId(removedAuraId) 
+        -- if (eventData.updatedAuraInstanceIDs ~= nil) then
+        --     for i,updatedAuraId in ipairs(eventData.updatedAuraInstanceIDs) do
+        --         local updateInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(targetUnit, updatedAuraId)
+        --         ---@cast updateInfo BuffWatcher_Blizzard_AuraData
 
-                if (key ~= nil) then
-                    context.unlinkAuraIdToStateKey(removedAuraId, key)
+        --         if (updateInfo ~= nil) then
+        --             if (handleBuffOrDebuffAddOrUpdate(allstates, context, updateInfo, targetUnit, targetGuid)) then
+        --                 hasUpdates = true
+        --             end
+        --         end
+        --     end
+        -- end
 
-                    if (allstates[key] ~= nil) then
-                        allstates[key].show = false
-                        allstates[key].changed = true
-                        context.removeKeyFromGuid(allstates[key].targetGuid, key)
-                        hasUpdates = true
-                    end
-                end
-            end
-        end
+        -- if (eventData.removedAuraInstanceIDs ~= nil) then
+        --     for i,removedAuraId in ipairs(eventData.removedAuraInstanceIDs) do
+        --         local key = context.getKeyByAuraId(removedAuraId) 
 
-        return hasUpdates
+        --         if (key ~= nil) then
+        --             context.unlinkAuraIdToStateKey(removedAuraId, key)
+
+        --             if (allstates[key] ~= nil) then
+        --                 allstates[key].show = false
+        --                 allstates[key].changed = true
+        --                 context.removeKeyFromGuid(allstates[key].targetGuid, key)
+        --                 hasUpdates = true
+        --             end
+        --         end
+        --     end
+        -- end
     end
 
     ---@param context BuffWatcher_AuraContext
@@ -784,73 +851,78 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         return false
     end
 
-    self.DelegateTsu = function(allstates, event, contextName, ...)
-        local context = contextStore.GetContexts()[contextName]
+    ---comment
+    ---@param targetUnit string
+    ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
+    self.HandleEvent_UnitAura = function(targetUnit, updateInfo)
 
-        if (context == nil) then
-            return false
+        DevTool:AddData("handling UNIT_AURA")
+
+        DevTool:AddData(targetUnit, "fixme targetUnit")
+        DevTool:AddData(updateInfo, "fixme updateInfo")
+
+        for key, context in pairs(contextStore.GetContexts()) do
+            --if (context.GetIsLoaded()) then
+                handleBuffsAndDebuffs(context, targetUnit, updateInfo)
+            --end
         end
+        -- if (event == "STATUS" 
+        --         or event == "PLAYER_ENTERING_WORLD"
+        --         or event == "GROUP_ROSTER_UPDATE"
+        --         or event == "PARTY_CONVERTED_TO_RAID") then
+        --     if refreshLoaded(allstates, context) then
+        --         return true
+        --     end
+        -- end
 
-        local hasUpdates = false
-        local eventSubtype = select(2, ...)
+        -- if (not context.GetIsLoaded()) then
+        --     return false
+        -- end
 
-        if (event == "STATUS" 
-                or event == "PLAYER_ENTERING_WORLD"
-                or event == "GROUP_ROSTER_UPDATE"
-                or event == "PARTY_CONVERTED_TO_RAID") then
-            if refreshLoaded(allstates, context) then
-                return true
-            end
-        end
+        -- if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
+        --     if (eventSubtype == "SPELL_CAST_SUCCESS") then
+        --         local result = handleCasts(allstates, context, ...)
+        --         if (result == true) then
+        --             hasUpdates = true
+        --         end
+        --     elseif (eventSubtype == "UNIT_DIED") then
+        --         local unitGuid = select(9, ...)
+        --         removeAurasByGuid(allstates, context, unitGuid)
+        --     end
+        -- elseif (event == "UNIT_AURA") then
+        --     return handleBuffsAndDebuffs(allstates, context, ...)
+        -- elseif (event == "NAME_PLATE_UNIT_ADDED") then
+        --     if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
+        --         return false
+        --     end
 
-        if (not context.GetIsLoaded()) then
-            return false
-        end
+        --     local nameplate = select(1, ...)
+        --     local unitGuid = UnitGUID(nameplate)
 
-        if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
-            if (eventSubtype == "SPELL_CAST_SUCCESS") then
-                local result = handleCasts(allstates, context, ...)
-                if (result == true) then
-                    hasUpdates = true
-                end
-            elseif (eventSubtype == "UNIT_DIED") then
-                local unitGuid = select(9, ...)
-                removeAurasByGuid(allstates, context, unitGuid)
-            end
-        elseif (event == "UNIT_AURA") then
-            return handleBuffsAndDebuffs(allstates, context, ...)
-        elseif (event == "NAME_PLATE_UNIT_ADDED") then
-            if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
-                return false
-            end
+        --     hasUpdates = refreshUnitAuras(allstates, context, unitGuid, nameplate)
 
-            local nameplate = select(1, ...)
-            local unitGuid = UnitGUID(nameplate)
+        --     context.linkNameplateToGuid(nameplate, unitGuid)
+        -- elseif (event == "NAME_PLATE_UNIT_REMOVED") then
+        --     if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
+        --         return false
+        --     end
 
-            hasUpdates = refreshUnitAuras(allstates, context, unitGuid, nameplate)
+        --     local nameplate = select(1, ...)
+        --     local guid = context.getGuidByNameplate(nameplate)
 
-            context.linkNameplateToGuid(nameplate, unitGuid)
-        elseif (event == "NAME_PLATE_UNIT_REMOVED") then
-            if (context.getFrameType() ~= BuffWatcher_FrameTypes.Nameplate) then 
-                return false
-            end
-
-            local nameplate = select(1, ...)
-            local guid = context.getGuidByNameplate(nameplate)
-
-            if (guid ~= nil) then
-                hasUpdates = removeAurasByGuid(allstates, context, guid)
-                context.unlinkNameplateFromGuid(nameplate, guid)
-            end
-        elseif (event == "GROUP_ROSTER_UPDATE") then
-            if (handleGroupUpdate(allstates, context, ...)) then
-                hasUpdates = true
-                DevTool:AddData(hasUpdates, "fixme hasUpdates from group")
-                DevTool:AddData(CopyTable(allstates), "fixme allstates")
-            end
-        end
+        --     if (guid ~= nil) then
+        --         hasUpdates = removeAurasByGuid(allstates, context, guid)
+        --         context.unlinkNameplateFromGuid(nameplate, guid)
+        --     end
+        -- elseif (event == "GROUP_ROSTER_UPDATE") then
+        --     if (handleGroupUpdate(allstates, context, ...)) then
+        --         hasUpdates = true
+        --         DevTool:AddData(hasUpdates, "fixme hasUpdates from group")
+        --         DevTool:AddData(CopyTable(allstates), "fixme allstates")
+        --     end
+        -- end
     
-        return hasUpdates
+        -- return hasUpdates
     end
 
     ---@param context BuffWatcher_AuraContext

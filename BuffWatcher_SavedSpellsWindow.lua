@@ -21,10 +21,9 @@ local BuffWatcher_SavedSpellsFilters = {
 
 ---@param incomingStoredSpells BuffWatcher_StoredSpellsRegistry
 ---@param addEditCastWindow BuffWatcher_AddEditSavedCast
----@param weakAuraInterface BuffWatcher_WeakAuraInterface
 ---@param weakAuraExporter BuffWatcher_WeakAuraExporter
 ---@param contextStore BuffWatcher_AuraContextStore
-function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWindow, weakAuraInterface, weakAuraExporter, contextStore)
+function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWindow, weakAuraExporter, contextStore)
     self = {}
 
     ---@param input table<integer, BuffWatcher_StoredSpell>

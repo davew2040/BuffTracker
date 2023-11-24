@@ -50,6 +50,7 @@ BuffWatcher_WeakAuraGenerator_Loader.lua
 BuffWatcher_WeakAuraGenerator.lua
 BuffWatcher_WeakAuraExporter.lua
 BuffWatcher_WeakAuraInterface.lua
+BuffWatcher_WatcherService.lua
 BuffWatcher_Pager.lua
 BuffWatcher_SortUpDown.lua
 BuffWatcher_AddEditSavedCast.lua

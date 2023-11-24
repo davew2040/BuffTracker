@@ -16,3 +16,9 @@
 ---@field expirationTime number,
 ---@field source string
 ---@field spellId number
+
+---@class BuffWatcher_Blizzard_UnitAuraUpdateInfo
+---@field addedAuras BuffWatcher_Blizzard_AuraData[]
+---@field updatedAuraInstanceIDs integer[]
+---@field removedAuraInstanceIDs integer[]
+---@field isFullUpdate boolean

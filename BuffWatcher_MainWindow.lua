@@ -5,10 +5,9 @@ BuffWatcher_MainWindow = {}
 
 ---@param incomingStoredSpells BuffWatcher_StoredSpellsRegistry
 ---@param loggerModule BuffWatcher_LoggerModule
----@param weakAuraInterface BuffWatcher_WeakAuraInterface
 ---@param weakAuraExporter BuffWatcher_WeakAuraExporter
 ---@param contextStore BuffWatcher_AuraContextStore
-function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAuraInterface, weakAuraExporter, contextStore)
+function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAuraExporter, contextStore)
     self = {}
 
     local isShowing = false
@@ -67,7 +66,7 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
         savedSpellsFrame:SetPoint("BOTTOMRIGHT", tabControl.frame, "BOTTOMRIGHT", 0, 0)
         savedSpellsFrame:SetFullHeight(true)
 
-        savedSpellsWindow = BuffWatcher_SavedSpellsWindow:new(storedSpells, addEditCastWindow, weakAuraInterface, weakAuraExporter, contextStore)
+        savedSpellsWindow = BuffWatcher_SavedSpellsWindow:new(storedSpells, addEditCastWindow, weakAuraExporter, contextStore)
 
         savedSpellsFrame:AddChild(savedSpellsWindow.GetFrame())
 
