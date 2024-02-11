@@ -529,6 +529,12 @@ function BuffWatcher_Shared.GuidIsNpc(guid)
     return prefix == "Creature"
 end
 
+---@param unitName string
+---@return boolean
+function BuffWatcher_Shared.UnitIsFriendly(unitName)
+    return UnitIsFriend('player', unitName)
+end
+
 ---@param unit string
 ---@return boolean
 function BuffWatcher_Shared.UnitIsMinor(unit)
@@ -542,6 +548,55 @@ function BuffWatcher_Shared.UnitIsMinor(unit)
     return false
 end
 
+---@param map table<string, string>
+---@return table<string, string>
+function BuffWatcher_Shared.InvertStringMap(map)
+    ---@type table<string, string>
+    local inverted = {}
+
+    for k,v in pairs(map) do
+        inverted[v] = k
+    end
+
+    return inverted
+end
+
+---@param oldLinkage BuffWatcher_UnitToGuidLinkage
+---@param newLinkage BuffWatcher_UnitToGuidLinkage
+---@return BuffWatcher_UnitsComparisonResult
+function BuffWatcher_Shared.CompareUnitToGuidMaps(oldLinkage, newLinkage)
+    ---@type string[]
+    local added = {}
+    ---@type string[]
+    local removed = {}
+    ---@type table<string, string>
+    local changed = {}
+
+    for newUnit,_ in pairs(newLinkage.unitToGuid) do
+        if (oldLinkage.unitToGuid[newUnit] == nil) then
+            table.insert(added, newUnit)
+        elseif (oldLinkage.unitToGuid[newUnit] ~= newLinkage.unitToGuid[newUnit]) then
+            local targetGuid = newLinkage.unitToGuid[newUnit]
+            local oldUnit = oldLinkage.guidToUnit[targetGuid]
+            changed[newUnit] = oldUnit
+        end
+    end
+
+    for oldUnit,_ in pairs(oldLinkage.unitToGuid) do
+        if (newLinkage.unitToGuid[oldUnit] == nil) then
+            table.insert(removed, oldUnit)
+        end
+    end
+
+    ---@type BuffWatcher_UnitsComparisonResult
+    local result = {
+        addedUnits = added,
+        removedUnits = removed,
+        changedUnits = changed
+    }
+
+    return result
+end
 
 ---@type table<BuffWatcher_TriggerType, string>
 BuffWatcher_Shared.TriggerTypeLabels = {

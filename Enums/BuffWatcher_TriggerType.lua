@@ -3,5 +3,6 @@ BuffWatcher_TriggerType = {
 	Buff = 1,
 	Debuff = 2,
 	Cast = 3,
-	CatchAll = 4
+	CatchAll = 4,
+	Marker = 5
 }

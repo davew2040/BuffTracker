@@ -36,8 +36,12 @@ Models/BuffWatcher_AuraGroupUserSettings.lua
 Models/BuffWatcher_StoredSpell.lua
 Models/BuffWatcher_CastRecord.lua
 Models/BuffWatcher_WeakAura_StateEntry.lua
+Models/BuffWatcher_AuraInstance.lua
+Models/BuffWatcher_FramesCollection.lua
+Models/BuffWatcher_UnitToGuidLinkage.lua
 
 BuffWatcher_Shared.lua
+BuffWatcher_Tests.lua
 BuffWatcher_Callbacks.lua
 BuffWatcher_DefaultContextValues.lua
 BuffWatcher_DbAccessor.lua
@@ -45,6 +49,7 @@ BuffWatcher_AuraContext.lua
 BuffWatcher_StoredSpellsRegistry.lua
 BuffWatcher_LoggerModule.lua
 BuffWatcher_Configuration.lua
+BuffWatcher_AuraFrame.lua
 BuffWatcher_AuraContextStore.lua
 BuffWatcher_WeakAuraGenerator_Loader.lua
 BuffWatcher_WeakAuraGenerator.lua

@@ -10,7 +10,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
     self = {};
 
     local buffColor = BuffWatcher_Color:new(0.0, 0.6, 0.153, 1.0)
-    local debuffColor = BuffWatcher_Color:new(1.0, 0.0, 0.0, 1.0)
+    local debuffColor = BuffWatcher_Color:new(0.5, 0.0, 0.0, 1.0)
 
     ---@type BuffWatcher_SavedDbOptions
     local dbConfig = nil
@@ -49,6 +49,11 @@ function BuffWatcher_Configuration:new(dbAccessor)
     ---@return number
     self.GetBorderOffset = function()
         return 2
+    end
+
+    ---@return number
+    self.GetMaxUntrackedIcons = function()
+        return 8
     end
 
     ---@return BuffWatcher_Color

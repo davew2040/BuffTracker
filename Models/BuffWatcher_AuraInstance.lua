@@ -1,0 +1,40 @@
+---@class BuffWatcher_AuraInstance
+---@field spellId number
+---@field showCooldown boolean
+---@field borders BuffWatcher_BorderDefinition[]
+---@field frames table<any, BuffWatcher_AuraFrame>
+---@field duration number
+---@field expirationTime number
+---@field baseSize integer
+---@field actualSize integer
+---@field priority integer
+---@field sourceGuid string?
+---@field targetGuid string
+---@field targetUnit string
+---@field auraInstanceId integer
+---@field triggerType BuffWatcher_TriggerType
+---@field icon integer
+---@field name string
+---@field caster string
+---@field isHarmful boolean
+BuffWatcher_AuraInstance = {}
+
+
+-- show = true,
+-- changed = true,
+-- progressType = "timed",
+-- duration = watcherInfo.duration,
+-- expirationTime = GetTime() + watcherInfo.duration,
+-- name = spellName,
+-- icon = spellIcon,
+-- caster = sourceName,
+-- autoHide = true,
+-- showGlow = true,
+-- sizeMultiplier = watcherInfo.sizeMultiplier,
+-- unit = sourceUnit,
+-- size = configuration.GetDefaultSize(),
+-- index = BuffWatcher_Shared_Singleton.GetAuraIndexByPriority(watcherInfo.priority),
+-- targetGuid = sourceGuid,
+-- auraInstanceID = 0,
+-- triggerType = BuffWatcher_TriggerType.Cast,
+-- outlineType = BuffWatcher_OutlineType.Buff

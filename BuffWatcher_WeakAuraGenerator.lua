@@ -275,8 +275,8 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
         copy.groupIcon = context.GetIcon()
         copy.xOffset = context.GetXOffset()
         copy.yOffset = context.GetYOffset()
-        copy.selfPoint = context.GetSelfPoint()
-        copy.anchorPoint = context.GetAnchorPoint()
+        copy.selfPoint = context.GetSelfAnchorPoint()
+        copy.anchorPoint = context.GetTargetAnchorPoint()
 
         local anchorType = "UNITFRAME"
         if (frameType == BuffWatcher_Shared_Singleton.FrameTypes.Nameplate) then

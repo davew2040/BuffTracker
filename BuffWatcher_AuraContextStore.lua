@@ -188,6 +188,7 @@ function BuffWatcher_AuraContextStore:new(
         local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
 
         contexts = buildAllContextsFromSettings(newContextSettings, spells)
+        DevTool:AddData(contexts, "fixme contexts")
     end
 
     local initialize = function()

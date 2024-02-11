@@ -673,7 +673,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     local doAuraPartialUpdate = function(allstates, context) 
         local hasUpdates = false
 
-        local currentUnits = context.GetUnits()
+        local currentUnits = context.BuildUnitsToGuids()
         local activeGuids = context.GetActiveGuidsSet()
 
         ---@type table<string, boolean>
