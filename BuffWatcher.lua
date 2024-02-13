@@ -46,7 +46,6 @@ function BuffWatcher:OnEnable()
     local settingsDialog = BuffWatcher_SettingsDialog:new(BuffWatcher_DbAccessor_Singleton, contextStore, contextDefaults)
     local weakAuraGenerator = BuffWatcher_WeakAuraGenerator:new(configuration)
     local weakAuraExporter = BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
-    local weakAurasInterface = BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     watcherService = BuffWatcher_WatcherService:new(configuration, contextStore)
 
     --BuffWatcher_WeakAuraInterface_Singleton = weakAurasInterface
@@ -55,7 +54,7 @@ function BuffWatcher:OnEnable()
 
     --weakAurasInterface.RegisterSpells(storedSpellsRegistry)
 
-    mainWindow = BuffWatcher_MainWindow:new(storedSpellsRegistry, loggerModule, weakAurasInterface, weakAuraExporter, contextStore)
+    mainWindow = BuffWatcher_MainWindow:new(storedSpellsRegistry, loggerModule, weakAuraExporter, contextStore)
 
     mainWindow.GetFrame():Hide()
 
@@ -81,8 +80,8 @@ function BuffWatcher:OnDisable()
 end
 
 function BuffWatcher:UNIT_AURA(...)
-    --DevTool:AddData({...}, "UNIT_AURA")
-    
+    DevTool:AddData({...}, "UNIT_AURA")
+
     watcherService.HandleEvent_UnitAura(select(2, ...), select(3, ...))
 end
 
@@ -220,7 +219,7 @@ function BuffWatcher:ARENA_TEAM_ROSTER_UPDATE(...)
 end
 
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
-    watcherService.RefreshLoaded()
+    LGF:ScanForUnitFrames()
 end
 
 function BuffWatcher:PARTY_CONVERTED_TO_RAID(...)

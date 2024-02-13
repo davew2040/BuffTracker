@@ -11,7 +11,8 @@ function BuffWatcher_Configuration:new(dbAccessor)
 
     local buffColor = BuffWatcher_Color:new(0.0, 0.6, 0.153, 1.0)
     local debuffColor = BuffWatcher_Color:new(0.5, 0.0, 0.0, 1.0)
-
+    local magicColor = BuffWatcher_Color:new(0, 0.77, 1.0, 1.0)
+    
     ---@type BuffWatcher_SavedDbOptions
     local dbConfig = nil
 
@@ -65,6 +66,12 @@ function BuffWatcher_Configuration:new(dbAccessor)
     self.GetDebuffColor = function()
         return debuffColor
     end
+
+    ---@return BuffWatcher_Color
+    self.GetMagicColor = function()
+        return magicColor
+    end
+
 
     initialize()
 

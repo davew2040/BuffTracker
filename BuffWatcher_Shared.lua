@@ -27,6 +27,8 @@ function BuffWatcher_Shared:new()
     self.nameplateUnits = {}
 
 
+    ---@param castRecord BuffWatcher_CastRecord
+    ---@return string
     self.GetCastRecordKey = function(castRecord) 
         return castRecord.type .. ":" .. castRecord.spellId
     end
@@ -388,6 +390,95 @@ function BuffWatcher_Shared.SortBy(source, sortPicker)
 end
 
 ---@generic T, U
+---@param source table<T, any>
+---@param sortPicker fun(input: T): U
+---@return table<integer, T>
+function BuffWatcher_Shared.OrderKeysBy(source, sortPicker)
+    local copy = {}
+
+    for k,_ in pairs(source) do
+        table.insert(copy, k)
+    end
+
+    table.sort(
+        copy, 
+        function(a, b)
+            return sortPicker(a) < sortPicker(b)
+        end
+    )
+
+    return copy
+end
+
+
+---@generic T, U
+---@param source table<T, any>
+---@param sortPicker fun(input: T): U
+---@return table<any, T>
+function BuffWatcher_Shared.OrderValuesBy(source, sortPicker)
+
+    local copy = {}
+
+    for _,v in pairs(source) do
+        table.insert(copy, v)
+    end
+
+    table.sort(
+        copy, 
+        function(a, b)
+            return sortPicker(a) < sortPicker(b)
+        end
+    )
+
+    return copy
+end
+
+
+---@generic T, U
+---@param source table<T, any>
+---@param sortPicker fun(input: T): U
+---@return table<integer, T>
+function BuffWatcher_Shared.OrderKeysByDescending(source, sortPicker)
+    local copy = {}
+
+    for k,_ in pairs(source) do
+        table.insert(copy, k)
+    end
+
+    table.sort(
+        copy, 
+        function(a, b)
+            return sortPicker(a) > sortPicker(b)
+        end
+    )
+
+    return copy
+end
+
+
+---@generic T, U
+---@param source table<T, any>
+---@param sortPicker fun(input: T): U
+---@return table<any, T>
+function BuffWatcher_Shared.OrderValuesByDescending(source, sortPicker)
+
+    local copy = {}
+
+    for _,v in pairs(source) do
+        table.insert(copy, v)
+    end
+
+    table.sort(
+        copy, 
+        function(a, b)
+            return sortPicker(a) > sortPicker(b)
+        end
+    )
+
+    return copy
+end
+
+---@generic T, U
 ---@param source table<any, T>
 ---@param sortPicker fun(input: T): U
 function BuffWatcher_Shared.SortByDescending(source, sortPicker)
@@ -396,6 +487,22 @@ function BuffWatcher_Shared.SortByDescending(source, sortPicker)
             return sortPicker(a) > sortPicker(b)
         end
     )
+end
+
+
+---@generic T, U
+---@param source table<any, T>
+---@param sortPicker fun(input: T): U
+---@return table<any, T>
+function BuffWatcher_Shared.OrderByDescending(source, sortPicker)
+    local copy = CopyTable(source)
+
+    table.sort(source, function(a, b)
+        return sortPicker(a) > sortPicker(b)
+    end
+    )
+
+    return copy
 end
 
 ---@return boolean

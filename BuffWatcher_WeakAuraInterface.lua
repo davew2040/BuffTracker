@@ -767,7 +767,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     ---@param allstates table<string, BuffWatcher_WeakAura_StateEntry>
     ---@param context BuffWatcher_AuraContext
     local refreshLoaded = function(allstates, context)
-        local loadedChanged = context.UpdateLoaded()
+        local loadedChanged = context.UpdateLoadedState()
 
         if (loadedChanged) then
             if (context.GetIsLoaded()) then

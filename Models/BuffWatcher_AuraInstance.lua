@@ -1,5 +1,6 @@
 ---@class BuffWatcher_AuraInstance
 ---@field spellId number
+---@field dispelName? string
 ---@field showCooldown boolean
 ---@field borders BuffWatcher_BorderDefinition[]
 ---@field frames table<any, BuffWatcher_AuraFrame>

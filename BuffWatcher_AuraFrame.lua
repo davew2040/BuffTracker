@@ -8,8 +8,9 @@ BuffWatcher_AuraFrame = {}
 ---@param texturePool any
 ---@param auraInstance BuffWatcher_AuraInstance
 ---@param context BuffWatcher_AuraContext
+---@param alpha number
 ---@return BuffWatcher_AuraFrame
-function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePool, texturePool, auraInstance, context)
+function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePool, texturePool, auraInstance, context, alpha)
     self = {}
 
     ---@type BuffWatcher_FramesCollection
@@ -18,7 +19,10 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
     --- gets the default UI level of the frame
     ---@return integer
     local getFrameLevel = function()
-        return 100
+        return 300
+    end
+
+    local traceScale = function(frame)
     end
 
     ---@param parentFrame any
@@ -62,6 +66,8 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
             outerBorderFrame:SetParent(parentFrame)
             outerBorderFrame:SetFrameLevel(borderIndex + getFrameLevel())
             outerBorderFrame:SetSize(currentSize, currentSize)
+            outerBorderFrame:SetScale(1)
+            outerBorderFrame:SetAlpha(alpha)
             -- We expect that these values are updated through the SetOffsets method later
             outerBorderFrame:SetPoint(context.GetSelfAnchorPoint(), parentFrame, context.GetTargetAnchorPoint(), 0, 0) 
 

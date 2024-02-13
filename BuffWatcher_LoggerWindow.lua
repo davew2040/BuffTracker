@@ -49,13 +49,8 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     end
 
     ---@param castRecord BuffWatcher_CastRecord
-    ---@param allSpellRecords table<string, BuffWatcher_StoredSpell>
     ---@param filter BuffWatcher_LoggerWindow_SpellFilters
-    local meetsFilter = function(castRecord, allSpellRecords, filter) 
-        if (allSpellRecords[castRecord.key] ~= nil) then
-            return false
-        end
-
+    local meetsFilter = function(castRecord, filter) 
         if (filter.spellType ~= SpellTypes.Any and castRecord.type ~= filter.spellType) then
             return false
         end
@@ -77,10 +72,9 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
 
     local applyFilters = function(castRecords, filters)
         local filtered = {}
-        local storedSpells = storedSpells.GetSpells()
 
         for k,v in pairs(castRecords) do
-            if (meetsFilter(v, storedSpells, filters) == true) then
+            if (meetsFilter(v, filters) == true) then
                 filtered[k] = v
             end
         end
@@ -161,7 +155,7 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     
         -- spell rows start
         for i=1,pageSize do 
-            local newRow = BuffWatcher_LoggerWindow_SpellRow:new()
+            local newRow = BuffWatcher_LoggerWindow_SpellRow:new(incomingStoredSpells)
    
             frame:AddChild(newRow.getFrame())
 

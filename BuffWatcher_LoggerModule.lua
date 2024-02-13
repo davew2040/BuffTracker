@@ -157,6 +157,7 @@ function BuffWatcher_LoggerModule:new()
     
     mainFrame = Initialize()
 
+    ---@returns table<string, BuffWatcher_CastRecord>
     self.GetSpellRecords = function()
         return CopyTable(spellRecords)
     end

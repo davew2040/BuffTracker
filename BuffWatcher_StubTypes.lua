@@ -1,6 +1,7 @@
 ---@class BuffWatcher_Blizzard_AuraData
 ---@field name string
 ---@field spellId integer
+---@field dispelType? string
 ---@field auraInstanceID integer
 ---@field isHelpful boolean
 ---@field isHarmful boolean

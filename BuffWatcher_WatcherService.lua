@@ -944,17 +944,15 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
 
     self.RefreshLoaded = function()
         for key, context in pairs(contextStore.GetContexts()) do
-
-            local loadedChanged = context.UpdateLoaded()
+            local loadedChanged = context.UpdateLoadedState()
 
             if (loadedChanged) then
                 if (context.GetIsLoaded()) then
                     DevTool:AddData("loading context " .. context.getName())
-                    doFullUpdate(context)
                     context.DoFullUpdate()
                 else
                     DevTool:AddData("unloading context " .. context.getName())
-                    clearAllAuras(context)
+                    context.DoFullClear()
                 end
             end
         end

@@ -70,6 +70,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     local unlistedRowCount = 0
     ---@type boolean
     local isLoaded = false
+    ---@type table<string, boolean> 
+    local contextUnits = {}
 
     ---@type table<string, table<string, boolean>>
     local guidToStateKeyMap = {}
@@ -102,6 +104,35 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         Right = 450908
     }
 
+    ---@param frameType BuffWatcher_FrameTypes
+    ---@return table<string, boolean>
+    local initializeContextUnits = function(frameType)
+        if (frameType == BuffWatcher_FrameTypes.Nameplate) then
+            return CopyTable(BuffWatcher_Shared_Singleton.nameplateUnits)
+
+        elseif (frameType == BuffWatcher_FrameTypes.Arena) then
+            return CopyTable(BuffWatcher_Shared_Singleton.arenaUnits)
+
+        elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
+            local bgUnits = CopyTable(BuffWatcher_Shared_Singleton.partyUnits)
+            bgUnits['player'] = true
+            return bgUnits
+
+        elseif (frameType == BuffWatcher_FrameTypes.Party) then
+            local partyUnits = CopyTable(BuffWatcher_Shared_Singleton.partyUnits)
+            partyUnits['player'] = true
+            return partyUnits
+
+        elseif (frameType == BuffWatcher_FrameTypes.Raid) then
+            local raidUnits = CopyTable(BuffWatcher_Shared_Singleton.raidUnits)
+            raidUnits['player'] = true
+            return raidUnits
+
+        end
+
+        error("Could not identify context units from frame type")
+    end
+
     ---@param params BuffWatcher_AuraContext_Params
     local initializeFromParameters = function(params)
         spellBundle = params.spellBundle
@@ -124,6 +155,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         unlistedRowCount = params.unlistedRowCount
         self.useDefaultUnlistedMultiplier = params.useDefaultUnlistedMultiplier
         self.customUnlistedMultiplier = params.customUnlistedMultiplier
+
+        contextUnits = initializeContextUnits(frameType)
     end
 
     initializeFromParameters(params)
@@ -441,6 +474,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     local usePartyFrames = function()
         if (BuffWatcher_Shared.PlayerInBattleground()) then
             return false
+        elseif BuffWatcher_Shared.PlayerInArena() then
+            return true
         elseif (IsInRaid()) then
             return false
         else
@@ -475,7 +510,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     end
 
     ---@return boolean -- true if the loaded state has changed
-    self.UpdateLoaded = function()
+    self.UpdateLoadedState = function()
         local previousIsLoaded = isLoaded
         isLoaded = determineIsLoaded()
 
@@ -527,7 +562,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         elseif (frameType == BuffWatcher_FrameTypes.Nameplate) then
             return BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)
         elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
-            return BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
+            return unitName == 'player' or BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
         end
 
         return false
@@ -535,15 +570,14 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param unitName string
     ---@param frameType BuffWatcher_FrameTypes
-    ---@param contextIsHostile boolean
     ---@return boolean
-    local filterByHostility = function(unitName, frameType, contextIsHostile)
+    local filterByHostility = function(unitName, frameType)
         if (frameType == BuffWatcher_FrameTypes.Nameplate and BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)) then
-            local unitIsHostile = not UnitIsFriend('player', unitName)
-            return unitIsHostile ~= contextIsHostile
+            local unitIsHostile = not BuffWatcher_Shared.UnitIsFriendly(unitName)
+            return unitIsHostile == isHostile
         end
 
-        return false
+        return true
     end
 
     ---@param targetUnit string
@@ -557,7 +591,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
-        if (filterByHostility(targetUnit, frameType, isHostile)) then
+        if (not filterByHostility(targetUnit, frameType)) then
             return false
         end
 
@@ -583,10 +617,10 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         local borders = {}
 
         -- TODO - implement coloring by buff type
-        if (showDispelType) then
+        if (showDispelType and auraInfo.dispelName ~= nil) then
             table.insert(borders, {
                 width = 2,
-                color = BuffWatcher_Color:new(0, 0, 1, 1)
+                color = configuration.GetMagicColor()
             })
         end
 
@@ -625,9 +659,14 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             color = BuffWatcher_Color:new(0, 0, 0, 1)
         })
 
+        local markerColor = configuration.GetBuffColor()
+        if (self.includeDebuffs()) then
+            markerColor = configuration.GetDebuffColor()
+        end
+
         table.insert(borders, {
             width = 2,
-            color =  BuffWatcher_Color:new(0.7, 0.7, 0.7, 1)
+            color =  markerColor
         })
 
         table.insert(borders, {
@@ -687,9 +726,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param targetUnit string
     ---@param targetGuid string
+    ---@param icon integer
+    ---@param priority integer
     ---@return boolean
-    local function handleAddMarkers(targetUnit, targetGuid)
-        local key = getMarkerStateKey(targetGuid, 1)
+    local function handleSingleMarker(targetUnit, targetGuid, icon, priority)
+        local key = getMarkerStateKey(targetGuid, priority)
 
         if (self.auraInstancesMap[key] ~= nil) then
             error("Attempting a double add of marker key " .. key)
@@ -697,26 +738,26 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
         local baseSize = configuration.GetDefaultSize()
         local borders = self.GetMarkerBorders()
-        local sizeWithBorders = getSizeWithBorders(borders, baseSize)
 
         ---@type BuffWatcher_AuraInstance
         local newInstance = {
             spellId = 0,
+            dispelName = nil,
             showCooldown = false,
             borders = borders,
             duration = 0,
             expirationTime = 0,
             frames = {},
             baseSize = baseSize,
-            actualSize = sizeWithBorders,
-            priority = 25,
+            actualSize = baseSize,
+            priority = priority,
             sourceGuid = targetGuid, 
             targetGuid = targetGuid,
             targetUnit = targetUnit,
             auraInstanceId = 0,
             triggerType = BuffWatcher_TriggerType.Marker,
-            icon = Icons.Up,
-            name = "Marker Up",
+            icon = icon,
+            name = "Marker",
             caster = targetUnit,
             isHarmful = false
         }
@@ -724,14 +765,26 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         local frames = self.GetAuraFramesAlternate(newInstance)
         newInstance.frames = frames
 
+        self.auraInstancesMap[key] = newInstance
         self.addKeyByGuid(targetGuid, key)
 
         return true
     end
 
+    ---@param targetUnit string
+    ---@param targetGuid string
+    local function handleAddMarkers(targetUnit, targetGuid)
+        handleSingleMarker(targetUnit, targetGuid, Icons.Up, 25)
+
+        local arrowIcon = self.GetGrowthDirection() == BuffWatcher_GrowDirection.Left and Icons.Left or Icons.Right
+
+        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 24)
+        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 23)
+    end
+
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
-    ---@param watcherInfo BuffWatcher_StoredSpell
+    ---@param watcherInfo? BuffWatcher_StoredSpell
     ---@return boolean
     local function handleBuffOrDebuffAddOrUpdateStoredSpellByContext(auraInfo, targetUnit, watcherInfo)
         local auraId = auraInfo.auraInstanceID
@@ -741,7 +794,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
-        if (watcherInfo ~= nil and watcherInfo.ownOnly and sourceGuid ~= UnitGUID('player')) then
+        if (watcherInfo ~= nil and watcherInfo.ownOnly and auraInfo.sourceUnit ~= 'player') then
             return false
         end
 
@@ -754,25 +807,28 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (self.auraInstancesMap[key] == nil) then
             local baseSize = configuration.GetDefaultSize()
             local borders = self.GetAuraBorders(auraInfo)
-            local sizeWithBorders = getSizeWithBorders(borders, baseSize)
+            --TODO - decide if we want to do push borders outward?
+            --local sizeWithBorders = getSizeWithBorders(borders, baseSize)
             local targetGuid = UnitGUID(targetUnit)
-
 
             local triggerType = BuffWatcher_TriggerType.Buff
             if (auraInfo.isHarmful) then
                 triggerType = BuffWatcher_TriggerType.Debuff
             end
 
+            DevTool:AddData(auraInfo, "fixme adding aura")
+
             ---@type BuffWatcher_AuraInstance
             local newInstance = {
                 spellId = auraInfo.spellId,
+                dispelName = auraInfo.dispelName,
                 showCooldown = auraInfo.duration ~= 0,
                 borders = borders,
                 duration = auraInfo.duration,
                 expirationTime = auraInfo.expirationTime,
                 frames = {},
                 baseSize = baseSize,
-                actualSize = sizeWithBorders,
+                actualSize = baseSize,
                 priority = getPriority(watcherInfo),
                 sourceGuid = auraInfo.sourceUnit and UnitGUID(auraInfo.sourceUnit) or nil, 
                 targetGuid = targetGuid,
@@ -788,8 +844,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             local frames = self.GetAuraFramesAlternate(newInstance)
             newInstance.frames = frames
 
-
             self.auraInstancesMap[key] = newInstance
+
             auraIdToStateKeyMap[auraInfo.auraInstanceID] = key 
             self.addKeyByGuid(targetGuid, key)
         else
@@ -810,19 +866,6 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param targetUnit string
     ---@return boolean
     self.HandleAuraAddOrUpdate = function(blizzardAura, targetUnit)
-        --- TODO - filter by unit
-        if (self.isNameplate() and not BuffWatcher_Shared_Singleton.IsNameplateUnit(targetUnit)) then
-            return false
-        end
-
-        if (isHostile and BuffWatcher_Shared.UnitIsFriendly(targetUnit)) then
-            return false
-        end
-
-        if (not isHostile and not BuffWatcher_Shared.UnitIsFriendly(targetUnit)) then
-            return false
-        end
-
         if (not includeBuffsAndCasts and blizzardAura.isHelpful) then
             return false
         end
@@ -831,14 +874,18 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
-        if (blizzardAura.isHelpful) then -- and spellBundle.buffs[aura.spellId] ~= nil) then
+        DevTool:AddData("fixme HandleAuraAddOrUpdate")
+
+        -- if (blizzardAura.isHelpful) then
+        if (blizzardAura.isHelpful and spellBundle.buffs[blizzardAura.spellId] ~= nil) then
+            DevTool:AddData("fixme inside conditional")
             local watcherInfo = spellBundle.buffs[blizzardAura.spellId]
             return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo)
-        elseif (blizzardAura.isHarmful) then -- and spellBundle.debuffs[aura.spellId] ~= nil) then
+        elseif (blizzardAura.isHarmful and spellBundle.debuffs[blizzardAura.spellId] ~= nil) then
             local watcherInfo = spellBundle.debuffs[blizzardAura.spellId]
             return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo)
-        -- elseif (useNpcAura(UnitGUID(blizzardAura.sourceUnit))) then
-        --     return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, nil)
+        elseif (blizzardAura.sourceUnit) ~= nil and useNpcAura(UnitGUID(blizzardAura.sourceUnit)) then
+            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, nil)
         end
 
         --FIXME re-enable
@@ -856,8 +903,13 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     self.UnitAura = function(targetUnit, updateInfo)
         local hasUpdates = false
 
+        if (not self.FilterEvent(targetUnit)) then
+            return false
+        end
+
         if (updateInfo.addedAuras ~= nil) then
             for _, addedAura in ipairs(updateInfo.addedAuras) do
+                DevTool:AddData("fixme context UnitAura")
                 local result = self.HandleAuraAddOrUpdate(addedAura, targetUnit)
                 if (result == true) then
                     hasUpdates = true
@@ -932,11 +984,17 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return nil
     self.RedrawAurasByGuid = function(guid) 
         local auraKeysByGuid = self.getKeysByGuid(guid)
-        
+
+        ---@type table<integer, string>
+        local orderedAuraKeys = BuffWatcher_Shared.OrderKeysByDescending(auraKeysByGuid, function(key)
+            local auraInstance = self.auraInstancesMap[key]
+            return auraInstance.priority
+        end)
+
         ---@type table<any, BuffWatcher_AuraFrame[]>
         local byWoWframe = {}
 
-        for auraKey, _ in pairs(auraKeysByGuid) do
+        for _, auraKey in ipairs(orderedAuraKeys) do
             local auraInstance = self.auraInstancesMap[auraKey]
 
             for wowFrame, auraFrame in pairs(auraInstance.frames) do
@@ -954,9 +1012,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 auraFrame.SetOffsets(x, 0)
 
                 if (growDirection == BuffWatcher_GrowDirection.Left) then
-                    x = x - auraFrame.GetWidth()
+                    x = x - auraFrame.GetWidth() - 1
                 else 
-                    x = x + auraFrame.GetWidth()
+                    x = x + auraFrame.GetWidth() + 1
                 end
             end
         end
@@ -992,12 +1050,25 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (self.isNameplate()) then
             table.insert(result, C_NamePlate.GetNamePlateForUnit(targetUnit))
         else
-            local frame = LGF.GetUnitFrame(targetUnit, { 
+            local frames = LGF.GetUnitFrame(targetUnit, { 
                 ignorePlayerFrame = true, 
                 ignoreTargetFrame = true, 
                 ignoreTargettargetFrame = true,
+                returnAll = true
             })
-            table.insert(result, frame)
+
+            if (frames ~= nil) then
+                for _, frame in pairs(frames) do
+                    DevTool:AddData({targetUnit = targetUnit, frame = frame}, "fixme lfg getTargetFrames")
+                    table.insert(result, frame)
+                end
+
+                if (BuffWatcher_Shared_Singleton.GetTableKeyCount(frames) == 0) then
+                    DevTool:AddData(targetUnit, "fixme lfg no frames found")
+                end
+            else 
+                DevTool:AddData(targetUnit, "fixme lfg nil frames found")
+            end
         end
 
         return result
@@ -1011,6 +1082,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         ---@type table<any, BuffWatcher_AuraFrame>
         local result = {}
 
+        local alpha = 1.0
+        if (frameType == BuffWatcher_FrameTypes.Nameplate and not isHostile) then
+            alpha = 0.65
+        end
+
         for _, targetFrame in ipairs(targetFrames) do
             ---@type BuffWatcher_AuraFrame
             local auraFrame = BuffWatcher_AuraFrame:new(
@@ -1020,7 +1096,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 self.cooldownFramePool, 
                 self.texturePool, 
                 auraInstance,
-                self
+                self,
+                alpha
             )
 
             result[targetFrame] = auraFrame
@@ -1032,14 +1109,16 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param unit string
     ---@return boolean
     self.DoUnitUpdate = function(unit)
-        --- TODO - enable other frame types when done debugging
-        if (frameType ~= BuffWatcher_FrameTypes.Nameplate) then
+        if (not self.FilterEvent(unit)) then
             return false
         end
 
-        --handleAddMarkers(unit, UnitGUID(unit))
-
         local hasUpdates = false
+
+        if (configuration.GetShowTestAnchors()) then
+            handleAddMarkers(unit, UnitGUID(unit))
+            hasUpdates = true
+        end
 
         AuraUtil.ForEachAura(unit, "HELPFUL", nil, 
             function(auraInfo) 
@@ -1082,9 +1161,6 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
-        DevTool:AddData(CopyTable(stateKeys), "Found stateKeys attached to unit " .. unit)
-
-
         ---@type string[]
         local stateKeysToDelete = {}
 
@@ -1100,37 +1176,36 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     end
 
     ---@return boolean
+    self.DoFullClear = function()
+        local auraKeysCopy = CopyTable(self.auraInstancesMap)
+        local hasUpdates = false
+
+        for k,v in pairs(auraKeysCopy) do
+            if (self.RemoveStateKey(k)) then
+                hasUpdates = true
+            end
+        end
+        
+        self.ResetAuraState()
+
+        return hasUpdates
+    end
+
+    ---@return boolean
     self.DoFullUpdate = function()
-        return true 
-        -- --- TODO - enable other frame types when done debugging
-        -- if (frameType ~= BuffWatcher_FrameTypes.Nameplate) then
-        --     return false
-        -- end
+        local hasUpdates = false
 
-        -- DevTool:AddData("fixme DoFullUpdate")
+        for unit, _ in pairs(contextUnits) do
+            local unitGuid = UnitGUID(unit)
+            if (unitGuid ~= nil) then
+                DevTool:AddData('identified unit ' .. unit .. ' ' .. unitGuid)
+                if (self.DoUnitUpdate(unit)) then
+                    hasUpdates = true
+                end
+            end
+        end
 
-        -- local hasUpdates = false
-
-        -- AuraUtil.ForEachAura(unit, "HELPFUL", nil, 
-        --     function(auraInfo) 
-        --         ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-        --         if (handleAuraAddOrUpdate(auraInfo, unit)) then
-        --             hasUpdates = true
-        --         end
-        --     end,
-        --     true
-        -- )
-        -- AuraUtil.ForEachAura(unit, "HARMFUL", nil, 
-        --     function(auraInfo) 
-        --         ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-        --         if (handleAuraAddOrUpdate(auraInfo, unit)) then
-        --             hasUpdates = true
-        --         end
-        --     end,
-        --     true
-        -- )
-
-        -- return hasUpdates
+        return hasUpdates
     end
 
     return self;

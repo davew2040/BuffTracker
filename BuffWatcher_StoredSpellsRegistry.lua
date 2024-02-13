@@ -95,7 +95,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
     end
 
     self.removeSpell = function(storedSpell) 
-        local key = BuffWatcher_StoredSpell:GetStoredSpellKey(storedSpell)
+        local key = BuffWatcher_StoredSpell.GetStoredSpellKey(storedSpell)
         local spells = readSpells()
         spells[key] = nil
         self.saveSpellsToDatabase(spells)
