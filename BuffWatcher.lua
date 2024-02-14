@@ -30,8 +30,8 @@ function BuffWatcher:OnInitialize()
 end
 
 local lgfUpdate = function(...)
-    DevTool:AddData("lgfUpdate")
-    watcherService.RefreshLoaded()
+    DevTool:AddData({...}, "lgfUpdate")
+    watcherService.FramesChanged()
 end
 
 function BuffWatcher:OnEnable()
@@ -80,7 +80,7 @@ function BuffWatcher:OnDisable()
 end
 
 function BuffWatcher:UNIT_AURA(...)
-    DevTool:AddData({...}, "UNIT_AURA")
+    --DevTool:AddData({...}, "UNIT_AURA")
 
     watcherService.HandleEvent_UnitAura(select(2, ...), select(3, ...))
 end
@@ -123,93 +123,7 @@ function BuffWatcher:NAME_PLATE_UNIT_REMOVED(...)
 end
 
 function BuffWatcher:GROUP_ROSTER_UPDATE(...)
-    -- local parentFrame = LGF.GetUnitFrame("player", 
-    -- { 
-    --     ignorePlayerFrame = true, 
-    --     ignoreTargetFrame = true, 
-    --     ignoreTargettargetFrame = true 
-    -- })
-
-    -- local iconSize = 24
-    -- local borderSize = 1
-
-    -- pool = CreateFramePool("Frame", UIParent)
-    -- local frame = pool:Acquire()
-
-    -- -- frame:SetFrameLevel(99)
-    -- -- frame:SetSize(64, 64)
-    -- -- frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 300, -300)
-    -- -- frame.texture = frame:CreateTexture()
-    -- -- frame.texture:SetAllPoints(frame)
-    -- -- frame.texture:SetColorTexture(0.7, 0, 0)
-    -- -- frame:Show()
-
-    -- -- local frame2 = CreateFrame("Frame", "test spell frame", UIParent)
-    -- -- frame2:SetFrameLevel(99)
-    -- -- frame2:SetSize(64, 64)
-    -- -- frame2:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 200, -200)
-    -- -- frame2.texture = frame2:CreateTexture()
-    -- -- frame2.texture:SetAllPoints(frame2)
-    -- -- frame2.texture:SetColorTexture(0.7, 0, 0)
-
-
-    -- for x=1,10 do
-    --     for y=1,10 do
-    --         local outerBorderFrame =  pool:Acquire() -- CreateFrame("Frame", "test spell frame", parentFrame)
-    --         DevTool:AddData(outerBorderFrame, "fixme outerBorderFrame")
-    --         outerBorderFrame:SetFrameLevel(99)
-    --         outerBorderFrame:SetSize(iconSize + borderSize*4, iconSize + borderSize*4)
-    --         outerBorderFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", x*100, -y*100)
-    --         outerBorderFrame.texture = outerBorderFrame:CreateTexture()
-    --         outerBorderFrame.texture:SetAllPoints(outerBorderFrame)
-    --         outerBorderFrame.texture:SetColorTexture(0.7, 0, 0)
-    --         outerBorderFrame:Show()
-
-    --         local borderFrame = pool:Acquire() -- CreateFrame("Frame", "test spell frame", outerBorderFrame)
-    --         borderFrame:SetFrameLevel(100)
-    --         borderFrame:SetSize(iconSize + borderSize*2, iconSize + borderSize*2)
-    --         borderFrame:SetPoint("TOPLEFT", outerBorderFrame, "TOPLEFT", borderSize, -borderSize)
-    --         borderFrame.texture = borderFrame:CreateTexture()
-    --         borderFrame.texture:SetAllPoints(borderFrame)
-    --         borderFrame.texture:SetColorTexture(0, 0, 0)
-    --         borderFrame:Show()
-
-    --         local frame = pool:Acquire() -- CreateFrame("Frame", "test spell frame", borderFrame)
-    --         frame:SetFrameLevel(101)
-    --         frame:SetSize(iconSize, iconSize)
-    --         frame:SetPoint("TOPLEFT", borderFrame, "TOPLEFT", borderSize, -borderSize)
-    --         -- frame:SetPoint("TOPRIGHT", borderFrame, "TOPRIGHT", borderSize, borderSize)
-    --         -- frame:SetPoint("BOTTOMLEFT", borderFrame, "BOTTOMLEFT", -borderSize, -borderSize)
-    --         -- frame:SetPoint("BOTTOMRIGHT", borderFrame, "BOTTOMRIGHT", borderSize, -borderSize)
-    --         frame.texture = frame:CreateTexture("test texture frame", "OVERLAY", nil, -8)
-    --         frame.texture:SetTexture(1360764)
-    --         frame.texture:SetAllPoints(frame)
-    --         frame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-
-    --         local myCooldown = CreateFrame("Cooldown", "myCooldown", frame, "CooldownFrameTemplate")
-    --         myCooldown:SetAllPoints()
-    --         myCooldown:SetCooldown(GetTime(), 10)
-
-    --         frame:Show()
-
-    --         -- local border1 = CreateFrame("Frame", "MyAddonBorder1", frame)
-    --         -- Mixin(border1, BackdropTemplateMixin)
-
-    --         -- border1:SetPoint("TOPLEFT", frame, "TOPLEFT", -x, x)
-    --         -- border1:SetPoint("TOPRIGHT", frame, "TOPRIGHT", x, x)
-    --         -- border1:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -x, -x)
-    --         -- border1:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", x, -x)
-    --         -- border1:SetBackdrop({
-    --         --     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    --         --     edgeSize = x*4
-    --         -- })
-    --         -- border1:SetBackdropBorderColor(1, 0, 0, 1)
-    --     end
-    -- end
-
-
-
-    print("GROUP_ROSTER_UPDATE")
+    watcherService.RefreshLoaded()
     LGF:ScanForUnitFrames()
 end
 
@@ -219,6 +133,8 @@ function BuffWatcher:ARENA_TEAM_ROSTER_UPDATE(...)
 end
 
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
+    print("PLAYER_ENTERING_WORLD")
+    watcherService.RefreshLoaded()
     LGF:ScanForUnitFrames()
 end
 

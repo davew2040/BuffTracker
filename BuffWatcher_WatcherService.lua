@@ -25,7 +25,14 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
         end
     end
 
+    local handleConfigChanged = function()
+        for key, context in pairs(contextStore.GetContexts()) do
+            context.DoFullReset()
+        end
+    end
+
     local initialize = function()
+        configuration.registerConfigChanged(handleConfigChanged)
     end
 
     self.RegisterSpells = function(incomingStoredSpellsRegistry)
@@ -796,7 +803,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param targetUnit string
     self.HandleEvent_NameplateAdded = function(targetUnit)
         for key, context in pairs(contextStore.GetContexts()) do
-            if (context.GetIsLoaded()) then
+            if (context.IsLoaded()) then
                 context.DoUnitUpdate(targetUnit)
             end
         end
@@ -806,8 +813,8 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param targetUnit string
     self.HandleEvent_NameplateRemoved = function(targetUnit)
         for key, context in pairs(contextStore.GetContexts()) do
-            if (context.GetIsLoaded()) then
-                context.ClearUnit(targetUnit)
+            if (context.isNameplate() and context.IsLoaded()) then
+                context.NameplateRemoved(targetUnit)
             end
         end
     end
@@ -817,7 +824,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
     self.HandleEvent_UnitAura = function(targetUnit, updateInfo)
         for _, context in pairs(contextStore.GetContexts()) do
-            if (context.GetIsLoaded()) then
+            if (context.IsLoaded()) then
                 context.UnitAura(targetUnit, updateInfo)
             end
         end
@@ -947,13 +954,23 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
             local loadedChanged = context.UpdateLoadedState()
 
             if (loadedChanged) then
-                if (context.GetIsLoaded()) then
+                DevTool:AddData({key = key}, "fixme loadedChanged")
+
+                if (context.IsLoaded()) then
                     DevTool:AddData("loading context " .. context.getName())
-                    context.DoFullUpdate()
+                    context.DoFullReset()
                 else
                     DevTool:AddData("unloading context " .. context.getName())
                     context.DoFullClear()
                 end
+            end
+        end
+    end
+
+    self.FramesChanged = function()
+        for key, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded()) then
+                context.FramesChanged()
             end
         end
     end

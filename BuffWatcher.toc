@@ -4,7 +4,7 @@
 ## Notes: Buff Watcher
 ## Author: Big Dave
 ## SavedVariables: BuffWatcherDB
-## Dependencies: DevTool, WeakAuras
+## Dependencies: DevTool
 ## OptionalDeps: Ace3
 
 Libs\LibStub\LibStub.lua
@@ -42,6 +42,7 @@ Models/BuffWatcher_UnitToGuidLinkage.lua
 
 BuffWatcher_Shared.lua
 BuffWatcher_Tests.lua
+BuffWatcher_UnitGuidTable.lua
 BuffWatcher_Callbacks.lua
 BuffWatcher_DefaultContextValues.lua
 BuffWatcher_DbAccessor.lua

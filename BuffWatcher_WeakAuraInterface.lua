@@ -770,7 +770,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local loadedChanged = context.UpdateLoadedState()
 
         if (loadedChanged) then
-            if (context.GetIsLoaded()) then
+            if (context.IsLoaded()) then
                 DevTool:AddData("loading context " .. context.getName())
                 doFullUpdate(allstates, context)
             else
@@ -803,7 +803,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             end
         end
 
-        if (not context.GetIsLoaded()) then
+        if (not context.IsLoaded()) then
             return false
         end
 

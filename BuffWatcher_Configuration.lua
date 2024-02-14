@@ -13,6 +13,8 @@ function BuffWatcher_Configuration:new(dbAccessor)
     local debuffColor = BuffWatcher_Color:new(0.5, 0.0, 0.0, 1.0)
     local magicColor = BuffWatcher_Color:new(0, 0.77, 1.0, 1.0)
     
+    local callbacks = BuffWatcher_Callbacks:new()
+
     ---@type BuffWatcher_SavedDbOptions
     local dbConfig = nil
 
@@ -23,6 +25,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
             function() 
                 dbConfig = dbAccessor.GetOptions()
                 DevTool:AddData(CopyTable(dbConfig), "Received updated db options")
+                callbacks.fire(BuffWatcher_Configuration.Events.ConfigChanged)
             end
         )
     end
@@ -30,6 +33,11 @@ function BuffWatcher_Configuration:new(dbAccessor)
     ---@return number
     self.GetUnlistedMultiplier = function()
         return dbConfig.unlistedMultiplier
+    end
+
+    ---@return number
+    self.GetNpcMultiplier = function()
+        return 0.7
     end
 
     ---@return number
@@ -72,6 +80,9 @@ function BuffWatcher_Configuration:new(dbAccessor)
         return magicColor
     end
 
+    self.registerConfigChanged = function(fn)
+        callbacks.registerCallback(BuffWatcher_Configuration.Events.ConfigChanged, fn)
+    end
 
     initialize()
 
