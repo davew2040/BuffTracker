@@ -1,9 +1,9 @@
 ---@class BuffWatcher_AuraInstance
+---@field stateKey string
 ---@field spellId number
 ---@field dispelName? string
 ---@field showCooldown boolean
 ---@field borders BuffWatcher_BorderDefinition[]
----@field frames table<any, BuffWatcher_AuraFrame>
 ---@field duration number
 ---@field expirationTime number
 ---@field baseSize integer

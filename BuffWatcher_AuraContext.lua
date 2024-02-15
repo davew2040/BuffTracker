@@ -103,6 +103,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         Right = 450908
     }
 
+    ---@type BuffWatcher_FrameManager
+    local frameManager
+
     ---@param frameType BuffWatcher_FrameTypes
     ---@return table<string, boolean>
     local initializeContextUnits = function(frameType)
@@ -156,6 +159,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.customUnlistedMultiplier = params.customUnlistedMultiplier
 
         contextUnits = initializeContextUnits(frameType)
+        frameManager = BuffWatcher_FrameManager:new(self)
     end
 
     initializeFromParameters(params)
@@ -187,7 +191,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param targetGuid string
     ---@return table<string, boolean>
-    self.getKeysByGuid = function(targetGuid) 
+    self.GetKeysByGuid = function(targetGuid) 
         ---@type table<string, boolean>
         local keys = {}
 
@@ -202,33 +206,6 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return string
     self.getKeyByAuraId = function(auraId)
         return auraIdToStateKeyMap[auraId]
-    end
-
-    -- self.removeAuraIdToKeyEntry = function(auraId)
-    --     auraIdToStateKeyMap[auraId] = nil
-    -- end
-
-    self.unlinkAllNameplates = function(nameplate, guid)
-        guidToUnitMap = {}
-        unitToGuidMap = {}
-    end
-
-    self.linkNameplateToGuid = function(nameplate, guid)
-        guidToUnitMap[guid] = nameplate
-        unitToGuidMap[nameplate] = guid
-    end
-
-    self.unlinkNameplateFromGuid = function(nameplate, guid)
-        guidToUnitMap[guid] = nil
-        unitToGuidMap[nameplate] = nil
-    end
-
-    self.getNameplateByGuid = function(guid)
-        return guidToUnitMap[guid]
-    end
-
-    self.getGuidByNameplate = function(nameplate)
-        return unitToGuidMap[nameplate]
     end
 
     self.isNameplate = function()
@@ -338,6 +315,12 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return boolean
     self.IsLoaded = function()
         return isLoaded
+    end
+
+    ---@param stateKey string
+    ---@return BuffWatcher_AuraInstance
+    self.GetAuraInstanceByKey = function(stateKey)
+        return self.auraInstancesMap[stateKey]
     end
 
     ---@return table<string, string>
@@ -548,11 +531,13 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.auraInstancesMap = {}
     end
 
-    ---@param auraInfo BuffWatcher_AuraInstance
+    ---@param auraInfo BuffWatcher_Blizzard_AuraData
     ---@return BuffWatcher_BorderDefinition[]
     self.GetAuraBorders = function(auraInfo)
         ---@type BuffWatcher_BorderDefinition[]
         local borders = {}
+
+        DevTool:AddData(auraInfo, "fixme auraInfo in borders")
 
         -- TODO - implement coloring by buff type
         if (showDispelType and auraInfo.dispelName ~= nil) then
@@ -675,17 +660,21 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
 
         local baseSize = configuration.GetDefaultSize()
+        if self.GetCustomIconSize() then
+            baseSize = self.GetIconSize()
+        end
+
         local borders = self.GetMarkerBorders()
 
         ---@type BuffWatcher_AuraInstance
         local newInstance = {
+            stateKey = key,
             spellId = 0,
             dispelName = nil,
             showCooldown = false,
             borders = borders,
             duration = 0,
             expirationTime = 0,
-            frames = {},
             baseSize = baseSize,
             actualSize = baseSize,
             priority = priority,
@@ -700,8 +689,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             isHarmful = false
         }
 
-        local frames = self.GetAuraFramesAlternate(newInstance)
-        newInstance.frames = frames
+        -- local frames = self.GetAuraFramesAlternate(newInstance)
+        -- newInstance.frames = frames
 
         self.auraInstancesMap[key] = newInstance
         self.addKeyByGuid(targetGuid, key)
@@ -743,12 +732,17 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             auraId
         )
 
+        local targetGuid = UnitGUID(targetUnit)
+
         if (self.auraInstancesMap[key] == nil) then
             local baseSize = configuration.GetDefaultSize()
+            if self.GetCustomIconSize() then
+                baseSize = self.GetIconSize()
+            end
+
             local borders = self.GetAuraBorders(auraInfo)
             --TODO - decide if we want to do push borders outward?
             --local sizeWithBorders = getSizeWithBorders(borders, baseSize)
-            local targetGuid = UnitGUID(targetUnit)
 
             local triggerType = BuffWatcher_TriggerType.Buff
             if (auraInfo.isHarmful) then
@@ -758,12 +752,12 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             ---@type BuffWatcher_AuraInstance
             local newInstance = {
                 spellId = auraInfo.spellId,
+                stateKey = key,
                 dispelName = auraInfo.dispelName,
                 showCooldown = auraInfo.duration ~= 0,
                 borders = borders,
                 duration = auraInfo.duration,
                 expirationTime = auraInfo.expirationTime,
-                frames = {},
                 baseSize = baseSize,
                 actualSize = baseSize * sizeMultiplier,
                 priority = getPriority(watcherInfo),
@@ -778,22 +772,19 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 isHarmful = auraInfo.isHarmful
             }
 
-            local frames = self.GetAuraFramesAlternate(newInstance)
-            newInstance.frames = frames
-
             self.auraInstancesMap[key] = newInstance
 
             auraIdToStateKeyMap[auraInfo.auraInstanceID] = key 
             self.addKeyByGuid(targetGuid, key)
+
+            frameManager.AuraAdded(targetGuid, key)
         else
             local existingInstance = self.auraInstancesMap[key]
 
             existingInstance.duration = auraInfo.duration
             existingInstance.expirationTime = auraInfo.expirationTime
 
-            for _, auraFrame in pairs(existingInstance.frames) do
-                auraFrame.UpdateCooldown()
-            end
+            frameManager.AuraUpdated(targetGuid, key)
         end
 
         return true
@@ -834,6 +825,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param targetUnit string
     ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
+    ---@return boolean
     self.UnitAura = function(targetUnit, updateInfo)
         local hasUpdates = false
 
@@ -872,9 +864,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             end
         end
 
-        if hasUpdates then
-            self.RedrawAurasByGuid(UnitGUID(targetUnit))
-        end
+        return hasUpdates
     end
 
     ---@param stateKey string
@@ -893,9 +883,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.auraInstancesMap[stateKey] = nil
         self.removeKeyFromGuid(auraInstance.targetGuid, stateKey)
 
-        for _, auraFrame in pairs(auraInstance.frames) do
-            auraFrame.Dispose()
-        end
+        frameManager.AuraRemoved(auraInstance.targetGuid, stateKey)
 
         return true
     end
@@ -913,121 +901,47 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         return false
     end
 
-    ---@param guid string
-    ---@return nil
-    self.RedrawAurasByGuid = function(guid) 
-        local auraKeysByGuid = self.getKeysByGuid(guid)
-
-        ---@type table<integer, string>
-        local orderedAuraKeys = BuffWatcher_Shared.OrderKeysByDescending(auraKeysByGuid, function(key)
-            local auraInstance = self.auraInstancesMap[key]
-            return auraInstance.priority
-        end)
-
-        ---@type table<any, BuffWatcher_AuraFrame[]>
-        local byWoWframe = {}
-
-        for _, auraKey in ipairs(orderedAuraKeys) do
-            local auraInstance = self.auraInstancesMap[auraKey]
-
-            for wowFrame, auraFrame in pairs(auraInstance.frames) do
-                if byWoWframe[wowFrame] == nil then
-                    byWoWframe[wowFrame] = {}
-                end
-                table.insert(byWoWframe[wowFrame], auraFrame)
-            end
-        end
-
-        for _, auraFrames in pairs(byWoWframe) do
-
-            local x = 0
-            for _, auraFrame in ipairs(auraFrames) do
-                auraFrame.SetOffsets(x, 0)
-
-                if (growDirection == BuffWatcher_GrowDirection.Left) then
-                    x = x - auraFrame.GetWidth() - 1
-                else 
-                    x = x + auraFrame.GetWidth() + 1
-                end
-            end
-        end
-    end
-
-    ---@param targetUnit string
-    ---@return any[]
-    local getTargetFrames = function(targetUnit)
-        local result = {}
-
-        if (self.isNameplate()) then
-            table.insert(result, C_NamePlate.GetNamePlateForUnit(targetUnit))
-        else
-            local frames = LGF.GetUnitFrame(targetUnit, { 
-                ignorePlayerFrame = true, 
-                ignoreTargetFrame = true, 
-                ignoreTargettargetFrame = true,
-                returnAll = true
-            })
-
-            if (frames ~= nil) then
-                for _, frame in pairs(frames) do
-                    DevTool:AddData({targetUnit = targetUnit, frame = frame}, "fixme lfg getTargetFrames")
-                    table.insert(result, frame)
-                end
-
-                if (BuffWatcher_Shared_Singleton.GetTableKeyCount(frames) == 0) then
-                    DevTool:AddData(targetUnit, "fixme lfg no frames found")
-                end
-            else 
-                DevTool:AddData(targetUnit, "fixme lfg nil frames found")
-            end
-        end
-
-        return result
-    end
-
     ---@param auraInstance BuffWatcher_AuraInstance
-    ---@return table<any, BuffWatcher_AuraFrame>
-    self.GetAuraFramesAlternate = function(auraInstance)
-        local targetFrames = getTargetFrames(auraInstance.targetUnit)
-
-        ---@type table<any, BuffWatcher_AuraFrame>
-        local result = {}
-
+    ---@return BuffWatcher_AuraFrame
+    self.GetSingleAuraFrame = function(auraInstance, parentFrame)
         local alpha = 1.0
         if (frameType == BuffWatcher_FrameTypes.Nameplate and not isHostile) then
             alpha = 0.65
         end
 
-        for _, targetFrame in ipairs(targetFrames) do
-            ---@type BuffWatcher_AuraFrame
-            local auraFrame = BuffWatcher_AuraFrame:new(
-                targetFrame, 
-                auraInstance, 
-                self.framePool, 
-                self.cooldownFramePool, 
-                self.texturePool, 
-                auraInstance,
-                self,
-                alpha
-            )
+        ---@type BuffWatcher_AuraFrame
+        local auraFrame = BuffWatcher_AuraFrame:new(
+            parentFrame, 
+            auraInstance, 
+            self.framePool, 
+            self.cooldownFramePool, 
+            self.texturePool, 
+            auraInstance,
+            self,
+            alpha, 
+            self.getName() .. ":" .. auraInstance.stateKey
+        )
 
-            result[targetFrame] = auraFrame
-        end
-
-        return result
+        return auraFrame
     end
 
     ---@param unit string
     ---@return boolean
-    self.DoUnitUpdate = function(unit)
+    self.DoUnitAdd = function(unit)
         if (not self.FilterEvent(unit)) then
             return false
         end
 
         local hasUpdates = false
 
+        local unitGuid = UnitGUID(unit)
+
+        unitToGuidLinkage.LinkUnitToGuid(unit, unitGuid)
+
+        DevTool:AddData({unit = unit, guid = unitGuid}, "fixme DoUnitAdd")
+
         if (configuration.GetShowTestAnchors()) then
-            handleAddMarkers(unit, UnitGUID(unit))
+            handleAddMarkers(unit, unitGuid)
             hasUpdates = true
         end
 
@@ -1051,9 +965,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             true
         )
 
-        if (hasUpdates) then
-            self.RedrawAurasByGuid(UnitGUID(unit))
-        end
+        frameManager.UnitUpdated(unitGuid)
 
         return hasUpdates
     end
@@ -1064,16 +976,21 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return
         end
 
-        for guid, stateKeys in pairs(guidToStateKeyMap) do
-            for stateKey, _ in pairs(stateKeys) do
-                local auraInstance = self.auraInstancesMap[stateKey]
-                if auraInstance.targetUnit == nameplate then
-                    DevTool:AddData({guid = guid, nameplate = nameplate}, "fixme clearing guid for nameplate")
-                    self.ClearGuid(guid)
-                    return
-                end
-            end
-        end
+        DevTool:AddData(CopyTable(unitToGuidMap.GetGuidsToUnits()), "fixme unitToGuidMap removal " .. nameplate)
+
+        -- for guid, stateKeys in pairs(guidToStateKeyMap) do
+        --     for stateKey, _ in pairs(stateKeys) do
+        --         local auraInstance = self.auraInstancesMap[stateKey]
+        --         if auraInstance.targetUnit == nameplate then
+        --             DevTool:AddData({guid = guid, nameplate = nameplate}, "fixme clearing guid for nameplate")
+        --             self.ClearGuid(guid)
+        --             return
+        --         end
+        --     end
+        -- end
+
+        local guid = unitToGuidMap.GetGuidByUnit(nameplate)
+        self.ClearGuid(guid)
     end
 
     ---@param guid string
@@ -1096,6 +1013,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             self.RemoveStateKey(stateKey)
         end
 
+        frameManager.UnitCleared(guid)
+
         return true
     end
 
@@ -1117,7 +1036,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@return boolean
     self.DoFullUpdate = function()
-        self.FramesChanged()
+        --self.FramesChanged()
         -- local hasUpdates = false
 
         -- for unit, _ in pairs(contextUnits) do
@@ -1135,39 +1054,39 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     self.DoFullReset = function()
         self.DoFullClear()
-        self.DoFullUpdate()
+        self.UpdateAllUnits()
     end
 
-    ---@param guid string
-    ---@param newUnitName string
-    local rehomeGuid = function(guid, newUnitName)
-        local stateKeys = guidToStateKeyMap[guid]
+    -- ---@param guid string
+    -- ---@param newUnitName string
+    -- local rehomeGuid = function(guid, newUnitName)
+    --     local stateKeys = guidToStateKeyMap[guid]
 
-        for stateKey, _ in pairs(stateKeys) do
-            local auraInstance = self.auraInstancesMap[stateKey]
-            auraInstance.targetUnit = newUnitName
+    --     for stateKey, _ in pairs(stateKeys) do
+    --         local auraInstance = self.auraInstancesMap[stateKey]
+    --         auraInstance.targetUnit = newUnitName
 
-            --- TODO - consider just re-linking frames rather than re-creating.
+    --         --- TODO - consider just re-linking frames rather than re-creating.
 
-            for wowFrame, auraFrame in pairs(auraInstance.frames) do
-                auraFrame.Dispose()
-            end
+    --         for wowFrame, auraFrame in pairs(auraInstance.frames) do
+    --             auraFrame.Dispose()
+    --         end
 
-            auraInstance.frames = {}
+    --         auraInstance.frames = {}
 
-            ---@type table<any, any>
-            local newWowFrames = LGF.GetUnitFrame(newUnitName, { 
-                ignorePlayerFrame = true, 
-                ignoreTargetFrame = true, 
-                ignoreTargettargetFrame = true,
-                returnAll = true
-            })
+    --         ---@type table<any, any>
+    --         local newWowFrames = LGF.GetUnitFrame(newUnitName, { 
+    --             ignorePlayerFrame = true, 
+    --             ignoreTargetFrame = true, 
+    --             ignoreTargettargetFrame = true,
+    --             returnAll = true
+    --         })
 
-            for _, newWowFrame in pairs(newWowFrames) do
-                auraInstance.frames[newWowFrame] = self.GetAuraFramesAlternate(auraInstance)
-            end
-        end
-    end
+    --         for _, newWowFrame in pairs(newWowFrames) do
+    --             auraInstance.frames[newWowFrame] = self.GetAuraFramesAlternate(auraInstance)
+    --         end
+    --     end
+    -- end
 
     ---@return table<string, boolean>
     local getContextUnits = function()
@@ -1196,15 +1115,57 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (self.isNameplate()) then
             return false
         end
-        DevTool:AddData("fixme FramesChanged")
+    
+        frameManager.DoFullUpdate(contextUnits)
 
+        return true
+        -- DevTool:AddData("fixme FramesChanged")
+
+        -- local previousGuids = unitToGuidLinkage.GetAllGuids()
+        -- local newUnitGuidTable = getUnitGuidTable()
+        -- local newGuids = newUnitGuidTable.GetAllGuids()
+
+        -- DevTool:AddData(previousGuids, "fixme previousGuids " .. name)
+        -- DevTool:AddData(unitToGuidLinkage.GetUnitsToGuid(), "fixme unitToGuidLinkage " .. name)
+        -- DevTool:AddData(newUnitGuidTable.GetUnitsToGuid(), "fixme newUnitGuidTable " .. name)
+
+        -- for newGuid, _ in pairs(newGuids) do
+        --     local newUnit = newUnitGuidTable.GetUnitByGuid(newGuid)
+        --     local oldUnit = unitToGuidLinkage.GetUnitByGuid(newGuid)
+
+        --     if (newUnit ~= oldUnit) then
+        --         -- previously, this guid wasn't present, and so should be added
+        --         if (oldUnit == nil) then 
+        --             DevTool:AddData({ newUnit = newUnit, context = name }, "fixme DoUnitUpdate")
+        --             self.DoUnitUpdate(newUnit)
+        --         -- guid was present but was linked to a different unit, so move auras over
+        --         else
+        --             DevTool:AddData({ newUnit = newUnit, newGuid = newGuid, context = name }, "fixme DoUnitUpdate ")
+        --             --rehomeGuid(newGuid, newUnit)
+        --         end
+        --     end
+
+        --     previousGuids[newGuid] = nil
+        -- end
+
+        -- for unusedGuid, _ in pairs(previousGuids) do
+        --     DevTool:AddData("fixme clearing guid " .. unusedGuid .. " from context " .. name)
+        --     self.ClearGuid(unusedGuid)
+        -- end
+
+        -- unitToGuidLinkage = newUnitGuidTable
+
+        -- return true
+    end
+
+    self.UpdateAllUnits = function()
         local previousGuids = unitToGuidLinkage.GetAllGuids()
         local newUnitGuidTable = getUnitGuidTable()
         local newGuids = newUnitGuidTable.GetAllGuids()
 
-        DevTool:AddData(previousGuids, "fixme previousGuids " .. name)
-        DevTool:AddData(unitToGuidLinkage.GetUnitsToGuid(), "fixme unitToGuidLinkage " .. name)
-        DevTool:AddData(newUnitGuidTable.GetUnitsToGuid(), "fixme newUnitGuidTable " .. name)
+        -- DevTool:AddData(previousGuids, "fixme previousGuids " .. name)
+        -- DevTool:AddData(unitToGuidLinkage.GetUnitsToGuid(), "fixme unitToGuidLinkage " .. name)
+        -- DevTool:AddData(newUnitGuidTable.GetUnitsToGuid(), "fixme newUnitGuidTable " .. name)
 
         for newGuid, _ in pairs(newGuids) do
             local newUnit = newUnitGuidTable.GetUnitByGuid(newGuid)
@@ -1214,11 +1175,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 -- previously, this guid wasn't present, and so should be added
                 if (oldUnit == nil) then 
                     DevTool:AddData({ newUnit = newUnit, context = name }, "fixme DoUnitUpdate")
-                    self.DoUnitUpdate(newUnit)
+                    self.DoUnitAdd(newUnit)
                 -- guid was present but was linked to a different unit, so move auras over
                 else
                     DevTool:AddData({ newUnit = newUnit, newGuid = newGuid, context = name }, "fixme DoUnitUpdate ")
-                    rehomeGuid(newGuid, newUnit)
+                    --rehomeGuid(newGuid, newUnit)
                 end
             end
 
@@ -1233,6 +1194,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         unitToGuidLinkage = newUnitGuidTable
 
         return true
+    end
+
+    ---@return table<string, boolean>
+    self.GetPotentialUnits = function()
+        return contextUnits
     end
 
     return self;

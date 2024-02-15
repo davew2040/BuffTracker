@@ -403,7 +403,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@return boolean
     local removeAurasByGuid = function(allstates, context, guid)
         ---@type table<string, boolean>
-        local stateKeysByGuid = CopyTable(context.getKeysByGuid(guid))
+        local stateKeysByGuid = CopyTable(context.GetKeysByGuid(guid))
 
         for key,_ in pairs(stateKeysByGuid) do
             if (allstates[key] ~= nil) then
@@ -698,7 +698,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param guid string
     local redrawUnitAuras = function(context, guid)
         local x = 0
-        for key, _ in pairs(context.getKeysByGuid(guid)) do
+        for key, _ in pairs(context.GetKeysByGuid(guid)) do
             DevTool:AddData(key, "fixme redrawUnitAuras")
             local auraInstance = context.auraInstancesMap[key]
             DevTool:AddData(auraInstance, "fixme redrawUnitAuras auraInstance")
@@ -803,8 +803,8 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param targetUnit string
     self.HandleEvent_NameplateAdded = function(targetUnit)
         for key, context in pairs(contextStore.GetContexts()) do
-            if (context.IsLoaded()) then
-                context.DoUnitUpdate(targetUnit)
+            if (context.IsLoaded() and context.isNameplate()) then
+                context.DoUnitAdd(targetUnit)
             end
         end
     end

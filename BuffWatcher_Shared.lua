@@ -240,10 +240,10 @@ function BuffWatcher_Shared:new()
         return dest
     end
 
-    self.TransformTable = function(table, keyFn, valueFn)
+    self.TransformTable = function(t, keyFn, valueFn)
         local dest = {}
 
-        for k,v in pairs(table) do
+        for k,v in pairs(t) do
             dest[keyFn(k,v)] = valueFn(k,v)
         end
 
@@ -437,7 +437,7 @@ end
 ---@generic T, U
 ---@param source table<T, any>
 ---@param sortPicker fun(input: T): U
----@return table<integer, T>
+---@return any
 function BuffWatcher_Shared.OrderKeysByDescending(source, sortPicker)
     local copy = {}
 
@@ -459,7 +459,7 @@ end
 ---@generic T, U
 ---@param source table<T, any>
 ---@param sortPicker fun(input: T): U
----@return table<any, T>
+---@return any
 function BuffWatcher_Shared.OrderValuesByDescending(source, sortPicker)
 
     local copy = {}

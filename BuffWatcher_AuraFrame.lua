@@ -9,8 +9,9 @@ BuffWatcher_AuraFrame = {}
 ---@param auraInstance BuffWatcher_AuraInstance
 ---@param context BuffWatcher_AuraContext
 ---@param alpha number
+---@param auraTitle string
 ---@return BuffWatcher_AuraFrame
-function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePool, texturePool, auraInstance, context, alpha)
+function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePool, texturePool, auraInstance, context, alpha, auraTitle)
     self = {}
 
     ---@type BuffWatcher_FramesCollection
@@ -22,8 +23,16 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
         return 300
     end
 
-    local traceScale = function(frame)
-    end
+    -- self.traceScale = function(frame, level)
+    --     local scale = frame:GetScale()
+    --     DevTool:AddData({scale = frame:GetScale(), frame = frame, level = level}, "fixme tracescale " .. context.getName())
+
+    --     local parent = frame:GetParent()
+    --     if (parent ~= nil) then
+    --         scale = scale * self.traceScale(parent, level+1)
+    --     end
+    --     return scale
+    -- end
 
     ---@param parentFrame any
     ---@param aura BuffWatcher_AuraInstance
@@ -31,7 +40,8 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
     ---@param borderIndex integer
     ---@param currentSize integer
     ---@param lastBorderWidth integer
-    self.BuildFrames = function(parentFrame, aura, borders, borderIndex, currentSize, lastBorderWidth)
+    ---@param auraTitle string
+    self.BuildFrames = function(parentFrame, aura, borders, borderIndex, currentSize, lastBorderWidth, auraTitle)
         if (borderIndex > #borders) then -- if we've previously added all the borders, then add the main aura frame
             local auraFrame = framePool:Acquire() -- CreateFrame("Frame", "test spell frame", borderFrame)
 
@@ -40,11 +50,11 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
             auraFrame:SetSize(currentSize, currentSize)
             auraFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", lastBorderWidth, -lastBorderWidth)
 
-            auraFrame.texture = auraFrame:CreateTexture("test texture frame - root - " .. aura.spellId)
+            auraFrame.texture = auraFrame:CreateTexture("BuffWatcher texture frame - " .. auraTitle)
             auraFrame.texture:SetTexture(auraInstance.icon)
             auraFrame.texture:SetAllPoints(auraFrame)
             auraFrame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-
+            
             table.insert(frames.allFrames, auraFrame)
 
             auraFrame:Show()
@@ -66,19 +76,20 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
             outerBorderFrame:SetParent(parentFrame)
             outerBorderFrame:SetFrameLevel(borderIndex + getFrameLevel())
             outerBorderFrame:SetSize(currentSize, currentSize)
-            outerBorderFrame:SetScale(1)
+            outerBorderFrame:SetIgnoreParentScale(true)
             outerBorderFrame:SetAlpha(alpha)
+            outerBorderFrame:SetScale(0.5)
             -- We expect that these values are updated through the SetOffsets method later
             outerBorderFrame:SetPoint(context.GetSelfAnchorPoint(), parentFrame, context.GetTargetAnchorPoint(), 0, 0) 
 
-            outerBorderFrame.texture = outerBorderFrame:CreateTexture("base test border frame " .. borderIndex .. ' ' .. aura.spellId)
+            outerBorderFrame.texture = outerBorderFrame:CreateTexture("BuffWatcher border frame " .. borderIndex .. ' ' .. auraTitle)
             outerBorderFrame.texture:SetAllPoints(outerBorderFrame)
             outerBorderFrame.texture:SetColorTexture(currentBorder.color.red, currentBorder.color.green, currentBorder.color.blue)
 
             table.insert(frames.allFrames, outerBorderFrame)
             frames.rootFrame = outerBorderFrame
 
-            self.BuildFrames(outerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width)
+            self.BuildFrames(outerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width, auraTitle)
 
             outerBorderFrame:Show()
         else
@@ -91,19 +102,19 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
             innerBorderFrame:SetSize(currentSize, currentSize)
             innerBorderFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", lastBorderWidth, -lastBorderWidth)
 
-            innerBorderFrame.texture = innerBorderFrame:CreateTexture("test border frame " .. borderIndex .. ' ' .. aura.spellId)
+            innerBorderFrame.texture = innerBorderFrame:CreateTexture("BuffWatcher border frame " .. borderIndex .. ' ' .. auraTitle)
             innerBorderFrame.texture:SetAllPoints(innerBorderFrame)
             innerBorderFrame.texture:SetColorTexture(currentBorder.color.red, currentBorder.color.green, currentBorder.color.blue)
 
             table.insert(frames.allFrames, innerBorderFrame)
 
-            self.BuildFrames(innerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width)
+            self.BuildFrames(innerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width, auraTitle)
 
             innerBorderFrame:Show()
         end
     end
 
-    self.BuildFrames(parentFrame, aura, auraInstance.borders, 1, auraInstance.actualSize, 0)
+    self.BuildFrames(parentFrame, aura, auraInstance.borders, 1, auraInstance.actualSize, 0, auraTitle)
 
     self.Dispose = function()
         for _, frame in ipairs(frames.allFrames) do

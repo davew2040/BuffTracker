@@ -53,6 +53,20 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         },
                         get = self.BuildGenericAuraGroupGetter("showUnlistedAuras"),
                         set = self.BuildGenericAuraGroupSetter("showUnlistedAuras")
+                    },                    
+                    xOffset = {
+                        name = "Custom Icon Size",
+                        desc = "The X offset of the aura group",
+                        type = "range",
+                        min = -1000,
+                        max = 1000,
+                        step = 1,
+                        get = self.BuildGenericAuraGroupGetter("customIconSize"),
+                        set = self.BuildGenericAuraGroupSetter("customIconSize"),
+                        disabled = function(info)
+                            local groupKey = info[2]
+                            return currentModel.groupUserSettings[groupKey].useDefaultIconSize
+                        end
                     },
                     showDispelType = {
                         type = "toggle",

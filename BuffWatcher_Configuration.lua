@@ -37,7 +37,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
 
     ---@return number
     self.GetNpcMultiplier = function()
-        return 0.7
+        return 1
     end
 
     ---@return number

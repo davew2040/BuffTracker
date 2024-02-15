@@ -382,7 +382,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
     ---@return boolean
     local removeAurasByGuid = function(allstates, context, guid)
         ---@type table<string, boolean>
-        local stateKeysByGuid = CopyTable(context.getKeysByGuid(guid))
+        local stateKeysByGuid = CopyTable(context.GetKeysByGuid(guid))
 
         for key,_ in pairs(stateKeysByGuid) do
             if (allstates[key] ~= nil) then

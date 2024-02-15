@@ -129,7 +129,16 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param params BuffWatcher_ContextSettingsValues
     local addDefaultSettingsEntry = function(params)
         local newEntry = buildFixedSettingsInstance(
-            params.friendlyName, params.frameType, params.isBuffs, not params.isBuffs, params.isHostile, params.icon, params.xOffset, params.yOffset, params.selfPoint, params.anchorPoint
+            params.friendlyName, 
+            params.frameType, 
+            params.isBuffs, 
+            not params.isBuffs, 
+            params.isHostile, 
+            params.icon, 
+            params.xOffset, 
+            params.yOffset, 
+            params.selfPoint, 
+            params.anchorPoint
         );
         DefaultFixedContextSettings[params.key] = newEntry
 

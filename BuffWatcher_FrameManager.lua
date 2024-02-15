@@ -1,206 +1,282 @@
----@class BuffWatcher_AuraContextStore
-BuffWatcher_AuraContextStore = {}
+local LGF = LibStub("LibGetFrame-1.0")
 
-BuffWatcher_AuraContextStore.ContextKeys = {
-    EnemyNameplateBuffs = "EnemyNameplateBuffs",
-    EnemyNameplateDebuffs = "EnemyNameplateDebuffs",
-    FriendlyNameplateBuffs = "FriendlyNameplateBuffs",
-    FriendlyNameplateDebuffs = "FriendlyNameplateDebuffs",
-    PartyBuffs = "PartyBuffs",
-    PartyDebuffs = "PartyDebuffs",
-    ArenaEnemyBuffs = "ArenaEnemyBuffs",
-    ArenaEnemyDebuffs = "ArenaEnemyDebuffs",
-    RaidBuffs = "RaidBuffs",
-    RaidDebuffs = "RaidDebuffs"
-}
+---@class BuffWatcher_FrameData
+---@field stateKey string
+---@field auraFrame BuffWatcher_AuraFrame
+---@field auraInstance BuffWatcher_AuraInstance
+BuffWatcher_FrameData = {}
 
----@param dbAccessor BuffWatcher_DbAccessor
----@param configuration BuffWatcher_Configuration
----@param spellRegistry BuffWatcher_StoredSpellsRegistry
----@param defaultContextValues BuffWatcher_DefaultContextValues
-function BuffWatcher_AuraContextStore:new(
-    dbAccessor, 
-    configuration,
-    spellRegistry, 
-    defaultContextValues
-)
+---@class BuffWatcher_FrameManager
+BuffWatcher_FrameManager = {}
+
+---@param context BuffWatcher_AuraContext
+---@return BuffWatcher_FrameManager
+function BuffWatcher_FrameManager:new(context)
     self = {};
 
-    ---@type number
-    local DefaultIconSize = 32
-    local shared = BuffWatcher_Shared_Singleton
+    ---@type table<BuffWatcher_BlizzardFrameWrapper, string>
+    local framesToGuids = {}
 
-    ---@type table<string, BuffWatcher_AuraContext>
-    local contexts = {}
-    
-    ---@param source BuffWatcher_StoredSpell[]
-    ---@param settings any
-    local filterByFrameType = function(source, settings)
-        local filtered = source
+    ---@type table<string, table<BuffWatcher_BlizzardFrameWrapper, boolean>>
+    local guidsToFrames = {}
 
-        if (settings.frameType == shared.FrameTypes.Nameplate) then
-            filtered = shared.TableValueFilter(filtered, function(spell) 
-                return spell.showOnNameplates 
-            end)
-        elseif (settings.frameType == shared.FrameTypes.Party) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInParty end)
-        elseif (settings.frameType == shared.FrameTypes.Arena) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInArena end)
-        elseif (settings.frameType == shared.FrameTypes.Raid) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInRaid end)
-        end
-
-        return filtered
-    end
-
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spellsById table<integer, BuffWatcher_StoredSpell>
-    ---@return table<integer, BuffWatcher_StoredSpell>
-    local buildSpellBundleBuffs = function(settings, spellsById)
-        if (not settings.includeBuffsAndCasts) then
-            return {}
-        end
-
-        local filteredSpells = CopyTable(spellsById)
-
-        filteredSpells = filterByFrameType(filteredSpells, settings)
-
-        filteredSpells = shared.TableValueFilter(filteredSpells, function(spell) return spell.buffType == shared.SpellTypes.Buff end)
-
-        return filteredSpells
-    end
-    
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spellsById table<integer, BuffWatcher_StoredSpell>
-    ---@return table<integer, BuffWatcher_StoredSpell>
-    local buildSpellBundleDebuffs = function(settings, spellsById)
-        if (not settings.includeDebuffs) then
-            return {}
-        end
-        local filteredSpells = CopyTable(spellsById)
-
-        filteredSpells = filterByFrameType(filteredSpells, settings)
-
-        filteredSpells = shared.TableValueFilter(filteredSpells, function(spell) return spell.buffType == shared.SpellTypes.Debuff end)
-
-        return filteredSpells
-    end
-
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spellsById table<integer, BuffWatcher_StoredSpell>
-    ---@return table<integer, BuffWatcher_StoredSpell>
-    local buildSpellBundleCasts = function(settings, spellsById)
-        if (not settings.includeBuffsAndCasts) then
-            return {}
-        end
-
-        local filteredSpells = CopyTable(spellsById)
-
-        filteredSpells = filterByFrameType(filteredSpells, settings)
-
-        filteredSpells = shared.TableValueFilter(filteredSpells, function(spell) return spell.buffType == shared.SpellTypes.Cast end)
-
-        return filteredSpells
-    end
-
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spellsById table<integer, BuffWatcher_StoredSpell>
-    ---@return BuffWatcher_SpellBundle
-    local buildSpellBundle = function(settings, spellsById)
-        ---@type BuffWatcher_SpellBundle
-        local result = {
-            buffs = buildSpellBundleBuffs(settings, spellsById),
-            debuffs = buildSpellBundleDebuffs(settings, spellsById),
-            casts = buildSpellBundleCasts(settings, spellsById),
-        }
-
-        return result
-    end
-
-    ---@param spells table<string, BuffWatcher_StoredSpell>
-    ---@return table<integer, BuffWatcher_StoredSpell>
-    local getSpellsBySpellIdKey = function(spells)
-        ---@type  table<integer, BuffWatcher_StoredSpell>
-        local result = {}
-
-        for k,v in pairs(spells) do
-            result[v.spellId] = v
-        end
-
-        return result
-    end
-
-    ---@param key string
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spells table<string, BuffWatcher_StoredSpell>
-    ---@return BuffWatcher_AuraContext
-    local buildSingleContextFromSettings = function(key, settings, spells)
-        local spellsById = getSpellsBySpellIdKey(spells)
-        local spellBundle = buildSpellBundle(settings, spellsById)
-
-        ---@type BuffWatcher_AuraContext_Params
-        local params = {
-            spellBundle = spellBundle, 
-            isNameplate = settings.frameType == shared.FrameTypes.Nameplate,
-            name = settings.friendlyName, 
-            key = key,
-            frameType = settings.frameType,
-            includeBuffsAndCasts = settings.includeBuffsAndCasts, 
-            includeDebuffs = settings.includeDebuffs, 
-            showUnlistedAuras = settings.showUnlistedAuras,
-            showDispelType = settings.showDispelType,
-            isHostile = settings.isHostile,
-            growDirection = settings.growDirection,
-            customIconSize = settings.customIconSize,
-            useDefaultIconSize = settings.useDefaultIconSize,
-            icon = settings.icon,
-            xOffset = settings.xOffset,
-            yOffset = settings.yOffset,
-            selfPoint = settings.selfPoint,
-            anchorPoint = settings.anchorPoint,
-            unlistedRowCount = settings.unlistedRowCount,
-            useDefaultUnlistedMultiplier = settings.useDefaultUnlistedMultiplier,
-            customUnlistedMultiplier = settings.customUnlistedMultiplier
-        }
-
-        local context = BuffWatcher_AuraContext:new(params, configuration)
-
-        return context
-    end
-
-    ---@param settings table<string, BuffWatcher_AuraGroupMergedSettings>
-    ---@param spells table<string, BuffWatcher_StoredSpell>
-    ---@return table<string, BuffWatcher_AuraContext>
-    local buildAllContextsFromSettings = function(settings, spells)
-        ---@type table<string, BuffWatcher_AuraContext>
-        local result = {}
-
-        for key,v in pairs(settings) do
-            result[key] = buildSingleContextFromSettings(key, v, spells)
-        end
-
-        return result
-    end
-
-    local updateFromSources = function()
-        local spells = spellRegistry.GetSpells()
-        local userSettings = dbAccessor.GetOptions().groupUserSettings
-        local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
-
-        contexts = buildAllContextsFromSettings(newContextSettings, spells)
-        DevTool:AddData(contexts, "fixme contexts")
-    end
+    ---@type table<BuffWatcher_BlizzardFrameWrapper, table<string, BuffWatcher_FrameData>>
+    local wowFramesToAuraFrames = {}
 
     local initialize = function()
-        updateFromSources()
-    end
-
-    ---@return table<string, BuffWatcher_AuraContext>
-    self.GetContexts = function()
-        return contexts
     end
     
     initialize()
+
+    ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
+    ---@param guid string
+    ---@param auraFrames table<string, BuffWatcher_FrameData>
+    local attachAuraFramesToWowFrame = function(wowFrame, guid, auraFrames)
+        if framesToGuids[wowFrame] ~= nil then
+            error("Frame already has guid associated")
+        else
+            framesToGuids[wowFrame] = guid
+        end
+
+        if wowFramesToAuraFrames[wowFrame] ~= nil then
+            error("Frame already has auras associated")
+        else
+            wowFramesToAuraFrames[wowFrame] = auraFrames
+        end
+
+        if guidsToFrames[guid] == nil then
+            guidsToFrames[guid] = {}
+        end
+
+        guidsToFrames[guid][wowFrame] = true
+    end
+
+    ---@param guid string
+    ---@return table<BuffWatcher_BlizzardFrameWrapper, boolean>
+    local getFramesForGuid = function(guid)
+        local frames = guidsToFrames[guid]
+
+        if (frames == nil) then 
+            frames = {}
+        end
+
+        return frames
+    end
+
+    ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
+    ---@return table<string, BuffWatcher_FrameData>
+    local getAurasForFrame = function(wowFrame)
+        if (wowFramesToAuraFrames[wowFrame] == nil) then
+            return {}
+        end
+
+        return wowFramesToAuraFrames[wowFrame]
+    end
+
+    ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
+    local redrawAurasByFrame = function(wowFrame)
+        local auraFrames = getAurasForFrame(wowFrame)
+
+        ---@type table<integer, BuffWatcher_FrameData>
+        local orderedAuras = BuffWatcher_Shared.OrderValuesByDescending(auraFrames, 
+            function(key)
+                ---@cast key BuffWatcher_FrameData
+                return key.auraInstance.priority
+            end
+        )
+
+        local x = 0
+        for _, auraFrame in ipairs(orderedAuras) do
+            auraFrame.auraFrame.SetOffsets(x, 0)
+
+            if (context.GetGrowthDirection() == BuffWatcher_GrowDirection.Left) then
+                x = x - auraFrame.auraFrame.GetWidth() - 1
+            else 
+                x = x + auraFrame.auraFrame.GetWidth() + 1
+            end
+        end
+    end
+
+    ---@param guid string
+    ---@return nil
+    local redrawAurasByGuid = function(guid) 
+        local frames = getFramesForGuid(guid)
+
+        for frame, _ in pairs(frames) do
+            redrawAurasByFrame(frame)
+        end
+    end
+
+    local redrawAll = function()
+        for guid, _ in pairs(guidsToFrames) do
+            redrawAurasByGuid(guid)
+        end
+    end
+
+    ---@param targetUnit string
+    ---@return BuffWatcher_BlizzardFrameWrapper[]
+    local getTargetFrames = function(targetUnit)
+        local result = {}
+
+        if (context.isNameplate()) then
+            local nameplateFrame = C_NamePlate.GetNamePlateForUnit(targetUnit)
+            table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(nameplateFrame))
+        else
+            local frames = LGF.GetUnitFrame(targetUnit, { 
+                ignorePlayerFrame = true, 
+                ignoreTargetFrame = true, 
+                ignoreTargettargetFrame = true,
+                returnAll = true
+            })
+
+            if (frames ~= nil) then
+                for _, frame in pairs(frames) do
+                    table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(frame))
+                end
+
+                if (BuffWatcher_Shared_Singleton.GetTableKeyCount(frames) == 0) then
+                    DevTool:AddData(targetUnit, "fixme lfg no frames found")
+                end
+            else 
+                DevTool:AddData(targetUnit, "fixme lfg nil frames found")
+            end
+        end
+
+        return result
+    end
+
+
+    ---@param unitName string
+    ---@param frames BuffWatcher_BlizzardFrameWrapper[]
+    local addUnitAuras = function(unitName, frames)
+        local unitGuid = UnitGUID(unitName)
+    
+        local stateKeys = context.GetKeysByGuid(unitGuid)
+
+        -- DevTool:AddData(wrappedFrames, "fixme wrappedFrames")
+        -- DevTool:AddData(CopyTable(stateKeys), "fixme processing stateKeys")
+
+        for _, wrappedFrame in ipairs(wrappedFrames) do
+            --DevTool:AddData(wrappedFrame, "fixme processing wrappedFrame")
+            ---@type table<string, BuffWatcher_FrameData>
+            local newAuraFrames = {}
+
+            for stateKey, _ in pairs(stateKeys) do
+                -- DevTool:AddData(stateKey, "fixme processing auraframe")
+                local auraInstance = context.GetAuraInstanceByKey(stateKey)
+                local auraFrame = context.GetSingleAuraFrame(auraInstance, wrappedFrame.GetFrame())
+                
+                ---@type BuffWatcher_FrameData
+                local frameEntry = {
+                    stateKey = stateKey,
+                    auraFrame = auraFrame,
+                    auraInstance = auraInstance
+                }
+                newAuraFrames[stateKey] = frameEntry
+            end
+
+            attachAuraFramesToWowFrame(wrappedFrame, unitGuid, newAuraFrames)
+        end
+
+        redrawAurasByGuid(unitGuid)
+    end
+
+
+    ---@param units table<string, boolean>
+    self.DoFullUpdate = function(units)
+        self.Reset()
+
+        for unit, _ in pairs(units) do
+            local frames = getTargetFrames(unit)
+
+            if (#frames > 0) then
+                addUnitAuras(unit, frames)
+            end
+        end
+
+        -- DevTool:AddData(framesToGuids, "fixme framesToGuids")
+        -- DevTool:AddData(guidsToFrames, "fixme guidsToFrames")
+        -- DevTool:AddData(wowFramesToAuraFrames, "fixme wowFramesToAuraFrames")
+    end
+
+    self.Reset = function()
+        for _, auraEntries in pairs(wowFramesToAuraFrames) do
+            for _, auraEntry in pairs(auraEntries) do
+                auraEntry.auraFrame.Dispose()
+            end
+        end
+
+        framesToGuids = {}
+        guidsToFrames = {}
+        wowFramesToAuraFrames = {}
+    end
+
+    ---@param guid string
+    ---@param stateKey string
+    self.AuraRemoved = function(guid, stateKey)
+        local frames = getFramesForGuid(guid)
+
+        for wowFrame, _ in pairs(frames) do
+            local aurasForFrame = getAurasForFrame(wowFrame)
+            local aura = aurasForFrame[stateKey]
+
+            aura.auraFrame.Dispose()
+
+            aurasForFrame[stateKey] = nil
+        end
+
+        redrawAurasByGuid(guid)
+    end
+
+    ---@param guid string
+    ---@param stateKey string
+    self.AuraUpdated = function(guid, stateKey)
+        local frames = getFramesForGuid(guid)
+
+        for wowFrame, _ in pairs(frames) do
+            local aura = getAurasForFrame(wowFrame)[stateKey]
+
+            aura.auraFrame.UpdateCooldown()
+        end
+    end
+
+    ---@param guid string
+    ---@param stateKey string
+    self.AuraAdded = function(guid, stateKey)
+        DevTool:AddData(stateKey, "fixme AuraAdded")
+
+        local frames = getFramesForGuid(guid)
+
+        DevTool:AddData(frames, "fixme frames")
+
+        for wowFrame, _ in pairs(frames) do
+            local auras = getAurasForFrame(wowFrame)
+
+            local auraInstance = context.GetAuraInstanceByKey(stateKey)
+            local auraFrame = context.GetSingleAuraFrame(auraInstance, wowFrame.GetFrame())
+            
+            ---@type BuffWatcher_FrameData
+            local frameEntry = {
+                stateKey = stateKey,
+                auraFrame = auraFrame,
+                auraInstance = auraInstance
+            }
+            auras[stateKey] = frameEntry
+        end
+
+        redrawAurasByGuid(guid)
+    end
+
+    ---@param unitGuid string
+    self.UnitUpdated = function(unitGuid)
+        DevTool:AddData({unitGuid = unitGuid, context = context.getName()}, "fixme UnitUpdated")
+        self.DoFullUpdate(context.GetPotentialUnits())
+    end
+
+    ---@param unitGuid string
+    self.UnitCleared = function(unitGuid)
+        self.DoFullUpdate(context.GetPotentialUnits())
+    end
 
     return self;
 end
