@@ -35,8 +35,6 @@ function BuffWatcher_DefaultContextValues:new()
         isHostile = false,
         frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena,
         icon = 0,
-        xOffset = 0,
-        yOffset = 0,
         anchorPoint = "TOP",
         selfPoint = "TOP"
     }
@@ -50,7 +48,9 @@ function BuffWatcher_DefaultContextValues:new()
         growDirection = BuffWatcher_GrowDirection.Left,
         unlistedRowCount = 0,
         useDefaultUnlistedMultiplier = true,
-        customUnlistedMultiplier = 0.5
+        customUnlistedMultiplier = 0.5,
+        xOffset = 0,
+        yOffset = 0
     }
 
     ---@param showUnlistedAuras BuffWatcher_ShowUnlistedType
@@ -60,7 +60,9 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param growDirection BuffWatcher_GrowDirection
     ---@param unlistedRowCount integer
     ---@param useDefaultUnlistedMultiplier boolean,
-    ---@param customUnlistedMultiplier number
+    ---@param customUnlistedMultiplier number,
+    ---@param xOffset integer,
+    ---@param yOffset integer
     ---@return BuffWatcher_AuraGroupUserSettings
     local buildUserSettingsInstance = function(
         showUnlistedAuras, 
@@ -70,7 +72,9 @@ function BuffWatcher_DefaultContextValues:new()
         growDirection, 
         unlistedRowCount,
         useDefaultUnlistedMultiplier,
-        customUnlistedMultiplier
+        customUnlistedMultiplier,
+        xOffset,
+        yOffset
     )
         ---@type BuffWatcher_AuraGroupUserSettings
         local newUserSettings = {
@@ -81,7 +85,9 @@ function BuffWatcher_DefaultContextValues:new()
             growDirection = growDirection,
             unlistedRowCount = unlistedRowCount,
             useDefaultUnlistedMultiplier = useDefaultUnlistedMultiplier,
-            customUnlistedMultiplier = customUnlistedMultiplier
+            customUnlistedMultiplier = customUnlistedMultiplier,
+            xOffset = xOffset,
+            yOffset = yOffset
         }
 
         BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseUserSettings, newUserSettings)
@@ -95,11 +101,9 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param includeDebuffs boolean
     ---@param isHostile boolean
     ---@param icon integer
-    ---@param xOffset integer
-    ---@param yOffset integer
     ---@param selfPoint string
     ---@param anchorPoint string
-    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile, icon, xOffset, yOffset, selfPoint, anchorPoint)
+    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile, icon, selfPoint, anchorPoint)
         ---@type BuffWatcher_AuraGroupFixedSettings
         local settingsObject = {
             friendlyName = friendlyName,
@@ -108,8 +112,6 @@ function BuffWatcher_DefaultContextValues:new()
             isHostile = isHostile,
             frameType = frameType,
             icon = icon,
-            xOffset = xOffset,
-            yOffset = yOffset,
             selfPoint = selfPoint,
             anchorPoint = anchorPoint
         }
@@ -135,8 +137,6 @@ function BuffWatcher_DefaultContextValues:new()
             not params.isBuffs, 
             params.isHostile, 
             params.icon, 
-            params.xOffset, 
-            params.yOffset, 
             params.selfPoint, 
             params.anchorPoint
         );
@@ -153,7 +153,9 @@ function BuffWatcher_DefaultContextValues:new()
             direction, 
             params.unlistedRowCount, 
             params.useDefaultUnlistedMultiplier,
-            params.customUnlistedMultiplier
+            params.customUnlistedMultiplier,
+            params.xOffset,
+            params.yOffset
         )
     end
 
@@ -393,8 +395,8 @@ function BuffWatcher_DefaultContextValues:new()
                 customIconSize = userValues.customIconSize,
                 growDirection = userValues.growDirection,
                 icon = fixedSettings.icon,
-                xOffset = fixedSettings.xOffset,
-                yOffset = fixedSettings.yOffset,
+                xOffset = userValues.xOffset,
+                yOffset = userValues.yOffset,
                 selfPoint = fixedSettings.selfPoint,
                 anchorPoint = fixedSettings.anchorPoint,
                 unlistedRowCount = userValues.unlistedRowCount,

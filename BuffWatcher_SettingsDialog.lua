@@ -6,7 +6,7 @@ BuffWatcher_SettingsDialog = {}
 
 ---@param dbAccessor BuffWatcher_DbAccessor
 ---@param contextStore BuffWatcher_AuraContextStore
----@param defaultContextValues any
+---@param defaultContextValues BuffWatcher_DefaultContextValues
 function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContextValues)
     self = {}
 
@@ -30,13 +30,15 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         end
     end
 
+    ---@param contextDefaults BuffWatcher_DefaultContextValues
     local getContextSubgroups = function(contextDefaults)
         local subgroups = {}
 
         local settings = contextDefaults.GetFixedDefaults()
 
-        for k,v in pairs(settings) do
-            subgroups[k] = {
+        for groupKey,v in pairs(settings) do
+
+            subgroups[groupKey] = {
                 name = v.friendlyName,
                 handler = BuffWatcher,
                 type = "group",
@@ -55,18 +57,14 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         set = self.BuildGenericAuraGroupSetter("showUnlistedAuras")
                     },                    
                     xOffset = {
-                        name = "Custom Icon Size",
-                        desc = "The X offset of the aura group",
+                        name = "Horizontal Offset",
+                        desc = "The horizontal offset of the aura group",
                         type = "range",
                         min = -1000,
                         max = 1000,
                         step = 1,
-                        get = self.BuildGenericAuraGroupGetter("customIconSize"),
-                        set = self.BuildGenericAuraGroupSetter("customIconSize"),
-                        disabled = function(info)
-                            local groupKey = info[2]
-                            return currentModel.groupUserSettings[groupKey].useDefaultIconSize
-                        end
+                        get = self.BuildGenericAuraGroupGetter("xOffset"),
+                        set = self.BuildGenericAuraGroupSetter("xOffset")
                     },
                     showDispelType = {
                         type = "toggle",

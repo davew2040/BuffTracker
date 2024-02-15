@@ -15,8 +15,8 @@ local cleuEvents = {
     UNIT_DIED = function(self, eventData) 
         print("UNIT DIED")
     end,
-    SPELL_CAST_SUCCESS = function(self, eventData) 
-        BuffWatcher.SPELL_CAST_SUCCESS(self, eventData)
+    SPELL_CAST_SUCCESS = function(self, eventData, ...)
+        BuffWatcher.SPELL_CAST_SUCCESS(self, eventData, ...)
     end
 }
 
@@ -94,7 +94,9 @@ function BuffWatcher:COMBAT_LOG_EVENT_UNFILTERED(...)
     end
 end
 
+---@param eventData any
 function BuffWatcher:SPELL_CAST_SUCCESS(eventData)
+    watcherService.HandleEvent_Cast(eventData)
 end
 
 function BuffWatcher:NAME_PLATE_UNIT_ADDED(...)

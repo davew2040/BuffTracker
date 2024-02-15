@@ -25,7 +25,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
             function() 
                 dbConfig = dbAccessor.GetOptions()
                 DevTool:AddData(CopyTable(dbConfig), "Received updated db options")
-                callbacks.fire(BuffWatcher_Configuration.Events.ConfigChanged)
+                callbacks.fire(BuffWatcher_Configuration.Events.ConfigChanged, dbConfig)
             end
         )
     end
@@ -80,6 +80,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
         return magicColor
     end
 
+    ---@param fn fun(): nil
     self.registerConfigChanged = function(fn)
         callbacks.registerCallback(BuffWatcher_Configuration.Events.ConfigChanged, fn)
     end

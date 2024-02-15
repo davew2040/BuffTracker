@@ -23,3 +23,8 @@
 ---@field updatedAuraInstanceIDs integer[]
 ---@field removedAuraInstanceIDs integer[]
 ---@field isFullUpdate boolean
+
+---@class BuffWatcher_Blizzard_CastInfo
+---@field spellId integer
+---@field sourceName string
+---@field sourceGuid string

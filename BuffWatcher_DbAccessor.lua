@@ -66,7 +66,7 @@ function BuffWatcher_DbAccessor:new()
         ---@cast copied BuffWatcher_SavedDbOptions
 
         db.global.options = copied
-        callbacks.fire(BuffWatcher_DbAccessor.Events.OptionsUpdated)
+        callbacks.fire(BuffWatcher_DbAccessor.Events.OptionsUpdated, db.global.options)
     end
 
     ---@return BuffWatcher_Callbacks
@@ -77,6 +77,11 @@ function BuffWatcher_DbAccessor:new()
     self.OnInitialize = function(contextDefaults)
         local defaults = GetDefaultDb(contextDefaults)
         db = LibStub("AceDB-3.0"):New("BuffWatcherDB", defaults)
+    end
+
+    ---@param fn fun(options: BuffWatcher_SavedDbOptions): nil
+    self.RegisterOptionsChanged = function(fn)
+        callbacks.registerCallback(BuffWatcher_DbAccessor.Events.OptionsUpdated, fn)
     end
 
     return self;

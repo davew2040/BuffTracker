@@ -175,8 +175,8 @@ function BuffWatcher_AuraContextStore:new(
         ---@type table<string, BuffWatcher_AuraContext>
         local result = {}
 
-        for key,v in pairs(settings) do
-            result[key] = buildSingleContextFromSettings(key, v, spells)
+        for key,mergedSettings in pairs(settings) do
+            result[key] = buildSingleContextFromSettings(key, mergedSettings, spells)
         end
 
         return result
@@ -187,12 +187,29 @@ function BuffWatcher_AuraContextStore:new(
         local userSettings = dbAccessor.GetOptions().groupUserSettings
         local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
 
+        DevTool:AddData(newContextSettings, "fixme updating contexts from sources")
+
         contexts = buildAllContextsFromSettings(newContextSettings, spells)
         DevTool:AddData(contexts, "fixme contexts")
     end
 
+    ---@param newOptions BuffWatcher_SavedDbOptions
+    local handleConfigChanged = function(newOptions)
+        DevTool:AddData(newOptions, "fixme got new options")
+
+        local spells = spellRegistry.GetSpells()
+        local userSettings = dbAccessor.GetOptions().groupUserSettings
+        local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
+
+        for key, settings in pairs(newOptions.groupUserSettings) do
+            contexts[key].UpdateFromDbSettings(settings)
+        end
+    end
+
     local initialize = function()
         updateFromSources()
+
+        dbAccessor.RegisterOptionsChanged(handleConfigChanged)
     end
 
     ---@return table<string, BuffWatcher_AuraContext>

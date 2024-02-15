@@ -41,6 +41,7 @@ Models/BuffWatcher_FramesCollection.lua
 Models/BuffWatcher_UnitToGuidLinkage.lua
 
 Wrappers/BuffWatcher_BlizzardFrameWrapper.lua
+Wrappers/BuffWatcher_TimerWrapper.lua
 
 BuffWatcher_Shared.lua
 BuffWatcher_Tests.lua

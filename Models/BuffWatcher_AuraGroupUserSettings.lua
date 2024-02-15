@@ -7,4 +7,6 @@
 ---@field unlistedRowCount integer
 ---@field useDefaultUnlistedMultiplier boolean
 ---@field customUnlistedMultiplier number
+---@field xOffset integer
+---@field yOffset integer
 BuffWatcher_AuraGroupUserSettings = {}

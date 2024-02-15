@@ -888,6 +888,25 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
         -- return hasUpdates
     end
 
+    ---@param eventData any
+    self.HandleEvent_Cast = function(eventData)
+        ---@type BuffWatcher_Blizzard_CastInfo
+        local castInfo = {
+            spellId = eventData[12],
+            sourceGuid = eventData[4],
+            sourceName = eventData[5]
+        }
+
+        DevTool:AddData(eventData, "fixme eventData")
+        DevTool:AddData(castInfo, "fixme castInfo")
+
+        for _, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded()) then
+                context.HandleCast(castInfo)
+            end
+        end
+    end
+
     ---@param context BuffWatcher_AuraContext
     ---@param regionData any
     ---@return number

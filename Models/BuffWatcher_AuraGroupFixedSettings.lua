@@ -7,6 +7,4 @@
 ---@field icon integer
 ---@field selfPoint string
 ---@field anchorPoint string
----@field xOffset integer
----@field yOffset integer
 BuffWatcher_AuraGroupFixedSettings = {}

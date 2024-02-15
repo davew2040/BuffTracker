@@ -18,6 +18,7 @@
 ---@field name string
 ---@field caster string
 ---@field isHarmful boolean
+---@field timerHandle? BuffWatcher_TimerWrapper
 BuffWatcher_AuraInstance = {}
 
 

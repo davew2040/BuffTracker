@@ -120,7 +120,10 @@ function BuffWatcher_FrameManager:new(context)
 
         if (context.isNameplate()) then
             local nameplateFrame = C_NamePlate.GetNamePlateForUnit(targetUnit)
-            table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(nameplateFrame))
+            
+            if (nameplateFrame ~= nil) then
+                table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(nameplateFrame))
+            end
         else
             local frames = LGF.GetUnitFrame(targetUnit, { 
                 ignorePlayerFrame = true, 
@@ -133,12 +136,6 @@ function BuffWatcher_FrameManager:new(context)
                 for _, frame in pairs(frames) do
                     table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(frame))
                 end
-
-                if (BuffWatcher_Shared_Singleton.GetTableKeyCount(frames) == 0) then
-                    DevTool:AddData(targetUnit, "fixme lfg no frames found")
-                end
-            else 
-                DevTool:AddData(targetUnit, "fixme lfg nil frames found")
             end
         end
 
@@ -150,13 +147,12 @@ function BuffWatcher_FrameManager:new(context)
     ---@param frames BuffWatcher_BlizzardFrameWrapper[]
     local addUnitAuras = function(unitName, frames)
         local unitGuid = UnitGUID(unitName)
-    
         local stateKeys = context.GetKeysByGuid(unitGuid)
 
         -- DevTool:AddData(wrappedFrames, "fixme wrappedFrames")
         -- DevTool:AddData(CopyTable(stateKeys), "fixme processing stateKeys")
 
-        for _, wrappedFrame in ipairs(wrappedFrames) do
+        for _, wrappedFrame in ipairs(frames) do
             --DevTool:AddData(wrappedFrame, "fixme processing wrappedFrame")
             ---@type table<string, BuffWatcher_FrameData>
             local newAuraFrames = {}
@@ -174,6 +170,7 @@ function BuffWatcher_FrameManager:new(context)
                 }
                 newAuraFrames[stateKey] = frameEntry
             end
+            DevTool:AddData({wrappedFrame = wrappedFrame, unitName = unitName, unitGuid = unitGuid, newAuraFrames = newAuraFrames}, "fixme attachAuraFramesToWowFrame")
 
             attachAuraFramesToWowFrame(wrappedFrame, unitGuid, newAuraFrames)
         end

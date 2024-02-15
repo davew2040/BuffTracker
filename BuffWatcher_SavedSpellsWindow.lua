@@ -167,7 +167,7 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
 
         local filterSpellName = AceGUI:Create("EditBox")
             
-        filterSpellName:SetWidth(100);
+        filterSpellName:SetWidth(150);
         filterSpellName:SetHeight(25);
         filterSpellName:SetLabel("Spell Name:");
         filterSpellName:SetCallback("OnTextChanged", function(control, event, text)
