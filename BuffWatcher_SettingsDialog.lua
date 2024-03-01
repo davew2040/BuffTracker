@@ -30,6 +30,21 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         end
     end
 
+    ---@return table<string, string>
+    local getAnchorPoints = function()
+        return {
+            [BuffWatcher_AnchorPoints.TOPLEFT] = BuffWatcher_AnchorPoints.TOPLEFT,
+            [BuffWatcher_AnchorPoints.TOP] = BuffWatcher_AnchorPoints.TOP,
+            [BuffWatcher_AnchorPoints.TOPRIGHT] = BuffWatcher_AnchorPoints.TOPRIGHT,
+            [BuffWatcher_AnchorPoints.LEFT] = BuffWatcher_AnchorPoints.LEFT,
+            [BuffWatcher_AnchorPoints.CENTER] = BuffWatcher_AnchorPoints.CENTER,
+            [BuffWatcher_AnchorPoints.RIGHT] = BuffWatcher_AnchorPoints.RIGHT,
+            [BuffWatcher_AnchorPoints.BOTTOMLEFT] = BuffWatcher_AnchorPoints.BOTTOMLEFT,
+            [BuffWatcher_AnchorPoints.BOTTOM] = BuffWatcher_AnchorPoints.BOTTOM,
+            [BuffWatcher_AnchorPoints.BOTTOMRIGHT] = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+        }
+    end
+
     ---@param contextDefaults BuffWatcher_DefaultContextValues
     local getContextSubgroups = function(contextDefaults)
         local subgroups = {}
@@ -66,6 +81,16 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         get = self.BuildGenericAuraGroupGetter("xOffset"),
                         set = self.BuildGenericAuraGroupSetter("xOffset")
                     },
+                    yOffset = {
+                        name = "Vertical Offset",
+                        desc = "The vertical offset of the aura group",
+                        type = "range",
+                        min = -1000,
+                        max = 1000,
+                        step = 1,
+                        get = self.BuildGenericAuraGroupGetter("yOffset"),
+                        set = self.BuildGenericAuraGroupSetter("yOffset")
+                    },
                     showDispelType = {
                         type = "toggle",
                         name = "Show Dispel Type",
@@ -94,6 +119,22 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                             return currentModel.groupUserSettings[groupKey].useDefaultIconSize
                         end
                     },
+                    anchorPoint = {
+                        name = "Target Anchor Point",
+                        desc = "Determines the anchor point of the target frame that the aura set will be aligned with.",
+                        type = "select",
+                        values = getAnchorPoints(),
+                        get = self.BuildGenericAuraGroupGetter("anchorPoint"),
+                        set = self.BuildGenericAuraGroupSetter("anchorPoint"),
+                    },   
+                    selfPoint = {
+                        name = "Self Anchor Point",
+                        desc = "Determines the point of the aura frame that aura frames will be anchored from.",
+                        type = "select",
+                        values = getAnchorPoints(),
+                        get = self.BuildGenericAuraGroupGetter("selfPoint"),
+                        set = self.BuildGenericAuraGroupSetter("selfPoint"),
+                    },   
                     growDirection = {
                         name = "Grow Direction",
                         desc = "Whether the aura group should grow left or right",
@@ -104,7 +145,7 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         },
                         get = self.BuildGenericAuraGroupGetter("growDirection"),
                         set = self.BuildGenericAuraGroupSetter("growDirection"),
-                    },                    
+                    },                   
                     useDefaultUnlistedMultiplier = {
                         type = "toggle",
                         name = "Use Default Unlisted Multiplier",
@@ -147,8 +188,8 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                     min = 16,
                     max = 128,
                     step = 1,
-                    get = buildRootGetter(function(model) return model.iconSize end),
-                    set = buildRootSetter(function(model, value) model.iconSize = value end),
+                    get = buildRootGetter(function(model) return model.unitFrameIconSize end),
+                    set = buildRootSetter(function(model, value) model.unitFrameIconSize = value end),
                 },
                 unlistedMultiplier = {
                     name = "Unlisted Icon Multiplier",
@@ -205,7 +246,6 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         ---@type fun(info: any, value: any)
         local setter = function(info, value)
             local groupKey = info[2]
-            DevTool:AddData(value, "fixme new value")
             currentModel.groupUserSettings[groupKey][settingName] = value
             dbAccessor.SetOptions(currentModel)
         end

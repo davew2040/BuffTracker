@@ -1,5 +1,6 @@
 local AceGUI = LibStub("AceGUI-3.0")
 
+---@class BuffWatcher_LoggerWindow_SpellRow
 BuffWatcher_LoggerWindow_SpellRow = {}
 
 ---@param spellRegistry BuffWatcher_StoredSpellsRegistry
@@ -10,7 +11,8 @@ function BuffWatcher_LoggerWindow_SpellRow:new(spellRegistry)
     local AddEventName = "SPELL_ADD"
     local ButtonHeight = 30
 
-    local storedSpells = spellRegistry.GetSpells()
+    ---@type table<string, BuffWatcher_StoredSpell>
+    local storedSpells = {}
 
     local events = BuffWatcher_Callbacks:new()
 
@@ -52,6 +54,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new(spellRegistry)
 
     ---@param spell BuffWatcher_CastRecord
     self.setSpell = function(spell)
+        storedSpells = spellRegistry.GetSpells()
         currentSpell = spell
 
         local spellName, _ = GetSpellInfo(spell.spellId)
@@ -67,6 +70,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new(spellRegistry)
         local spellIsStored = storedSpells[castKey] ~= nil
 
         addButton:SetDisabled(spellIsStored)
+        addButton:SetText(spellIsStored and 'Added' or 'Add')
     end
 
     self.clearSpell = function()

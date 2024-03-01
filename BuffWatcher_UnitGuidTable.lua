@@ -7,8 +7,8 @@ function BuffWatcher_UnitGuidTable:new()
     ---@type table<string, string>
     local unitToGuid = {}
 
-    ---@type table<string, string>
-    local guidToUnit = {}
+    ---@type table<string, table<string, boolean>>
+    local guidToUnits = {}
 
 
     self.GetUnitsToGuid = function()
@@ -16,20 +16,28 @@ function BuffWatcher_UnitGuidTable:new()
     end
 
     self.GetGuidsToUnits = function()
-        return guidToUnit
+        return guidToUnits
     end
 
     ---@param unit string
     ---@param guid string
     self.LinkUnitToGuid = function(unit, guid)
         unitToGuid[unit] = guid
-        guidToUnit[guid] = unit
+
+        if (guidToUnits[guid] == nil) then
+            guidToUnits[guid] = {}
+        end
+        guidToUnits[guid][unit] = true
     end
 
     ---@param guid string
-    ---@return string
-    self.GetUnitByGuid = function(guid)
-        return guidToUnit[guid]
+    ---@return table<string, boolean>
+    self.GetUnitsByGuid = function(guid)
+        if guidToUnits[guid] == nil then
+            return {}
+        end
+
+        return guidToUnits[guid]
     end
     
     ---@param unit string
@@ -43,26 +51,33 @@ function BuffWatcher_UnitGuidTable:new()
         local guid = unitToGuid[unit]
 
         unitToGuid[unit] = nil
-        guidToUnit[guid] = nil
+        
+        if (guidToUnits[guid] ~= nil) then
+            guidToUnits[guid][unit] = nil
+
+            if (BuffWatcher_Shared_Singleton.GetTableKeyCount(guidToUnits[guid]) == 0) then
+                guidToUnits[guid] = nil
+            end
+        end
     end
 
     ---@param guid string
     self.UnlinkGuid = function(guid)
-        local unit = guidToUnit[guid]
+        local unit = guidToUnits[guid]
 
-        guidToUnit[guid] = nil
+        guidToUnits[guid] = nil
         unitToGuid[unit] = nil
     end
 
     self.Reset = function()
-        guidToUnit = {}
+        guidToUnits = {}
         unitToGuid = {}
     end
 
     ---@return table<string, boolean>
     self.GetAllGuids = function()
         return BuffWatcher_Shared_Singleton.TransformTable(
-            guidToUnit, 
+            guidToUnits, 
             function(key) return key end, 
             function(value) return true end
         )

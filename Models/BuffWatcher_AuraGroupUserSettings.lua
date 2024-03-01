@@ -9,4 +9,6 @@
 ---@field customUnlistedMultiplier number
 ---@field xOffset integer
 ---@field yOffset integer
+---@field selfPoint string
+---@field anchorPoint string
 BuffWatcher_AuraGroupUserSettings = {}

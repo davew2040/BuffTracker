@@ -308,7 +308,8 @@ function BuffWatcher_Shared:new()
         Party = 1,
         Arena = 2,
         Raid = 3,
-        Nameplate = 4
+        Nameplate = 4,
+        Battleground = 5
     }
 
     local initialize = function()
@@ -374,7 +375,8 @@ function BuffWatcher_Shared.GetDefaultStoredSpell()
         showGlow = false,
         sizeMultiplier = 1,
         priority = 5,
-        ownOnly = false
+        ownOnly = false,
+        showInBattlegrounds = false
     }
     return default
 end
@@ -507,22 +509,19 @@ end
 
 ---@return boolean
 function BuffWatcher_Shared.PlayerInBattleground()
-    -- local instanceType, _, _, _, _, _, _, mapID = GetInstanceInfo()
+    local result = C_PvP.IsBattleground()
+    local isBattleground = result ~= nil and result == true
 
-    -- local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
-
-    -- return instanceType == "pvp" and instanceType ~= "arena"
-
-    local isBattleground = C_PvP.IsBattleground()
+    DevTool:AddData(isBattleground, "fixme isBattleground")
 
     return isBattleground
 end
 
 ---@return boolean
 function BuffWatcher_Shared.PlayerInArena()
-    local isArena, _ = IsActiveBattlefieldArena()
+    local _, instanceType = GetInstanceInfo()
 
-    return isArena
+    return instanceType == "arena"
 end
 
 ---@return BuffWatcher_Blizzard_AuraData[]
@@ -627,6 +626,15 @@ function BuffWatcher_Shared.TableHasKeys(table)
         return true
     end
     return false
+end
+
+---@param t table
+function BuffWatcher_Shared.FirstKeyOrDefault(t)
+    for k,_ in pairs(t) do
+        return k
+    end
+
+    return nil
 end
 
 ---@param guid string

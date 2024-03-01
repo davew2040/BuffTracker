@@ -57,7 +57,7 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param spellDefinition BuffWatcher_StoredSpell
     ---@return number
     local getSize = function(spellDefinition)
-        return spellDefinition.sizeMultiplier * configuration.GetDefaultSize()
+        return spellDefinition.sizeMultiplier * configuration.GetDefaultUnitFrameSize()
     end
 
     ---@param weakAurasRoot any
@@ -170,9 +170,9 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     local addAllTestAnchors = function(context, groupName, exporterContext)
         DevTool:AddData("fixme adding test anchors")
 
-        addSingleTestAnchor(getTestAnchorName(context, 1), context.GetIcon(), context, configuration.GetDefaultSize(), groupName, exporterContext)
-        addSingleTestAnchor(getTestAnchorName(context, 2), Icons.Left, context, configuration.GetDefaultSize(), groupName, exporterContext)
-        addSingleTestAnchor(getTestAnchorName(context, 3), Icons.Right, context, configuration.GetDefaultSize(), groupName, exporterContext)
+        addSingleTestAnchor(getTestAnchorName(context, 1), context.GetIcon(), context, configuration.GetDefaultUnitFrameSize(), groupName, exporterContext)
+        addSingleTestAnchor(getTestAnchorName(context, 2), Icons.Left, context, configuration.GetDefaultUnitFrameSize(), groupName, exporterContext)
+        addSingleTestAnchor(getTestAnchorName(context, 3), Icons.Right, context, configuration.GetDefaultUnitFrameSize(), groupName, exporterContext)
     end
 
     ---@param context BuffWatcher_AuraContext
@@ -211,7 +211,7 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param groupName string
     ---@param exporterContext WeakAuraExporterContext
     local addAurasMulti = function(context, bundle, groupName, exporterContext)
-        local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
+        local size = configuration.GetDefaultUnitFrameSize() * configuration.GetUnlistedMultiplier()
 
         if (context.includeBuffsAndCasts()) then
             local auraName = getAuraName(context, 'MULTI-GROUP', 'BUFFS') 
@@ -261,7 +261,7 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     local addCatchAlls = function(context, bundle, groupName, exporterContext)
         local showUnlisted = context.showUnlistedAuras()
         if (showUnlisted ~= BuffWatcher_ShowUnlistedType.None) then
-            local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
+            local size = configuration.GetDefaultUnitFrameSize() * configuration.GetUnlistedMultiplier()
 
             if (context.includeBuffsAndCasts()) then
                 local auraName = getAuraName(context, 'CATCH ALL', 'BUFFS') 
@@ -323,7 +323,7 @@ function BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     ---@param weakAurasRoot any
     local addScriptAura = function(context, groupName, weakAurasRoot)
         local auraName =  getAuraName(context, 'SCRIPT', 'ALL')
-        local size = configuration.GetDefaultSize() * configuration.GetUnlistedMultiplier()
+        local size = configuration.GetDefaultUnitFrameSize() * configuration.GetUnlistedMultiplier()
         local aura = weakAuraGenerator.GenerateScriptAura(auraName, groupName, context, size, configuration.GetUnlistedMultiplier())
 
         DevTool:AddData(aura, "fixme created new script aura")

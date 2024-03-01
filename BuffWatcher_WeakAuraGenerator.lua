@@ -259,8 +259,6 @@ function BuffWatcher_WeakAuraGenerator:new(configuration)
 
         aura["subRegions"][BuffDebuffBorderIndex]["border_color"] = colorObject
         aura["subRegions"][BuffDebuffBorderIndex]["border_visible"] = true
-
-        DevTool:AddData(CopyTable(aura), "fixme aura after border")
     end
 
     ---@param name string

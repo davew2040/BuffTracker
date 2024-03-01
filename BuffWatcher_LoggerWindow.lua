@@ -21,6 +21,7 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     local spellRowHeight = 32
     local spellRecords = {}
     local filteredSpellRecords = {}
+    ---@type BuffWatcher_LoggerWindow_SpellRow[]
     local uiSpellRows = {}
     local indexedSpellRecords = {}
     local pagerText = nil
@@ -46,6 +47,7 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     local handleSpellAdd = function(...) 
         local spellRecord = select(1, ...)
         storedSpells.addSpell(spellRecord)
+        self.UpdateWindow()
     end
 
     ---@param castRecord BuffWatcher_CastRecord

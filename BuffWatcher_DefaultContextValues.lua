@@ -34,9 +34,7 @@ function BuffWatcher_DefaultContextValues:new()
         includeDebuffs = false,
         isHostile = false,
         frameType = BuffWatcher_Shared_Singleton.FrameTypes.Arena,
-        icon = 0,
-        anchorPoint = "TOP",
-        selfPoint = "TOP"
+        icon = 0
     }
 
     ---@type BuffWatcher_AuraGroupUserSettings
@@ -50,7 +48,9 @@ function BuffWatcher_DefaultContextValues:new()
         useDefaultUnlistedMultiplier = true,
         customUnlistedMultiplier = 0.5,
         xOffset = 0,
-        yOffset = 0
+        yOffset = 0,
+        selfPoint = BuffWatcher_AnchorPoints.TOPLEFT,
+        anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT
     }
 
     ---@param showUnlistedAuras BuffWatcher_ShowUnlistedType
@@ -63,6 +63,8 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param customUnlistedMultiplier number,
     ---@param xOffset integer,
     ---@param yOffset integer
+    ---@param anchorPoint BuffWatcher_AnchorPoints,
+    ---@param selfPoint BuffWatcher_AnchorPoints
     ---@return BuffWatcher_AuraGroupUserSettings
     local buildUserSettingsInstance = function(
         showUnlistedAuras, 
@@ -74,7 +76,9 @@ function BuffWatcher_DefaultContextValues:new()
         useDefaultUnlistedMultiplier,
         customUnlistedMultiplier,
         xOffset,
-        yOffset
+        yOffset,
+        anchorPoint,
+        selfPoint
     )
         ---@type BuffWatcher_AuraGroupUserSettings
         local newUserSettings = {
@@ -87,7 +91,9 @@ function BuffWatcher_DefaultContextValues:new()
             useDefaultUnlistedMultiplier = useDefaultUnlistedMultiplier,
             customUnlistedMultiplier = customUnlistedMultiplier,
             xOffset = xOffset,
-            yOffset = yOffset
+            yOffset = yOffset,
+            selfPoint = selfPoint,
+            anchorPoint = anchorPoint
         }
 
         BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseUserSettings, newUserSettings)
@@ -101,9 +107,7 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param includeDebuffs boolean
     ---@param isHostile boolean
     ---@param icon integer
-    ---@param selfPoint string
-    ---@param anchorPoint string
-    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile, icon, selfPoint, anchorPoint)
+    local buildFixedSettingsInstance = function(friendlyName, frameType, includeBuffsAndCasts, includeDebuffs, isHostile, icon)
         ---@type BuffWatcher_AuraGroupFixedSettings
         local settingsObject = {
             friendlyName = friendlyName,
@@ -111,9 +115,7 @@ function BuffWatcher_DefaultContextValues:new()
             includeDebuffs = includeDebuffs,
             isHostile = isHostile,
             frameType = frameType,
-            icon = icon,
-            selfPoint = selfPoint,
-            anchorPoint = anchorPoint
+            icon = icon
         }
 
         BuffWatcher_Shared_Singleton.ValidateObjectCopy(BaseFixedSettings, settingsObject)
@@ -136,9 +138,7 @@ function BuffWatcher_DefaultContextValues:new()
             params.isBuffs, 
             not params.isBuffs, 
             params.isHostile, 
-            params.icon, 
-            params.selfPoint, 
-            params.anchorPoint
+            params.icon
         );
         DefaultFixedContextSettings[params.key] = newEntry
 
@@ -155,7 +155,9 @@ function BuffWatcher_DefaultContextValues:new()
             params.useDefaultUnlistedMultiplier,
             params.customUnlistedMultiplier,
             params.xOffset,
-            params.yOffset
+            params.yOffset,
+            params.anchorPoint,
+            params.selfPoint
         )
     end
 
@@ -173,8 +175,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178499,
             xOffset = 60,
             yOffset = 10,
-            selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "TOPLEFT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -193,8 +195,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178492,
             xOffset = -80,
             yOffset = 10,
-            selfPoint = "BOTTOMLEFT",
-            anchorPoint = "TOPRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMLEFT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -213,8 +215,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178493,
             xOffset = 60,
             yOffset = 15,
-            selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "TOPLEFT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -233,8 +235,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178494,
             xOffset = -80,
             yOffset = 15,
-            selfPoint = "BOTTOMLEFT",
-            anchorPoint = "TOPRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMLEFT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -253,8 +255,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178495,
             xOffset = -10,
             yOffset = 15,
-            selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -273,8 +275,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178496,
             xOffset = -10,
             yOffset = -10,
-            selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 1,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -293,8 +295,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178497,
             xOffset = -10,
             yOffset = 15,
-            selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -313,8 +315,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178498,
             xOffset = -10,
             yOffset = -10,
-            selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -333,8 +335,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717310,
             xOffset = -5,
             yOffset = 5,
-            selfPoint = "BOTTOMRIGHT",
-            anchorPoint = "BOTTOMRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -353,8 +355,48 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717303,
             xOffset = -5,
             yOffset = -5,
-            selfPoint = "TOPRIGHT",
-            anchorPoint = "TOPRIGHT",
+            selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.BattlegroundBuffs,
+            friendlyName = "Battleground Buffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Battleground,
+            isBuffs = true,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = false,
+            useDefaultIconSize = false,
+            customIconSize = DefaultRaidIconSize,
+            icon = 3717310,
+            xOffset = -5,
+            yOffset = 5,
+            selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
+            unlistedRowCount = 2,
+            useDefaultUnlistedMultiplier = true,
+            customUnlistedMultiplier = 0.5
+        })
+
+        addDefaultSettingsEntry({
+            key = keys.BattlegroundDebuffs,
+            friendlyName = "Battleground Debuffs",
+            frameType = BuffWatcher_Shared_Singleton.FrameTypes.Battleground,
+            isBuffs = false,
+            isHostile = false,
+            showUnlisted = BuffWatcher_ShowUnlistedType.None, 
+            showDispelType = true,
+            useDefaultIconSize = false,
+            customIconSize = DefaultRaidIconSize,
+            icon = 3717303,
+            xOffset = -5,
+            yOffset = -5,
+            selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
+            anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
             useDefaultUnlistedMultiplier = true,
             customUnlistedMultiplier = 0.5
@@ -397,8 +439,8 @@ function BuffWatcher_DefaultContextValues:new()
                 icon = fixedSettings.icon,
                 xOffset = userValues.xOffset,
                 yOffset = userValues.yOffset,
-                selfPoint = fixedSettings.selfPoint,
-                anchorPoint = fixedSettings.anchorPoint,
+                selfPoint = userValues.selfPoint,
+                anchorPoint = userValues.anchorPoint,
                 unlistedRowCount = userValues.unlistedRowCount,
                 useDefaultUnlistedMultiplier = userValues.useDefaultUnlistedMultiplier,
                 customUnlistedMultiplier = userValues.customUnlistedMultiplier

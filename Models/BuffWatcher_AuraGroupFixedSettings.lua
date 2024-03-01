@@ -5,6 +5,4 @@
 ---@field isHostile boolean
 ---@field frameType FrameTypes
 ---@field icon integer
----@field selfPoint string
----@field anchorPoint string
 BuffWatcher_AuraGroupFixedSettings = {}

@@ -87,6 +87,8 @@ function BuffWatcher_StoredSpellsRegistry:new()
         return storedSpells[castRecord.key] ~= nil 
     end
 
+    ---comment
+    ---@param castRecord BuffWatcher_CastRecord
     self.addSpell = function(castRecord) 
         local storedSpells = readSpells()
         storedSpells[castRecord.key] = BuffWatcher_Shared_Singleton.StoredSpellFromCastRecord(castRecord)

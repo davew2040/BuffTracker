@@ -11,7 +11,9 @@ BuffWatcher_AuraContextStore.ContextKeys = {
     ArenaEnemyBuffs = "ArenaEnemyBuffs",
     ArenaEnemyDebuffs = "ArenaEnemyDebuffs",
     RaidBuffs = "RaidBuffs",
-    RaidDebuffs = "RaidDebuffs"
+    RaidDebuffs = "RaidDebuffs",
+    BattlegroundBuffs = "BattlegroundBuffs",
+    BattlegroundDebuffs = "BattlegroundDebuffs"
 }
 
 ---@param dbAccessor BuffWatcher_DbAccessor
@@ -197,6 +199,7 @@ function BuffWatcher_AuraContextStore:new(
     local handleConfigChanged = function(newOptions)
         DevTool:AddData(newOptions, "fixme got new options")
 
+        --- TODO - reflect new spells in update?
         local spells = spellRegistry.GetSpells()
         local userSettings = dbAccessor.GetOptions().groupUserSettings
         local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)

@@ -29,6 +29,7 @@ Enums/BuffWatcher_GrowDirection.lua
 Enums/BuffWatcher_ShowUnlistedType.lua
 Enums/BuffWatcher_TriggerType.lua
 Enums/BuffWatcher_OutlineType.lua
+Enums/BuffWatcher_AnchorPoints.lua
 
 Models/BuffWatcher_Color.lua
 Models/BuffWatcher_AuraGroupFixedSettings.lua

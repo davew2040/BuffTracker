@@ -13,7 +13,7 @@ local watcherService = nil
 
 local cleuEvents = {
     UNIT_DIED = function(self, eventData) 
-        print("UNIT DIED")
+        --print("UNIT DIED")
     end,
     SPELL_CAST_SUCCESS = function(self, eventData, ...)
         BuffWatcher.SPELL_CAST_SUCCESS(self, eventData, ...)
@@ -69,6 +69,7 @@ function BuffWatcher:OnEnable()
     --self:RegisterEvent("ARENA_TEAM_ROSTER_UPDATE")
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("ARENA_OPPONENT_UPDATE")
 
     LGF.RegisterCallback("BuffWatcher", "GETFRAME_REFRESH", lgfUpdate)
     LGF.RegisterCallback("BuffWatcher", "FRAME_UNIT_UPDATE", lgfUpdate)
@@ -120,7 +121,7 @@ function BuffWatcher:NAME_PLATE_UNIT_ADDED(...)
 end
 
 function BuffWatcher:NAME_PLATE_UNIT_REMOVED(...)
-    --DevTool:AddData({...}, "NAME_PLATE_UNIT_REMOVED")
+    -- DevTool:AddData({...}, "NAME_PLATE_UNIT_REMOVED")
     watcherService.HandleEvent_NameplateRemoved(select(2, ...))
 end
 
@@ -134,6 +135,11 @@ function BuffWatcher:ARENA_TEAM_ROSTER_UPDATE(...)
     print("ARENA_TEAM_ROSTER_UPDATE")
 end
 
+function BuffWatcher:ARENA_OPPONENT_UPDATE(...)
+    print("ARENA_OPPONENT_UPDATE")
+    watcherService.ResetIfLoaded()
+end
+
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
     print("PLAYER_ENTERING_WORLD")
     watcherService.RefreshLoaded()
@@ -141,6 +147,7 @@ function BuffWatcher:PLAYER_ENTERING_WORLD(...)
 end
 
 function BuffWatcher:PARTY_CONVERTED_TO_RAID(...)
+    print("PARTY_CONVERTED_TO_RAID")
     watcherService.RefreshLoaded()
 end
 

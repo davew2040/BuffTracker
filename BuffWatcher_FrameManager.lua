@@ -14,9 +14,6 @@ BuffWatcher_FrameManager = {}
 function BuffWatcher_FrameManager:new(context)
     self = {};
 
-    ---@type table<BuffWatcher_BlizzardFrameWrapper, string>
-    local framesToGuids = {}
-
     ---@type table<string, table<BuffWatcher_BlizzardFrameWrapper, boolean>>
     local guidsToFrames = {}
 
@@ -30,25 +27,36 @@ function BuffWatcher_FrameManager:new(context)
 
     ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
     ---@param guid string
-    ---@param auraFrames table<string, BuffWatcher_FrameData>
-    local attachAuraFramesToWowFrame = function(wowFrame, guid, auraFrames)
-        if framesToGuids[wowFrame] ~= nil then
-            error("Frame already has guid associated")
-        else
-            framesToGuids[wowFrame] = guid
-        end
-
-        if wowFramesToAuraFrames[wowFrame] ~= nil then
-            error("Frame already has auras associated")
-        else
-            wowFramesToAuraFrames[wowFrame] = auraFrames
-        end
+    local associateFrameToGuid = function(wowFrame, guid)
+        wowFramesToAuraFrames[wowFrame] = {}
 
         if guidsToFrames[guid] == nil then
             guidsToFrames[guid] = {}
         end
 
         guidsToFrames[guid][wowFrame] = true
+    end
+
+
+    ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
+    ---@param guid string
+    local detachFrameFromGuid = function(wowFrame, guid)
+        wowFramesToAuraFrames[wowFrame] = nil
+
+        guidsToFrames[guid][wowFrame] = nil
+
+        if (BuffWatcher_Shared_Singleton.GetTableKeyCount(guidsToFrames[guid]) == 0) then
+            guidsToFrames[guid] = nil
+        end
+    end
+
+    ---@param wowFrame BuffWatcher_BlizzardFrameWrapper
+    ---@param guid string
+    ---@param auraFrames table<string, BuffWatcher_FrameData>
+    local attachAuraFramesToWowFrame = function(wowFrame, guid, auraFrames)
+        if wowFramesToAuraFrames[wowFrame] ~= nil then
+            wowFramesToAuraFrames[wowFrame] = auraFrames
+        end
     end
 
     ---@param guid string
@@ -90,9 +98,9 @@ function BuffWatcher_FrameManager:new(context)
             auraFrame.auraFrame.SetOffsets(x, 0)
 
             if (context.GetGrowthDirection() == BuffWatcher_GrowDirection.Left) then
-                x = x - auraFrame.auraFrame.GetWidth() - 1
+                x = x - auraFrame.auraFrame.GetWidth() - 2
             else 
-                x = x + auraFrame.auraFrame.GetWidth() + 1
+                x = x + auraFrame.auraFrame.GetWidth() + 2
             end
         end
     end
@@ -142,15 +150,10 @@ function BuffWatcher_FrameManager:new(context)
         return result
     end
 
-
-    ---@param unitName string
+    ---@param guid string
     ---@param frames BuffWatcher_BlizzardFrameWrapper[]
-    local addUnitAuras = function(unitName, frames)
-        local unitGuid = UnitGUID(unitName)
-        local stateKeys = context.GetKeysByGuid(unitGuid)
-
-        -- DevTool:AddData(wrappedFrames, "fixme wrappedFrames")
-        -- DevTool:AddData(CopyTable(stateKeys), "fixme processing stateKeys")
+    local addGuidAuras = function(guid, frames)
+        local stateKeys = context.GetKeysByGuid(guid)
 
         for _, wrappedFrame in ipairs(frames) do
             --DevTool:AddData(wrappedFrame, "fixme processing wrappedFrame")
@@ -170,7 +173,42 @@ function BuffWatcher_FrameManager:new(context)
                 }
                 newAuraFrames[stateKey] = frameEntry
             end
-            DevTool:AddData({wrappedFrame = wrappedFrame, unitName = unitName, unitGuid = unitGuid, newAuraFrames = newAuraFrames}, "fixme attachAuraFramesToWowFrame")
+
+            attachAuraFramesToWowFrame(wrappedFrame, guid, newAuraFrames)
+        end
+
+        redrawAurasByGuid(guid)
+    end
+
+    ---@param unitName string
+    ---@param frames BuffWatcher_BlizzardFrameWrapper[]
+    local addUnitAuras = function(unitName, frames)
+        local unitGuid = UnitGUID(unitName)
+        local stateKeys = context.GetKeysByGuid(unitGuid)
+
+        -- DevTool:AddData(wrappedFrames, "fixme wrappedFrames")
+        -- DevTool:AddData(CopyTable(stateKeys), "fixme processing stateKeys")
+
+        for _, wrappedFrame in ipairs(frames) do
+            --DevTool:AddData(wrappedFrame, "fixme processing wrappedFrame")
+            ---@type table<string, BuffWatcher_FrameData>
+            local newAuraFrames = {}
+
+            for stateKey, _ in pairs(stateKeys) do
+                -- DevTool:AddData(stateKey, "fixme processing auraframe")
+                local auraInstance = context.GetAuraInstanceByKey(stateKey)
+                if (context.FilterEvent(unitName)) then
+                    local auraFrame = context.GetSingleAuraFrame(auraInstance, wrappedFrame.GetFrame())
+                    
+                    ---@type BuffWatcher_FrameData
+                    local frameEntry = {
+                        stateKey = stateKey,
+                        auraFrame = auraFrame,
+                        auraInstance = auraInstance
+                    }
+                    newAuraFrames[stateKey] = frameEntry
+                end
+            end
 
             attachAuraFramesToWowFrame(wrappedFrame, unitGuid, newAuraFrames)
         end
@@ -178,22 +216,74 @@ function BuffWatcher_FrameManager:new(context)
         redrawAurasByGuid(unitGuid)
     end
 
+    local clearAurasForGuid = function(unitGuid)
+        local frames = getFramesForGuid(unitGuid) 
+
+        for frame, _ in pairs(frames) do
+            local auras = getAurasForFrame(frame)
+
+            for key, auraData in pairs(auras) do
+                auraData.auraFrame.Dispose()
+            end
+
+            wowFramesToAuraFrames[frame] = {}
+        end
+
+        redrawAurasByGuid(unitGuid)
+    end
+
+    ---@param guid string
+    ---@param frame BuffWatcher_BlizzardFrameWrapper
+    local addGuidAurasToFrame = function(guid, frame)
+        local stateKeys = context.GetKeysByGuid(guid)
+
+        --DevTool:AddData(wrappedFrame, "fixme processing wrappedFrame")
+        ---@type table<string, BuffWatcher_FrameData>
+        local newAuraFrames = {}
+
+        for stateKey, _ in pairs(stateKeys) do
+            -- DevTool:AddData(stateKey, "fixme processing auraframe")
+            local auraInstance = context.GetAuraInstanceByKey(stateKey)
+            local auraFrame = context.GetSingleAuraFrame(auraInstance, frame.GetFrame())
+            
+            ---@type BuffWatcher_FrameData
+            local frameEntry = {
+                stateKey = stateKey,
+                auraFrame = auraFrame,
+                auraInstance = auraInstance
+            }
+            newAuraFrames[stateKey] = frameEntry
+        end
+
+        attachAuraFramesToWowFrame(frame, guid, newAuraFrames)
+
+        redrawAurasByGuid(guid)
+    end
+
+    local addAllAurasForGuid = function(unitGuid)
+        local frames = getFramesForGuid(unitGuid)
+        for frame, _ in pairs(frames) do
+            addGuidAurasToFrame(unitGuid, frame)
+        end
+    end
 
     ---@param units table<string, boolean>
     self.DoFullUpdate = function(units)
+        --DevTool:AddData("fixme DoFullUpdate")
         self.Reset()
 
         for unit, _ in pairs(units) do
             local frames = getTargetFrames(unit)
 
-            if (#frames > 0) then
-                addUnitAuras(unit, frames)
+            for _, frame in ipairs(frames) do
+                -- if this frame isn't already present in our set, then add it
+                if (wowFramesToAuraFrames[frame] == nil) then
+                    local guid = UnitGUID(unit)
+                    associateFrameToGuid(frame, guid)
+                    addGuidAurasToFrame(guid, frame)
+                end
             end
         end
-
-        -- DevTool:AddData(framesToGuids, "fixme framesToGuids")
-        -- DevTool:AddData(guidsToFrames, "fixme guidsToFrames")
-        -- DevTool:AddData(wowFramesToAuraFrames, "fixme wowFramesToAuraFrames")
     end
 
     self.Reset = function()
@@ -203,7 +293,6 @@ function BuffWatcher_FrameManager:new(context)
             end
         end
 
-        framesToGuids = {}
         guidsToFrames = {}
         wowFramesToAuraFrames = {}
     end
@@ -217,8 +306,12 @@ function BuffWatcher_FrameManager:new(context)
             local aurasForFrame = getAurasForFrame(wowFrame)
             local aura = aurasForFrame[stateKey]
 
-            aura.auraFrame.Dispose()
-
+            if (aura ~= nil) then
+                aura.auraFrame.Dispose()
+            else
+                DevTool:AddData({ guid = guid, stateKey = stateKey },"error - encountered nil aura")
+            end
+            
             aurasForFrame[stateKey] = nil
         end
 
@@ -233,18 +326,16 @@ function BuffWatcher_FrameManager:new(context)
         for wowFrame, _ in pairs(frames) do
             local aura = getAurasForFrame(wowFrame)[stateKey]
 
-            aura.auraFrame.UpdateCooldown()
+            if (aura ~= nil) then
+                aura.auraFrame.UpdateCooldown()
+            end
         end
     end
 
     ---@param guid string
     ---@param stateKey string
     self.AuraAdded = function(guid, stateKey)
-        DevTool:AddData(stateKey, "fixme AuraAdded")
-
         local frames = getFramesForGuid(guid)
-
-        DevTool:AddData(frames, "fixme frames")
 
         for wowFrame, _ in pairs(frames) do
             local auras = getAurasForFrame(wowFrame)
@@ -265,13 +356,37 @@ function BuffWatcher_FrameManager:new(context)
     end
 
     ---@param unitGuid string
-    self.UnitUpdated = function(unitGuid)
-        DevTool:AddData({unitGuid = unitGuid, context = context.getName()}, "fixme UnitUpdated")
-        self.DoFullUpdate(context.GetPotentialUnits())
+    self.GuidRefreshed = function(unitGuid)
+        clearAurasForGuid(unitGuid)
+        addAllAurasForGuid(unitGuid)
+    end
+
+    ---@param unitName string
+    self.UnitAdded = function(unitName)
+        local frames = getTargetFrames(unitName)
+
+        if (#frames > 0) then
+            local guid = UnitGUID(unitName)
+            for _, frame in ipairs(frames) do
+                associateFrameToGuid(frame, guid)
+            end
+            addUnitAuras(unitName, frames)
+        end
     end
 
     ---@param unitGuid string
-    self.UnitCleared = function(unitGuid)
+    self.UnitRemoved = function(unitGuid)
+        clearAurasForGuid(unitGuid)
+        local oldFrames = getFramesForGuid(unitGuid)
+
+        for frame, _ in pairs(oldFrames) do
+            detachFrameFromGuid(frame, unitGuid)
+        end
+
+        redrawAurasByGuid(unitGuid)
+    end
+
+    self.DoFullClear = function()
         self.DoFullUpdate(context.GetPotentialUnits())
     end
 

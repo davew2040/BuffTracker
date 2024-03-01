@@ -11,12 +11,12 @@
 ---@field priority integer
 ---@field sourceGuid string?
 ---@field targetGuid string
----@field targetUnit string
+---@field targetUnit? string
 ---@field auraInstanceId integer
 ---@field triggerType BuffWatcher_TriggerType
 ---@field icon integer
 ---@field name string
----@field caster string
+---@field caster? string
 ---@field isHarmful boolean
 ---@field timerHandle? BuffWatcher_TimerWrapper
 BuffWatcher_AuraInstance = {}

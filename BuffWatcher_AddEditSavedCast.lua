@@ -1,4 +1,6 @@
 local AceGUI = LibStub("AceGUI-3.0")
+local AceConfig = LibStub("AceConfig-3.0")
+local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
 ---@class BuffWatcher_AddEditSavedCast
 BuffWatcher_AddEditSavedCast = {}
@@ -7,6 +9,8 @@ function BuffWatcher_AddEditSavedCast:new()
     self = {}
 
     local mainFrame = nil
+
+    local mainPanel = nil
 
     local labelSpellname = nil
     local txtSpellName = nil
@@ -32,19 +36,6 @@ function BuffWatcher_AddEditSavedCast:new()
         local spellName = GetSpellInfo(spell.spellId)
 
         mainFrame:SetTitle("Add/Edit Spell - " .. spellName)
-        
-        DevTool:AddData(CopyTable(spell), "fixme add edit spell open")
-
-        chkHide:SetValue(spell.hide)
-        chkParty:SetValue(spell.showInParty)
-        chkArenas:SetValue(spell.showInArena)
-        chkRaids:SetValue(spell.showInRaid)
-        chkOwnOnly:SetValue(spell.ownOnly)
-        chkEnemyNameplates:SetValue(spell.showOnNameplates)
-        chkBattlegrounds:SetValue(spell.showInBattlegrounds)
-        -- chkGlow:SetChecked(spell.showGlow)
-
-        -- multiplierSlider:SetValue(spell.sizeMultiplier)
     end
 
     local initializeActionsBar = function(parent)
@@ -66,6 +57,7 @@ function BuffWatcher_AddEditSavedCast:new()
         saveButton:SetWidth(125)
         saveButton:SetPoint("BOTTOMRIGHT", cancelButton.frame, "BOTTOMLEFT", -10, 0)
         saveButton:SetCallback("OnClick", function(control, event)
+            DevTool:AddData(activeModel, "fixme activeModel")
             localOnSave(activeModel)
         end)
         actionsBarFrame:AddChild(saveButton)
@@ -78,59 +70,138 @@ function BuffWatcher_AddEditSavedCast:new()
         frame:SetTitle("Add/Edit Stored Spell")
         frame:SetLayout("List")
 
-        DevTool:AddData(frame, "fixme addedit cast window frame")
-
-        chkHide = AceGUI:Create("CheckBox")
-        chkHide:SetLabel("Hide")
-        chkHide:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.hide = newValue
-        end)
-        frame:AddChild(chkHide)
-
-        chkEnemyNameplates = AceGUI:Create("CheckBox")
-        chkEnemyNameplates:SetLabel("Show on Nameplates")
-        chkEnemyNameplates:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.showOnNameplates = newValue
-        end)
-        frame:AddChild(chkEnemyNameplates)
-
-        chkParty = AceGUI:Create("CheckBox")
-        chkParty:SetLabel("Show on Party Frames")
-        chkParty:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.showInParty = newValue
-        end)
-        frame:AddChild(chkParty)
-
-        chkArenas = AceGUI:Create("CheckBox")
-        chkArenas:SetLabel("Show on Arena Frames")
-        chkArenas:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.showInArena = newValue
-        end)
-        frame:AddChild(chkArenas)
-
-        chkRaids = AceGUI:Create("CheckBox")
-        chkRaids:SetLabel("Show on Raid Frames")
-        chkRaids:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.showInRaid = newValue
-        end)
-        frame:AddChild(chkRaids)
-
-        chkBattlegrounds = AceGUI:Create("CheckBox")
-        chkBattlegrounds:SetLabel("Show on Battleground Frames")
-        chkBattlegrounds:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.showInBattlegrounds = newValue
-        end)
-        frame:AddChild(chkBattlegrounds)
-
-        chkOwnOnly = AceGUI:Create("CheckBox")
-        chkOwnOnly:SetLabel("Show Own Only")
-        chkOwnOnly:SetCallback("OnValueChanged", function(control, event, newValue)
-            activeModel.ownOnly = newValue
-        end)
-        frame:AddChild(chkOwnOnly)
+        mainPanel = AceGUI:Create("SimpleGroup")
+        mainPanel:SetFullWidth(true)
+        frame:AddChild(mainPanel)
 
         frame:AddChild(initializeActionsBar(frame))
 
+        local spellOptions = {
+            type = "group",
+            args = {
+              hide = {
+                name = "Hide",
+                desc = "Determines whether this aura is always hidden.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.hide = val
+                end,
+                get = function(info) 
+                    return activeModel.hide
+                 end
+              },
+              nameplates = {
+                name = "Nameplates",
+                desc = "Determines whether this aura is shown on nameplates.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.showOnNameplates = val
+                end,
+                get = function(info) 
+                    return activeModel.showOnNameplates
+                 end
+              },
+              party = {
+                name = "Party",
+                desc = "Determines whether this aura is shown on party frames.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.showInParty = val
+                end,
+                get = function(info) 
+                    return activeModel.showInParty
+                 end
+              },
+              raid = {
+                name = "Raids",
+                desc = "Determines whether this aura is shown on raid frames.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.showInRaid = val
+                end,
+                get = function(info) 
+                    return activeModel.showInRaid
+                 end
+              },
+              arenas = {
+                name = "Arenas",
+                desc = "Determines whether this aura is shown on arena frames.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.showInArena = val
+                end,
+                get = function(info) 
+                    return activeModel.showInArena
+                 end
+              },
+              battlegrounds = {
+                name = "Battlegrounds",
+                desc = "Determines whether this aura is shown in battlegrounds.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.showInBattlegrounds = val
+                end,
+                get = function(info) 
+                    return activeModel.showInBattlegrounds
+                 end
+              },
+              ownOnly = {
+                name = "Show Own Only",
+                desc = "Determines whether this aura is only shown for your spells.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.ownOnly = val
+                end,
+                get = function(info) 
+                    return activeModel.ownOnly
+                 end
+              },
+              priority = {
+                name = "Priority",
+                desc = "Sets priority for this spell",
+                type = "range",
+                step = 1,
+                min = 1,
+                max = 10,
+                ---@param 
+                set = function(info,val) 
+                    activeModel.priority = val
+                end,
+                get = function(info) 
+                    return activeModel.priority
+                 end
+              },
+              multiplier = {
+                name = "Size Multiplier",
+                desc = "Sets the size multiplier for icons of this spell",
+                type = "range",
+                step = 0.1,
+                min = 0.1,
+                max = 3.0,
+                ---@param 
+                set = function(info,val) 
+                    activeModel.sizeMultiplier = val
+                end,
+                get = function(info) 
+                    return activeModel.sizeMultiplier
+                 end
+              },
+            }
+          }
+
+        DevTool:AddData('fixme after myOptionsTable')
+
+        AceConfig:RegisterOptionsTable("BuffWatcher_temp_options", spellOptions)
+
+        DevTool:AddData(testFrame, "fixme parent")
+        
         return frame
     end
 
@@ -139,6 +210,7 @@ function BuffWatcher_AddEditSavedCast:new()
     self.Show = function(spell, onSave)
         setSavedSpell(spell)
         localOnSave = onSave
+        AceConfigDialog:Open("BuffWatcher_temp_options", mainPanel)
         mainFrame:Show()
     end
 

@@ -23,7 +23,8 @@ function BuffWatcher_DbAccessor:new()
             global = {
                 options = {
                     addTestAnchors = false,
-                    iconSize = 32,
+                    unitFrameIconSize = 64,
+                    nameplateIconSize = 58,
                     unlistedMultiplier = 0.5,
                     groupUserSettings = groupUserSettings
                 },
@@ -36,6 +37,7 @@ function BuffWatcher_DbAccessor:new()
 
     ---@param newStoredSpells table<string, BuffWatcher_StoredSpell>
     self.SaveStoredSpells = function(newStoredSpells)
+        DevTool:AddData(CopyTable(newStoredSpells), "fixme newStoredSpells SaveStoredSpells")
         db.global.savedSpells = newStoredSpells
     end
 

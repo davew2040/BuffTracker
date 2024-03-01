@@ -12,7 +12,10 @@ function BuffWatcher_Configuration:new(dbAccessor)
     local buffColor = BuffWatcher_Color:new(0.0, 0.6, 0.153, 1.0)
     local debuffColor = BuffWatcher_Color:new(0.5, 0.0, 0.0, 1.0)
     local magicColor = BuffWatcher_Color:new(0, 0.77, 1.0, 1.0)
-    
+    local curseColor = BuffWatcher_Color:newByHex6('17FF00')
+    local diseaseColor = BuffWatcher_Color:newByHex6('926100')
+    local poisonColor = BuffWatcher_Color:newByHex6('006017')
+
     local callbacks = BuffWatcher_Callbacks:new()
 
     ---@type BuffWatcher_SavedDbOptions
@@ -41,8 +44,13 @@ function BuffWatcher_Configuration:new(dbAccessor)
     end
 
     ---@return number
-    self.GetDefaultSize = function()
-        return dbConfig.iconSize
+    self.GetDefaultUnitFrameSize = function()
+        return dbConfig.unitFrameIconSize
+    end
+
+    ---@return number
+    self.GetDefaultNameplateSize = function()
+        return dbConfig.nameplateIconSize
     end
 
     ---@return boolean
@@ -65,6 +73,14 @@ function BuffWatcher_Configuration:new(dbAccessor)
         return 8
     end
 
+    self.GetBuffDebuffBorderSize = function()
+        return 3
+    end
+
+    self.GetDispelBorderSize = function()
+        return 3
+    end
+
     ---@return BuffWatcher_Color
     self.GetBuffColor = function()
         return buffColor
@@ -78,6 +94,21 @@ function BuffWatcher_Configuration:new(dbAccessor)
     ---@return BuffWatcher_Color
     self.GetMagicColor = function()
         return magicColor
+    end
+
+    ---@return BuffWatcher_Color
+    self.GetCurseColor = function()
+        return curseColor
+    end
+
+    ---@return BuffWatcher_Color
+    self.GetDiseaseColor = function()
+        return diseaseColor
+    end
+
+    ---@return BuffWatcher_Color
+    self.GetPoisonColor = function()
+        return poisonColor
     end
 
     ---@param fn fun(): nil

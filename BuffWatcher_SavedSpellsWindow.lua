@@ -74,9 +74,7 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
         addEditCastWindow.Show(editTarget, 
             function(editedModel)
                 DevTool:AddData(editedModel, "fixme editedModel")
-                editTarget.showInParty = editedModel.showInParty
-                editTarget.sizeMultiplier = editedModel.sizeMultiplier
-
+                
                 local key = BuffWatcher_StoredSpell.GetStoredSpellKey(editedModel)
                 activeStoredSpells[key] = editedModel
                 DevTool:AddData(CopyTable(activeStoredSpells), "fixme activeStoredSpells before save")
