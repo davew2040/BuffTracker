@@ -309,7 +309,7 @@ function BuffWatcher_FrameManager:new(context)
             if (aura ~= nil) then
                 aura.auraFrame.Dispose()
             else
-                DevTool:AddData({ guid = guid, stateKey = stateKey },"error - encountered nil aura")
+                DevTool:AddData({ guid = guid, stateKey = stateKey }, "error - encountered nil aura")
             end
             
             aurasForFrame[stateKey] = nil

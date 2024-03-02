@@ -512,8 +512,6 @@ function BuffWatcher_Shared.PlayerInBattleground()
     local result = C_PvP.IsBattleground()
     local isBattleground = result ~= nil and result == true
 
-    DevTool:AddData(isBattleground, "fixme isBattleground")
-
     return isBattleground
 end
 

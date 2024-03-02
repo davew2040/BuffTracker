@@ -54,7 +54,7 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
             auraFrame.texture:SetTexture(auraInstance.icon)
             auraFrame.texture:SetAllPoints(auraFrame)
             auraFrame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-            9
+            
             table.insert(frames.allFrames, auraFrame)
 
             auraFrame:Show()

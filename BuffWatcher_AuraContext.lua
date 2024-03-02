@@ -305,11 +305,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (useDefaultIconSize) then 
             if (self.isNameplate()) then
                 local nameplateSize = configuration.GetDefaultNameplateSize()
-                DevTool:AddData(nameplateSize, "fixme querying nameplateSize")
                 return nameplateSize
             else
                 local unitFrameSize = configuration.GetDefaultUnitFrameSize()
-                DevTool:AddData(unitFrameSize, "fixme querying unitFrameSize")
                 return unitFrameSize
             end
         else 
@@ -704,6 +702,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (dispelName ~= nil and dispelColors[dispelName] ~= nil) then
             return dispelColors[dispelName]
         else
+            DevTool:AddData("fixme before Unrecognized dispel color")
             DevTool:AddData(dispelName, "Unrecognized dispel color")
             return configuration.GetMagicColor()
         end
@@ -1239,35 +1238,34 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         return auraFrame
     end
 
-    ---@param unitName string
+    ---@param unitLabel string
     ---@return boolean
-    self.DoUnitAdd = function(unitName)
-        if (not self.FilterEvent(unitName)) then
+    self.DoUnitAdd = function(unitLabel)
+        if (not self.FilterEvent(unitLabel)) then
             return false
         end
 
         --- if we've already added, then stop
-        if (unitToGuidMap.GetGuidByUnit(unitName) ~= nil) then
+        if (unitToGuidMap.GetGuidByUnit(unitLabel) ~= nil) then
             return false
         end
 
         local hasUpdates = false
 
-        local unitGuid = UnitGUID(unitName)
+        local unitGuid = UnitGUID(unitLabel)
 
-        unitToGuidMap.LinkUnitToGuid(unitName, unitGuid)
+        unitToGuidMap.LinkUnitToGuid(unitLabel, unitGuid)
 
         if (configuration.GetShowTestAnchors()) then
-            handleAddMarkers(unitName, unitGuid)
+            handleAddMarkers(unitLabel, unitGuid)
             hasUpdates = true
-
         end
 
-        AuraUtil.ForEachAura(unitName, "HELPFUL", nil, 
+        AuraUtil.ForEachAura(unitLabel, "HELPFUL", nil, 
             function(auraInfo) 
                 if (auraInfo ~= nil) then
                     ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                    if (self.HandleAuraAddOrUpdate(auraInfo, unitName)) then
+                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel)) then
                         hasUpdates = true
                     end
                 else
@@ -1277,11 +1275,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             true
         )
 
-        AuraUtil.ForEachAura(unitName, "HARMFUL", nil, 
+        AuraUtil.ForEachAura(unitLabel, "HARMFUL", nil, 
             function(auraInfo) 
                 if (auraInfo ~= nil) then
-                ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                    if (self.HandleAuraAddOrUpdate(auraInfo, unitName)) then
+                    ---@cast auraInfo BuffWatcher_Blizzard_AuraData
+                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel)) then
                         hasUpdates = true
                     end
                 else
@@ -1291,7 +1289,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             true
         )
 
-        frameManager.UnitAdded(unitName)
+        if (hasUpdates) then
+            frameManager.UnitAdded(unitLabel)
+        end
 
         return hasUpdates
     end
@@ -1328,6 +1328,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param guid string
     ---@return boolean
     self.ClearGuid = function(guid)
+        DevTool:AddData("fixme before clearing guid")
         DevTool:AddData(guid, "fixme clearing guid " .. name)
         local stateKeys = guidToStateKeyMap[guid]
 
@@ -1476,6 +1477,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
 
         for unusedGuid, _ in pairs(previousGuids) do
+            DevTool:AddData("fixme before ClearGuid")
             DevTool:AddData("fixme clearing guid " .. unusedGuid .. " from context " .. name)
             self.ClearGuid(unusedGuid)
         end
