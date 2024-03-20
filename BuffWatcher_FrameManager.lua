@@ -1,10 +1,10 @@
 local LGF = LibStub("LibGetFrame-1.0")
 
----@class BuffWatcher_FrameData
----@field stateKey string
----@field auraFrame BuffWatcher_AuraFrame
----@field auraInstance BuffWatcher_AuraInstance
-BuffWatcher_FrameData = {}
+-- ---@class BuffWatcher_FrameData
+-- ---@field stateKey string
+-- ---@field auraFrame BuffWatcher_AuraFrame
+-- ---@field auraInstance BuffWatcher_AuraInstance
+-- BuffWatcher_FrameData = {}
 
 ---@class BuffWatcher_FrameManager
 BuffWatcher_FrameManager = {}
@@ -17,6 +17,7 @@ function BuffWatcher_FrameManager:new(context)
     ---@type table<string, table<BuffWatcher_BlizzardFrameWrapper, boolean>>
     local guidsToFrames = {}
 
+    -- wow frame -> state key -> aura frame
     ---@type table<BuffWatcher_BlizzardFrameWrapper, table<string, BuffWatcher_FrameData>>
     local wowFramesToAuraFrames = {}
 
@@ -122,7 +123,7 @@ function BuffWatcher_FrameManager:new(context)
     end
 
     ---@param targetUnit string
-    ---@return BuffWatcher_BlizzardFrameWrapper[]
+    ---@return table<BuffWatcher_Blizzard_Frame, BuffWatcher_Blizzard_Frame>
     local getTargetFrames = function(targetUnit)
         local result = {}
 
@@ -130,7 +131,7 @@ function BuffWatcher_FrameManager:new(context)
             local nameplateFrame = C_NamePlate.GetNamePlateForUnit(targetUnit)
             
             if (nameplateFrame ~= nil) then
-                table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(nameplateFrame))
+                result[nameplateFrame] = nameplateFrame
             end
         else
             local frames = LGF.GetUnitFrame(targetUnit, { 
@@ -142,7 +143,7 @@ function BuffWatcher_FrameManager:new(context)
 
             if (frames ~= nil) then
                 for _, frame in pairs(frames) do
-                    table.insert(result, BuffWatcher_BlizzardFrameWrapper:new(frame))
+                    result[frame] = frame
                 end
             end
         end

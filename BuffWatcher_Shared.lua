@@ -110,8 +110,7 @@ function BuffWatcher_Shared:new()
         return 'player'
     end
 
-    ---@generic T 
-    ---@generic U
+    ---@generic T, U
     ---@param src table<T, U> 
     ---@return table<T, boolean>
     self.CopyKeys = function(src)
@@ -626,7 +625,9 @@ function BuffWatcher_Shared.TableHasKeys(table)
     return false
 end
 
----@param t table
+---@generic T, U
+---@param t table<T, U>
+---@return T
 function BuffWatcher_Shared.FirstKeyOrDefault(t)
     for k,_ in pairs(t) do
         return k
@@ -709,6 +710,39 @@ function BuffWatcher_Shared.CompareUnitToGuidMaps(oldLinkage, newLinkage)
     }
 
     return result
+end
+
+-- Would be awfully nice if I could get generic type annotations working for this
+---@generic T, U
+---@param old table<T, U>
+---@param new table<T, U>
+---@return BuffWatcher_KeyDiffResult
+BuffWatcher_Shared.KeyDiff = function(old, new)
+    ---@type BuffWatcher_KeyDiffResult
+    local diff = {
+        added = {},
+        removed = {},
+        unchanged = {}
+    }
+
+    for newKey,v in pairs(new) do
+        if (old[newKey] == nil) then
+            diff.added[newKey] = v
+        else
+            diff.unchanged[newKey] = {
+                old = old[newKey],
+                new = new[newKey]
+            }
+        end
+    end
+
+    for oldKey,v in pairs(old) do
+        if (new[oldKey] == nil) then
+            diff.removed[oldKey] = v
+        end
+    end
+
+    return diff
 end
 
 ---@type table<BuffWatcher_TriggerType, string>

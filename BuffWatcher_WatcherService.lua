@@ -291,51 +291,6 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
             and sourceGuid ~= nil and BuffWatcher_Shared.GuidIsNpc(sourceGuid)
     end
 
-    ---@param context BuffWatcher_AuraContext
-    ---@param addedAura BuffWatcher_Blizzard_AuraData
-    ---@param targetUnit string
-    ---@param targetGuid string
-    ---@param sourceGuid string
-    ---@return boolean
-    local handleBuffAddOrUpdate = function(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        local weakAuraBundle = context.GetWeakAuraBundle()
-
-        if (weakAuraBundle.buffs[addedAura.spellId] ~= nil) then
-            local watcherInfo = weakAuraBundle.buffs[addedAura.spellId]
-            return handleBuffOrDebuffAddOrUpdateStoredSpell(context, addedAura, watcherInfo, targetUnit, targetGuid, sourceGuid)
-        --FIXME re-enable
-        -- elseif (useNpcAura(context, sourceGuid)) then
-        --     return handleBuffOrDebuffNpc(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        -- elseif (context.showUnlistedAuras() ~= BuffWatcher_ShowUnlistedType.None) then
-        --     return handleBuffOrDebuffCatchAll(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        end
-
-        return false
-    end
-
-    ---@param context BuffWatcher_AuraContext
-    ---@param addedAura BuffWatcher_Blizzard_AuraData
-    ---@param targetUnit string
-    ---@param targetGuid string
-    ---@param sourceGuid string
-    ---@return boolean
-    local handleDebuffAddOrUpdate = function(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        local weakAuraBundle = context.GetWeakAuraBundle()
-
-        if (weakAuraBundle.debuffs[addedAura.spellId] ~= nil) then
-            local watcherInfo = weakAuraBundle.debuffs[addedAura.spellId]
-
-            return handleBuffOrDebuffAddOrUpdateStoredSpell(context, addedAura, watcherInfo, targetUnit, targetGuid, sourceGuid)
-        --FIXME - re-enable
-        -- elseif (useNpcAura(context, sourceGuid)) then
-        --     return handleBuffOrDebuffNpc(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        -- elseif (context.showUnlistedAuras() ~= BuffWatcher_ShowUnlistedType.None) then
-        --     return handleBuffOrDebuffCatchAll(context, addedAura, targetUnit, targetGuid, sourceGuid)
-        end
-
-        return false
-    end
-
     self.IsRegistered = function()
         return storedSpellsRegistry ~= nil
     end
@@ -345,7 +300,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     self.HandleEvent_NameplateAdded = function(targetUnit)
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded() and context.isNameplate()) then
-                context.DoUnitAdd(targetUnit)
+                context.DoUnitAdd(targetUnit, true)
             end
         end
     end
@@ -394,27 +349,34 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
             if (loadedChanged) then
                 DevTool:AddData({key = key}, "fixme loadedChanged")
 
+                context.DoFullReset()
+
                 if (context.IsLoaded()) then
                     DevTool:AddData("loading context " .. context.getName())
-                    context.DoFullReset()
                 else
                     DevTool:AddData("unloading context " .. context.getName())
-                    context.DoFullClear()
                 end
-            else
-                if (context.IsLoaded()) then
-                    DevTool:AddData("resetting context " .. context.getName())
-                    context.DoFullReset()
-                end
+            -- else -- remove if we determine this isn't needed
+            --     if (context.IsLoaded()) then
+            --         context.DoFullReset()
+            --     end
             end
         end
     end
 
+    self.ArenaOpponentUpdate = function()
+        for key, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded() and (context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Arena or context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Party)) then
+                context.DoFullReset()
+            end
+        end
+    end
 
-    self.ResetIfLoaded = function()
+    self.PlayerEnteringWorld = function()
+        self.RefreshLoaded()
+
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
-                DevTool:AddData("resetting context " .. context.getName())
                 context.DoFullReset()
             end
         end

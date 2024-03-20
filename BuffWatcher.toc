@@ -39,6 +39,7 @@ Models/BuffWatcher_CastRecord.lua
 Models/BuffWatcher_WeakAura_StateEntry.lua
 Models/BuffWatcher_AuraInstance.lua
 Models/BuffWatcher_FramesCollection.lua
+Models/BuffWatcher_KeyDiffResult.lua
 Models/BuffWatcher_UnitToGuidLinkage.lua
 
 Wrappers/BuffWatcher_BlizzardFrameWrapper.lua
@@ -56,6 +57,7 @@ BuffWatcher_LoggerModule.lua
 BuffWatcher_Configuration.lua
 BuffWatcher_AuraFrame.lua
 BuffWatcher_FrameManager.lua
+BuffWatcher_FrameManagerNew.lua
 BuffWatcher_AuraContextStore.lua
 BuffWatcher_WeakAuraGenerator_Loader.lua
 BuffWatcher_WeakAuraGenerator.lua

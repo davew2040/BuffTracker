@@ -121,7 +121,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         [BuffWatcher_TriggerType.Marker] = true
     }
 
-    ---@type BuffWatcher_FrameManager
+    ---@type BuffWatcher_FrameManagerNew
     local frameManager
 
     ---@param frameType BuffWatcher_FrameTypes
@@ -179,13 +179,14 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.customUnlistedMultiplier = params.customUnlistedMultiplier
 
         contextUnits = initializeContextUnits(frameType)
-        frameManager = BuffWatcher_FrameManager:new(self)
+        frameManager = BuffWatcher_FrameManagerNew:new(self)
     end
 
     initializeFromParameters(params)
 
-    ---@param settings BuffWatcher_AuraGroupUserSettings
-    self.UpdateFromDbSettings = function(settings)
+    ---@param settings BuffWatcher_AuraGroupMergedSettings
+    ---@param newSpellBundle BuffWatcher_SpellBundle
+    self.UpdateFromDbSettings = function(settings, newSpellBundle)
         --TODO - update rest of settings
         xOffset = settings.xOffset
         yOffset = settings.yOffset
@@ -195,6 +196,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         selfPoint = settings.selfPoint
         anchorPoint = settings.anchorPoint
         growDirection = settings.growDirection
+
+        spellBundle = newSpellBundle
 
         self.DoFullReset()
     end
@@ -554,12 +557,17 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@return boolean
     local useRaidFrames = function()
-        if (BuffWatcher_Shared.PlayerInArena()) then
+        DevTool:AddData("fixme useRaidFrames start")
+
+        if (BuffWatcher_Shared.PlayerInArena() or BuffWatcher_Shared.PlayerInBattleground()) then
+            DevTool:AddData("fixme useRaidFrames false on pvp check")
             return false
         end
 
         local result = UnitInRaid("player")
-        local isInRaid = result ~= nil and result == true
+        local isInRaid = result ~= nil
+
+        DevTool:AddData(tostring(isInRaid), "fixme useRaidFrames raid check")
 
         return isInRaid
     end
@@ -710,7 +718,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     self.ResetAuraState = function()
         for key, _ in pairs(self.auraInstancesMap) do
-            self.KillStateKey(key)
+            self.KillStateKey(key, false)
         end
 
         guidToStateKeyMap = {}
@@ -933,8 +941,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param targetUnit string
     ---@param watcherInfo? BuffWatcher_StoredSpell
     ---@param sizeMultiplier number
+    ---@param notifyFrameManager boolean
     ---@return boolean
-    local function handleBuffOrDebuffAddOrUpdateStoredSpellByContext(auraInfo, targetUnit, watcherInfo, sizeMultiplier)
+    local function handleBuffOrDebuffAddOrUpdateStoredSpellByContext(auraInfo, targetUnit, watcherInfo, sizeMultiplier, notifyFrameManager)
         local auraId = auraInfo.auraInstanceID
         local spellInfo = {GetSpellInfo(auraInfo.spellId)}
 
@@ -945,6 +954,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (watcherInfo ~= nil and watcherInfo.ownOnly and auraInfo.sourceUnit ~= 'player') then
             return false
         end
+
+        DevTool:AddData("fixme before traceback")
+        DevTool:AddData({context = name }, "fixme adding " .. auraInfo.name .. " to unit " .. targetUnit)
 
         local key = getBuffDebuffStateKey(
             auraInfo.isHelpful and BuffWatcher_Shared_Singleton.SpellTypes.Buff or BuffWatcher_Shared_Singleton.SpellTypes.Debuff, 
@@ -994,7 +1006,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             auraIdToStateKeyMap[auraInfo.auraInstanceID] = key 
             self.addKeyByGuid(targetGuid, key)
 
-            frameManager.AuraAdded(targetGuid, key)
+            if (notifyFrameManager) then
+                frameManager.AuraAdded(targetGuid, key)
+            end
         else
             local existingInstance = self.auraInstancesMap[key]
 
@@ -1009,8 +1023,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
+    ---@param notifyFrameManager boolean
     ---@return boolean
-    self.HandleAuraAddOrUpdate = function(blizzardAura, targetUnit)
+    self.HandleAuraAddOrUpdate = function(blizzardAura, targetUnit, notifyFrameManager)
         if (not includeBuffsAndCasts and blizzardAura.isHelpful) then
             return false
         end
@@ -1019,15 +1034,17 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
+        DevTool:AddData({ blizzardAura = blizzardAura, spellBundle = spellBundle }, "fixme HandleAuraAddOrUpdate "  .. targetUnit)
+
         -- if (blizzardAura.isHelpful) then
         if (blizzardAura.isHelpful and spellBundle.buffs[blizzardAura.spellId] ~= nil) then
             local watcherInfo = spellBundle.buffs[blizzardAura.spellId]
-            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo, watcherInfo.sizeMultiplier)
+            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo, watcherInfo.sizeMultiplier, notifyFrameManager)
         elseif (blizzardAura.isHarmful and spellBundle.debuffs[blizzardAura.spellId] ~= nil) then
             local watcherInfo = spellBundle.debuffs[blizzardAura.spellId]
-            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo, watcherInfo.sizeMultiplier)
+            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, watcherInfo, watcherInfo.sizeMultiplier, notifyFrameManager)
         elseif (blizzardAura.sourceUnit) ~= nil and useNpcAura(UnitGUID(blizzardAura.sourceUnit)) then
-            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, nil, configuration.GetNpcMultiplier())
+            return handleBuffOrDebuffAddOrUpdateStoredSpellByContext(blizzardAura, targetUnit, nil, configuration.GetNpcMultiplier(), notifyFrameManager)
         end
 
         --FIXME re-enable
@@ -1050,9 +1067,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
+        DevTool:AddData({ updateinfo = updateInfo, context = name }, "fixme UnitAura")
+
         if (updateInfo.addedAuras ~= nil) then
             for _, addedAura in ipairs(updateInfo.addedAuras) do
-                local result = self.HandleAuraAddOrUpdate(addedAura, targetUnit)
+                local result = self.HandleAuraAddOrUpdate(addedAura, targetUnit, true)
                 if (result == true) then
                     hasUpdates = true
                 end
@@ -1064,7 +1083,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 ---@type BuffWatcher_Blizzard_AuraData
                 local auraInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(targetUnit, auraId)
                 if (auraInfo ~= nil) then
-                    local result = self.HandleAuraAddOrUpdate(auraInfo, targetUnit)
+                    local result = self.HandleAuraAddOrUpdate(auraInfo, targetUnit, true)
                     if (result == true) then
                         hasUpdates = true
                     end
@@ -1086,7 +1105,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param stateKey string
     local handleTimer = function(stateKey)
-        self.KillStateKey(stateKey)
+        self.KillStateKey(stateKey, true)
     end
 
     ---@param stateKey string
@@ -1175,8 +1194,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     end
 
     ---@param stateKey string
+    ---@param notifyFrameManager boolean
     ---@return boolean
-    self.KillStateKey = function(stateKey)
+    self.KillStateKey = function(stateKey, notifyFrameManager)
         local auraInstance = self.auraInstancesMap[stateKey]
 
         if (auraInstance.triggerType == BuffWatcher_TriggerType.Buff 
@@ -1196,7 +1216,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.auraInstancesMap[stateKey] = nil
         self.removeKeyFromGuid(auraInstance.targetGuid, stateKey)
 
-        frameManager.AuraRemoved(auraInstance.targetGuid, stateKey)
+        if (notifyFrameManager) then
+            frameManager.AuraRemoved(auraInstance.targetGuid, stateKey)
+        end
 
         return true
     end
@@ -1206,7 +1228,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     self.RemoveAuraId = function(auraId)
         if (auraIdToStateKeyMap[auraId] ~= nil) then
             local stateKey = auraIdToStateKeyMap[auraId]
-            self.KillStateKey(stateKey)
+            self.KillStateKey(stateKey, true)
 
             return true
         end
@@ -1239,8 +1261,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     end
 
     ---@param unitLabel string
+    ---@param notifyFrameManager boolean
     ---@return boolean
-    self.DoUnitAdd = function(unitLabel)
+    self.DoUnitAdd = function(unitLabel, notifyFrameManager)
         if (not self.FilterEvent(unitLabel)) then
             return false
         end
@@ -1265,7 +1288,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             function(auraInfo) 
                 if (auraInfo ~= nil) then
                     ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel)) then
+                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel, false)) then
                         hasUpdates = true
                     end
                 else
@@ -1279,7 +1302,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             function(auraInfo) 
                 if (auraInfo ~= nil) then
                     ---@cast auraInfo BuffWatcher_Blizzard_AuraData
-                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel)) then
+                    if (self.HandleAuraAddOrUpdate(auraInfo, unitLabel, false)) then
                         hasUpdates = true
                     end
                 else
@@ -1289,8 +1312,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             true
         )
 
-        if (hasUpdates) then
-            frameManager.UnitAdded(unitLabel)
+        if (notifyFrameManager) then
+            frameManager.NameplateUnitAdded(unitLabel)
         end
 
         return hasUpdates
@@ -1305,53 +1328,14 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         if (not self.FilterEvent(nameplate)) then
             return
         end
-
-        -- for guid, stateKeys in pairs(guidToStateKeyMap) do
-        --     for stateKey, _ in pairs(stateKeys) do
-        --         local auraInstance = self.auraInstancesMap[stateKey]
-        --         if auraInstance.targetUnit == nameplate then
-        --             DevTool:AddData({guid = guid, nameplate = nameplate}, "fixme clearing guid for nameplate")
-        --             self.ClearGuid(guid)
-        --             return
-        --         end
-        --     end
-        -- end
         
         local guid = unitToGuidMap.GetGuidByUnit(nameplate)
         unitToGuidMap.UnlinkUnit(nameplate)
 
         self.ClearLooseAuras(guid)
 
-        frameManager.UnitRemoved(guid)
+        frameManager.NameplateUnitRemoved(guid)
     end
-
-    ---@param guid string
-    ---@return boolean
-    self.ClearGuid = function(guid)
-        DevTool:AddData("fixme before clearing guid")
-        DevTool:AddData(guid, "fixme clearing guid " .. name)
-        local stateKeys = guidToStateKeyMap[guid]
-
-        if (stateKeys == nil) then
-            return false
-        end
-
-        ---@type string[]
-        local stateKeysToDelete = {}
-
-        for k,_ in pairs(stateKeys) do
-            table.insert(stateKeysToDelete, k)
-        end
-
-        for _, stateKey in ipairs(stateKeysToDelete) do
-            self.KillStateKey(stateKey)
-        end
-
-        unitToGuidMap.UnlinkGuid(guid)
-
-        return true
-    end
-
 
     ---@param guid string
     ---@return boolean
@@ -1371,7 +1355,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         )
 
         for k,_ in pairs(activeStateKeys) do
-            self.KillStateKey(k)
+            self.KillStateKey(k, true)
         end
 
         return true
@@ -1379,10 +1363,12 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     self.DoFullClear = function()
         self.ResetAuraState()
-        frameManager.DoFullClear()
+        frameManager.Clear()
     end
 
     self.DoFullReset = function()
+        DevTool:AddData("resetting contexts" .. name)
+
         self.DoFullClear()
         
         if (isLoaded) then
@@ -1449,15 +1435,21 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
     
-        frameManager.DoFullUpdate(contextUnits)
+        frameManager.DoFullUpdate()
 
         return true
     end
 
     self.UpdateAllUnits = function()
+        DevTool:AddData("fixme UpdateAllUnits " .. name)
+
         local previousGuids = unitToGuidMap.GetAllGuids()
-        local newUnitGuidTable = getUnitGuidTable()
-        local newGuids = newUnitGuidTable.GetAllGuids()
+        local newUnitGuidMap = getUnitGuidTable()
+        local newGuids = newUnitGuidMap.GetAllGuids()
+
+        if (self.isNameplate()) then
+            DevTool:AddData(newUnitGuidMap, "fixme nameplate unit guids")
+        end
 
         -- DevTool:AddData(previousGuids, "fixme UpdateAllUnits previousGuids " .. name)
         -- DevTool:AddData(unitToGuidMap.GetUnitsToGuid(), "fixme UpdateAllUnits unitToGuidLinkage " .. name)
@@ -1465,11 +1457,11 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         
         for newGuid, _ in pairs(newGuids) do
             if (previousGuids[newGuid] == nil) then
-                local units = newUnitGuidTable.GetUnitsByGuid(newGuid)
+                local units = newUnitGuidMap.GetUnitsByGuid(newGuid)
                 ---@type string?
                 local unit = BuffWatcher_Shared.FirstKeyOrDefault(units)
                 if (unit ~= nil) then
-                    self.DoUnitAdd(unit)
+                    self.DoUnitAdd(unit, false)
                 end
             end
 
@@ -1477,14 +1469,12 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
 
         for unusedGuid, _ in pairs(previousGuids) do
-            DevTool:AddData("fixme before ClearGuid")
-            DevTool:AddData("fixme clearing guid " .. unusedGuid .. " from context " .. name)
             self.ClearGuid(unusedGuid)
         end
 
-        unitToGuidMap = newUnitGuidTable
+        unitToGuidMap = newUnitGuidMap
 
-        frameManager.DoFullClear()
+        frameManager.DoFullUpdate()
 
         return true
     end

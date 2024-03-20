@@ -151,5 +151,10 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
         end
     end
 
+    ---@param newParent BuffWatcher_Blizzard_Frame
+    self.SetParent = function(newParent)
+        frames.rootFrame:SetParent(newParent)
+    end
+
     return self
 end

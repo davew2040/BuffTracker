@@ -28,3 +28,5 @@
 ---@field spellId integer
 ---@field sourceName string
 ---@field sourceGuid string
+
+---@class BuffWatcher_Blizzard_Frame

@@ -6,6 +6,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
 
     local AddEventName = "SPELL_ADDED"
     local RemoveEventName = "SPELL_REMOVED"
+    local SpellsChangedEventName = "SPELLS_CHANGED"
 
     local events = BuffWatcher_Callbacks:new()
 
@@ -56,6 +57,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
     ---@param spells table<string, BuffWatcher_StoredSpell>
     self.saveSpellsToDatabase = function(spells)
         BuffWatcher_DbAccessor_Singleton.SaveStoredSpells(spells)
+        events.fire(SpellsChangedEventName)
     end
 
     ---@param imports any[]
@@ -94,6 +96,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
         storedSpells[castRecord.key] = BuffWatcher_Shared_Singleton.StoredSpellFromCastRecord(castRecord)
         self.saveSpellsToDatabase(storedSpells)
         events.fire(AddEventName)
+        events.fire(SpellsChangedEventName)
     end
 
     self.removeSpell = function(storedSpell) 
@@ -102,6 +105,7 @@ function BuffWatcher_StoredSpellsRegistry:new()
         spells[key] = nil
         self.saveSpellsToDatabase(spells)
         events.fire(RemoveEventName)
+        events.fire(SpellsChangedEventName)
     end
 
     self.GetSpells = function()
@@ -115,6 +119,10 @@ function BuffWatcher_StoredSpellsRegistry:new()
 
     self.registerSpellRemoved = function(callback)
         events.registerCallback(RemoveEventName, callback)
+    end
+
+    self.registerSpellsChanged = function(callback)
+        events.registerCallback(SpellsChangedEventName, callback)
     end
 
     return self

@@ -30,7 +30,7 @@ function BuffWatcher:OnInitialize()
 end
 
 local lgfUpdate = function(...)
-    DevTool:AddData({...}, "lgfUpdate")
+    --DevTool:AddData({...}, "lgfUpdate")
     watcherService.FramesChanged()
 end
 
@@ -137,12 +137,15 @@ end
 
 function BuffWatcher:ARENA_OPPONENT_UPDATE(...)
     print("ARENA_OPPONENT_UPDATE")
-    watcherService.ResetIfLoaded()
+    DevTool:AddData({...}, "fixme ARENA_OPPONENT_UPDATE")
+    
+    watcherService.ArenaOpponentUpdate()
 end
 
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
     print("PLAYER_ENTERING_WORLD")
-    watcherService.RefreshLoaded()
+    watcherService.PlayerEnteringWorld()
+    
     LGF:ScanForUnitFrames()
 end
 

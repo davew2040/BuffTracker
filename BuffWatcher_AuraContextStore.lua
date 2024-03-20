@@ -36,7 +36,7 @@ function BuffWatcher_AuraContextStore:new(
     local contexts = {}
     
     ---@param source BuffWatcher_StoredSpell[]
-    ---@param settings any
+    ---@param settings BuffWatcher_AuraGroupMergedSettings
     local filterByFrameType = function(source, settings)
         local filtered = source
 
@@ -45,11 +45,22 @@ function BuffWatcher_AuraContextStore:new(
                 return spell.showOnNameplates 
             end)
         elseif (settings.frameType == shared.FrameTypes.Party) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInParty end)
+            filtered = shared.TableValueFilter(filtered, 
+                ---@param spell BuffWatcher_StoredSpell
+                function(spell) return spell.showInParty end)
         elseif (settings.frameType == shared.FrameTypes.Arena) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInArena end)
+            filtered = shared.TableValueFilter(filtered, 
+                ---@param spell BuffWatcher_StoredSpell
+                function(spell) return spell.showInArena end
+            )
         elseif (settings.frameType == shared.FrameTypes.Raid) then
-            filtered = shared.TableValueFilter(filtered, function(spell) return spell.showInRaid end)
+            filtered = shared.TableValueFilter(filtered, 
+            ---@param spell BuffWatcher_StoredSpell 
+            function(spell) return spell.showInRaid end)
+        elseif (settings.frameType == shared.FrameTypes.Battleground) then
+            filtered = shared.TableValueFilter(filtered, 
+            ---@param spell BuffWatcher_StoredSpell
+            function(spell) return spell.showInBattlegrounds end)
         end
 
         return filtered
@@ -105,20 +116,6 @@ function BuffWatcher_AuraContextStore:new(
         return filteredSpells
     end
 
-    ---@param settings BuffWatcher_AuraGroupMergedSettings
-    ---@param spellsById table<integer, BuffWatcher_StoredSpell>
-    ---@return BuffWatcher_SpellBundle
-    local buildSpellBundle = function(settings, spellsById)
-        ---@type BuffWatcher_SpellBundle
-        local result = {
-            buffs = buildSpellBundleBuffs(settings, spellsById),
-            debuffs = buildSpellBundleDebuffs(settings, spellsById),
-            casts = buildSpellBundleCasts(settings, spellsById),
-        }
-
-        return result
-    end
-
     ---@param spells table<string, BuffWatcher_StoredSpell>
     ---@return table<integer, BuffWatcher_StoredSpell>
     local getSpellsBySpellIdKey = function(spells)
@@ -132,13 +129,29 @@ function BuffWatcher_AuraContextStore:new(
         return result
     end
 
+    ---@param settings BuffWatcher_AuraGroupMergedSettings
+    ---@param spells table<string, BuffWatcher_StoredSpell>
+    ---@return BuffWatcher_SpellBundle
+    local buildSpellBundle = function(settings, spells)
+
+        local spellsById = getSpellsBySpellIdKey(spells)
+
+        ---@type BuffWatcher_SpellBundle
+        local result = {
+            buffs = buildSpellBundleBuffs(settings, spellsById),
+            debuffs = buildSpellBundleDebuffs(settings, spellsById),
+            casts = buildSpellBundleCasts(settings, spellsById),
+        }
+
+        return result
+    end
+
     ---@param key string
     ---@param settings BuffWatcher_AuraGroupMergedSettings
     ---@param spells table<string, BuffWatcher_StoredSpell>
     ---@return BuffWatcher_AuraContext
     local buildSingleContextFromSettings = function(key, settings, spells)
-        local spellsById = getSpellsBySpellIdKey(spells)
-        local spellBundle = buildSpellBundle(settings, spellsById)
+        local spellBundle = buildSpellBundle(settings, spells)
 
         ---@type BuffWatcher_AuraContext_Params
         local params = {
@@ -177,7 +190,7 @@ function BuffWatcher_AuraContextStore:new(
         ---@type table<string, BuffWatcher_AuraContext>
         local result = {}
 
-        for key,mergedSettings in pairs(settings) do
+        for key, mergedSettings in pairs(settings) do
             result[key] = buildSingleContextFromSettings(key, mergedSettings, spells)
         end
 
@@ -189,30 +202,34 @@ function BuffWatcher_AuraContextStore:new(
         local userSettings = dbAccessor.GetOptions().groupUserSettings
         local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
 
-        DevTool:AddData(newContextSettings, "fixme updating contexts from sources")
-
         contexts = buildAllContextsFromSettings(newContextSettings, spells)
-        DevTool:AddData(contexts, "fixme contexts")
+    end
+
+    local updateContexts = function()
+        local spells = spellRegistry.GetSpells()
+        local userSettings = dbAccessor.GetOptions().groupUserSettings
+        local allContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
+
+        for key, settings in pairs(allContextSettings) do
+            local newSpellBundle = buildSpellBundle(settings, spells) 
+            contexts[key].UpdateFromDbSettings(settings, newSpellBundle)
+        end
     end
 
     ---@param newOptions BuffWatcher_SavedDbOptions
     local handleConfigChanged = function(newOptions)
-        DevTool:AddData(newOptions, "fixme got new options")
+        updateContexts()
+    end
 
-        --- TODO - reflect new spells in update?
-        local spells = spellRegistry.GetSpells()
-        local userSettings = dbAccessor.GetOptions().groupUserSettings
-        local newContextSettings = defaultContextValues.MergeFixedAndUserSettings(userSettings)
-
-        for key, settings in pairs(newOptions.groupUserSettings) do
-            contexts[key].UpdateFromDbSettings(settings)
-        end
+    local handleSpellsChanged = function()
+        updateContexts()
     end
 
     local initialize = function()
         updateFromSources()
 
         dbAccessor.RegisterOptionsChanged(handleConfigChanged)
+        spellRegistry.registerSpellsChanged(handleSpellsChanged)
     end
 
     ---@return table<string, BuffWatcher_AuraContext>
