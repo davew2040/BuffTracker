@@ -388,6 +388,7 @@ function BuffWatcher_FrameManager:new(context)
     end
 
     self.DoFullClear = function()
+        DevTool:AddData("fixme FrameManager:DoFullClear")
         self.DoFullUpdate(context.GetPotentialUnits())
     end
 

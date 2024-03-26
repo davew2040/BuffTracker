@@ -13,7 +13,7 @@ local watcherService = nil
 
 local cleuEvents = {
     UNIT_DIED = function(self, eventData) 
-        --print("UNIT DIED")
+        BuffWatcher.UNIT_DIED(self, eventData)
     end,
     SPELL_CAST_SUCCESS = function(self, eventData, ...)
         BuffWatcher.SPELL_CAST_SUCCESS(self, eventData, ...)
@@ -30,7 +30,14 @@ function BuffWatcher:OnInitialize()
 end
 
 local lgfUpdate = function(...)
-    --DevTool:AddData({...}, "lgfUpdate")
+    local updateType = select(1, ...)
+
+    -- DevTool:AddData({...}, "fixme lgfUpdate")
+
+    -- if (updateType ~= "GETFRAME_REFRESH") then
+    --     DevTool:AddData({...}, "fixme lgfUpdate not refresh")
+    -- end
+
     watcherService.FramesChanged()
 end
 
@@ -98,6 +105,11 @@ end
 ---@param eventData any
 function BuffWatcher:SPELL_CAST_SUCCESS(eventData)
     watcherService.HandleEvent_Cast(eventData)
+end
+
+---@param eventData any
+function BuffWatcher:UNIT_DIED(eventData)
+    watcherService.HandleEvent_UnitDied(eventData)
 end
 
 function BuffWatcher:NAME_PLATE_UNIT_ADDED(...)

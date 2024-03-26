@@ -8,6 +8,7 @@
 ---@field sourceUnit string
 ---@field duration number
 ---@field expirationTime number
+---@field isFromPlayerOrPlayerPet boolean
 
 ---@class BuffWatcher_Blizzard_UnitAura
 ---@field name string

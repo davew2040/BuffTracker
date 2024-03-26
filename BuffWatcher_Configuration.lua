@@ -81,6 +81,11 @@ function BuffWatcher_Configuration:new(dbAccessor)
         return 3
     end
 
+    ---@return integer
+    self.GetAuraSpacing = function()
+        return 2
+    end
+
     ---@return BuffWatcher_Color
     self.GetBuffColor = function()
         return buffColor

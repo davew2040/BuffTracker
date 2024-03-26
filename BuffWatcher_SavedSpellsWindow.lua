@@ -261,21 +261,6 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
         actionsHolderFrame:SetFullWidth(true)
         frame:AddChild(actionsHolderFrame)
 
-        local addAurasButton = AceGUI:Create("Button")
-        addAurasButton:SetText("Update WeakAuras")
-        addAurasButton:SetWidth(100)
-        addAurasButton:SetHeight(64)
-        addAurasButton:SetCallback("OnClick", function()
-            -- DevTool:AddData(WeakAuras, "WeakAuras")
-            -- DevTool:AddData(WeakAurasSaved, "WeakAurasSaved")
-
-            DevTool:AddData(contextStore.GetContexts(), "fixme contextStore.GetContexts()")
-
-            weakAuraExporter.Export(storedSpellsRegistry, contextStore.GetContexts())
-        end)
-
-        actionsHolderFrame:AddChild(addAurasButton)
-
         local importButton = AceGUI:Create("Button")
         importButton:SetText("Import")
         importButton:SetWidth(100)

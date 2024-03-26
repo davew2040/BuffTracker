@@ -80,7 +80,6 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
         local frame = AceGUI:Create("Frame")
 
         frame:SetTitle("Buff Watcher")
-        frame:SetStatusText("AceGUI-3.0 Example Container Frame")
         frame:SetCallback("OnClose", frame.frame:Hide())
         frame:SetLayout("Fill")
         frame:SetWidth(1200)

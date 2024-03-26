@@ -315,10 +315,47 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
         end
     end
 
+    ---@type table<integer, any>
+    local tempAuraIds = {}
+
     ---comment
     ---@param targetUnit string
     ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
     self.HandleEvent_UnitAura = function(targetUnit, updateInfo)
+        
+        if (updateInfo.addedAuras ~= nil) then
+            --- fixme - remove debug data
+            for _, added in ipairs(updateInfo.addedAuras) do
+                local unit = 'none'
+                if (targetUnit ~= nil) then
+                    unit = UnitName(targetUnit)
+                end
+                local sourceGuid = 'none'
+                if (added.sourceUnit ~= nil) then
+                    sourceGuid = UnitGUID(added.sourceUnit)
+                end
+                DevTool:AddData({ updateInfo = CopyTable(updateInfo), sourceGuid = sourceGuid }, "fixme added aura " .. added.name .. " to unit " .. unit)
+                if (tempAuraIds[added.auraInstanceID] == nil) then
+                    tempAuraIds[added.auraInstanceID] = CopyTable(added)
+                end
+            end
+        end
+
+        if (updateInfo.removedAuraInstanceIDs ~= nil) then
+            --- fixme - remove debug data
+            for _, removed in ipairs(updateInfo.removedAuraInstanceIDs) do
+                local removedInstance = tempAuraIds[removed]
+                
+                local unit = 'none'
+                if (removedInstance ~= nil) then
+                    if (targetUnit ~= nil) then
+                        unit = UnitName(targetUnit)
+                    end
+                    DevTool:AddData({ removedInstance = CopyTable(removedInstance) }, "fixme removed aura " .. removedInstance.name .. " from unit " .. unit)
+                end
+            end
+        end
+
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
                 context.UnitAura(targetUnit, updateInfo)
@@ -338,6 +375,17 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
                 context.HandleCast(castInfo)
+            end
+        end
+    end
+
+    ---@param eventData any
+    self.HandleEvent_UnitDied = function(eventData)
+        local deadGuid = eventData[8]
+
+        for _, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded()) then
+                context.RefreshGuid(deadGuid)
             end
         end
     end
@@ -365,6 +413,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     end
 
     self.ArenaOpponentUpdate = function()
+        DevTool:AddData("fixme ArenaOpponentUpdate")
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded() and (context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Arena or context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Party)) then
                 context.DoFullReset()
@@ -373,6 +422,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     end
 
     self.PlayerEnteringWorld = function()
+        DevTool:AddData('fixme PlayerEnteringWorld')
         self.RefreshLoaded()
 
         for key, context in pairs(contextStore.GetContexts()) do

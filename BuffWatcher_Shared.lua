@@ -530,8 +530,6 @@ function BuffWatcher_Shared.GetUnitAuras(unitName)
     while true do
         local unitAuraData = {UnitBuff(unitName, i)}
 
-        DevTool:AddData(unitAuraData, "fixme unitAuraData")
-
         if (#unitAuraData == 0) then
             break
         end
@@ -743,6 +741,16 @@ BuffWatcher_Shared.KeyDiff = function(old, new)
     end
 
     return diff
+end
+
+---@param t table
+---@return boolean
+BuffWatcher_Shared.Any = function(t)
+    for _ in pairs(t) do
+        return true
+    end
+    
+    return false
 end
 
 ---@type table<BuffWatcher_TriggerType, string>

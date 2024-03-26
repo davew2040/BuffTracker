@@ -94,6 +94,9 @@ function BuffWatcher_LoggerModule:new()
                         break
                     end
 
+                    ---@type BuffWatcher_CastRecord
+                    local buffRecord = nil
+
                     if (v.isHelpful) then
                         buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Buff, v.spellId, v.name, unitName)
                     else
