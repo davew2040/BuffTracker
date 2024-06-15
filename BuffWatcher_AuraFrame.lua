@@ -64,6 +64,7 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
                 cooldownFrame:SetParent(auraFrame)
                 cooldownFrame:SetAllPoints()
                 cooldownFrame:SetCooldown(aura.expirationTime-aura.duration, aura.duration)
+                cooldownFrame:SetReverse(true)
 
                 frames.cooldownFrame = cooldownFrame
                 cooldownFrame:Show()

@@ -32,6 +32,8 @@ BuffWatcher_AuraContext_Params = {}
 function BuffWatcher_AuraContext:new(params, configuration, framePool)
     self = {};
 
+    local maxDistance = 100.0
+
     ---@type BuffWatcher_SpellBundle
     local spellBundle = nil
     ---@type string
@@ -370,69 +372,6 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         return self.auraInstancesMap[stateKey]
     end
 
-    ---@return table<string, string>
-    local getGroupUnits = function() 
-        ---@type table<string, string>
-        local result = {}
-
-        if GetNumGroupMembers() == 0 then
-            return result
-        end
-
-        local playerGuid = UnitGUID('player')
-
-        result['player'] = playerGuid
-
-        for i=1, GetNumGroupMembers() do
-            if IsInRaid() then
-                local raidUnit = BuffWatcher_Shared_Singleton.raidUnitsByIndex[i]
-                local raidUnitGuid = UnitGUID(raidUnit)
-                if (raidUnitGuid ~= nil and raidUnitGuid ~= playerGuid) then
-                    result[raidUnit] = raidUnitGuid 
-                end
-            elseif IsInGroup() then
-                local partyUnit = BuffWatcher_Shared_Singleton.partyUnitsByIndex[i]
-                local partyUnitGuid = UnitGUID(partyUnit)
-                if (partyUnitGuid ~= nil and partyUnitGuid ~= playerGuid) then
-                    result[partyUnit] = partyUnitGuid 
-                end
-            end
-        end
-
-        return result
-    end
-
-    ---@return table<string, string>
-    local getArenaUnits = function() 
-        ---@type table<string, string>
-        local result = {}
-
-        for i=1, GetNumArenaOpponents() do
-            local arenaUnit = BuffWatcher_Shared_Singleton.arenaUnitsByIndex[i]
-            local arenaUnitGuid = UnitGUID(arenaUnit)
-            if (arenaUnitGuid) then
-                result[arenaUnitGuid] = arenaUnitGuid 
-            end
-        end
-
-        return result
-    end
-
-    ---@return table<string, string>
-    local getNameplateUnits = function() 
-        ---@type any[]
-        local nameplates = C_NamePlate.GetNamePlates()
-
-        ---@type table<string, string>
-        local result = {}
-
-        for i,nameplate in ipairs(nameplates) do
-            result[nameplate.namePlateUnitToken] = UnitGUID(nameplate.namePlateUnitToken)
-        end
-
-        return result
-    end
-
     ---@param auraInstance BuffWatcher_AuraInstance
     local isTimedAura = function(auraInstance)
         return auraInstance.triggerType == BuffWatcher_TriggerType.Cast
@@ -448,47 +387,6 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param auraInstance BuffWatcher_AuraInstance
     local isLooseAura = function(auraInstance)
         return LooseTriggers[auraInstance.triggerType] ~= nil
-    end
-
-    ---@param guid string
-    local hideTimedAuras = function(guid)
-        local auras = self.GetKeysByGuid(guid)
-
-        ---@type table<string, boolean>
-        local filtered = BuffWatcher_Shared_Singleton.TableKeyFilter(auras, function(auraKey)
-            local auraInstance = self.auraInstancesMap[auraKey]
-            return isTimedAura(auraInstance)
-        end)
-
-        for key,_ in pairs(filtered) do
-            addHiddenStateKey(guid, key, self.auraInstancesMap[key])
-        end
-    end
-
-    local hideTimedAura = function(guid, stateKey)
-        local auraInstance = self.auraInstancesMap[stateKey]
-
-        self.auraInstancesMap[stateKey] = nil
-        self.removeKeyFromGuid(auraInstance.targetGuid, stateKey)
-
-        addHiddenStateKey(guid, stateKey, auraInstance)
-
-        frameManager.AuraRemoved(guid, stateKey)
-    end
-    
-    local showHiddenTimedAurasForGuid = function(guid)
-        local currentHidden = getHiddenAurasByGuid(guid)
-
-        ---@type string[]
-        local keysToShow = {}
-
-        for key, _ in pairs(currentHidden) do
-            table.insert(keysToShow, key)
-        end
-
-        for _, shownKey in ipairs(keysToShow) do
-            restoreHiddenAura(guid, shownKey)
-        end
     end
 
     ---@return boolean
@@ -995,21 +893,32 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
     ---@return BuffWatcher_StoredSpell?
     local getWatcherInfo = function(blizzardAura)
-        if (blizzardAura.isHelpful and spellBundle.buffs[blizzardAura.spellId] ~= nil) then
+        if (blizzardAura.isHelpful) then
             return spellBundle.buffs[blizzardAura.spellId]
-
-        elseif (blizzardAura.isHarmful and spellBundle.debuffs[blizzardAura.spellId] ~= nil) then
+        elseif (blizzardAura.isHarmful) then
             return spellBundle.debuffs[blizzardAura.spellId]
-
         else
             return nil
         end
+    end
+
+    ---Returns true if the units are comparable and the distance is less than a specified amount
+    ---@param unit string
+    ---@param maxRange number
+    ---@return boolean
+    local isUnitFrameInRange = function(unit, maxRange)
+        if (unit == 'player') then
+            return true
+        end
+
+        return CheckInteractDistance(unit, 4)
     end
 
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
     ---@return boolean
     local shouldHandleAura = function(blizzardAura, targetUnit)
+
         if (not includeBuffsAndCasts and blizzardAura.isHelpful) then
             return false
         end
@@ -1022,8 +931,13 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         local watcherInfo = getWatcherInfo(blizzardAura)
 
         -- if we haven't explicitly opted to see (or hide) this aura, then only show if it's an NPC aura
-        if (watcherInfo == nil) then
-            return self.IncludeNpcs() and not blizzardAura.isFromPlayerOrPlayerPet
+        if (watcherInfo == nil and self.IncludeNpcs()) then
+            -- "isFromPlayerOrPlayerPet" is only reliable if the unit is in the same zone or a nameplate - ignore auras on units in a different zone
+            if (self.isNameplate()) then
+                return not blizzardAura.isFromPlayerOrPlayerPet
+            else 
+                return isUnitFrameInRange(targetUnit, maxDistance) and not blizzardAura.isFromPlayerOrPlayerPet
+            end
         end
 
         if (watcherInfo ~= nil) then
@@ -1032,6 +946,10 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             end
 
             if (watcherInfo.ownOnly and blizzardAura.sourceUnit ~= 'player') then
+                return false
+            end
+
+            if not isUnitFrameInRange(targetUnit, maxDistance) then
                 return false
             end
         end
@@ -1124,6 +1042,15 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         return BuffWatcher_TimerWrapper:new(timer)
     end
 
+    ---@param deadGuid string
+    self.HandleUnitDied = function(deadGuid)
+        -- if it's a nameplate, then the name plate removal handler should deal with it
+        if (not self.isNameplate()) then
+            self.RefreshGuid(deadGuid)
+        end
+    end
+
+
     ---@param castInfo BuffWatcher_Blizzard_CastInfo
     ---@return boolean
     self.HandleCast = function(castInfo)
@@ -1133,13 +1060,13 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
 
-        if (not self.FilterEvent(castInfo.sourceName)) then
-            return false
-        end
-
         local watcherInfo = spellBundle.casts[castInfo.spellId]
 
         if (watcherInfo == nil or watcherInfo.hide) then
+            return false
+        end
+
+        if (not self.FilterEvent(castInfo.sourceName)) then
             return false
         end
 
@@ -1405,7 +1332,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return false
         end
     
-        frameManager.DoFullUpdate()
+        frameManager.FramesChanged()
 
         return true
     end

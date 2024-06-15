@@ -660,6 +660,18 @@ function BuffWatcher_Shared.UnitIsMinor(unit)
     return false
 end
 
+function BuffWatcher_Shared.IsUnitInSameZone(unit)
+    local playerZone = C_Map.GetBestMapForUnit("player")
+    local unitZone = C_Map.GetBestMapForUnit(unit)
+
+    if playerZone and unitZone and playerZone == unitZone then
+        return true
+    else
+        return false
+    end
+end
+
+
 ---@param map table<string, string>
 ---@return table<string, string>
 function BuffWatcher_Shared.InvertStringMap(map)
@@ -760,5 +772,51 @@ BuffWatcher_Shared.TriggerTypeLabels = {
     [BuffWatcher_TriggerType.Cast] = "Casts",
     [BuffWatcher_TriggerType.CatchAll] = "Catch All",
 }
+
+BuffWatcher_Shared.Benchmark = function(func, iterations, ...)
+    iterations = iterations or 1000  -- Default to 1000 iterations if not specified
+    local start_time_milliseconds = debugprofilestop()
+    
+    collectgarbage("collect")
+
+    local memBefore = collectgarbage("count")
+
+    for i = 1, iterations do
+        func(...)
+    end
+
+    local end_time_milliseconds = debugprofilestop()
+    local total_time_millisecconds = end_time_milliseconds - start_time_milliseconds
+    local average_time = total_time_millisecconds / iterations
+    
+    local memAfter = collectgarbage("count")
+    local memUsed = memAfter - memBefore
+
+    print(string.format("Total time for %d iterations: %.6f milliseconds", iterations, total_time_millisecconds))
+    print(string.format("Average time per iteration: %.6f milliseconds", average_time))
+    print(string.format("Memory usage: %d bytes", memUsed))
+
+    return average_time
+end
+
+---Computers distance between players, or nil if a comparison is not possible
+---@param unit1 string
+---@param unit2 string
+---@return boolean
+BuffWatcher_Shared.ComputeDistance = function(unit1, unit2)
+    DevTool:AddData({unit1 = unit1, unit2 = unit2}, "starting")
+    local y1, x1, _, instance1 = UnitPosition(unit1)
+
+    DevTool:AddData({x1 = x1, y1 = y1, instance1 = instance1 }, "unit1")
+
+    local y2, x2, _, instance2 = UnitPosition(unit2)
+
+    DevTool:AddData({x2 = x2, y2 = y2, instance2 = instance2 }, "unit2")
+
+    local result = instance1 == instance2 and ((x2 - x1) ^ 2 + (y2 - y1) ^ 2) ^ 0.5
+    DevTool:AddData({unit1 = unit1, unit2 = unit2}, "ending")
+    return result
+  end
+
 
 BuffWatcher_Shared_Singleton = BuffWatcher_Shared:new();

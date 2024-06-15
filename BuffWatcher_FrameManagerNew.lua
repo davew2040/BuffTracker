@@ -26,8 +26,8 @@ function BuffWatcher_FrameManagerNew:new(context, configuration)
     ---@type BuffWatcher_FrameManagerNew
     self = {};
 
-    -- ---@type table<string, string>
-    -- local stateKeysToGuids = {}
+    ---@type table<string, table<string, boolean>>
+    local lastFrameMap = {}
 
     ---@type table<string, BuffWatcher_GuidFrameData>
     local currentGuidsToFrames = {}
@@ -262,10 +262,33 @@ function BuffWatcher_FrameManagerNew:new(context, configuration)
         end
     end
 
-    ---@return table<string, BuffWatcher_GuidFrameData>
-    local buildGuidsToFrames = function()
-        local units = context.GetPotentialUnits()
+    
 
+    ---@param units table<string, boolean>
+    ---@return table<string, table<string, boolean>>
+    local buildFrameMap = function(units)
+        DevTool:AddData("fixme alling buildFrameMap")
+        ---@type table<string, table<string, boolean>>
+        local result = {}
+
+        for unit, _ in pairs(units) do
+            if (UnitExists(unit)) then
+                local frames = getTargetFrames(unit)
+
+                result[unit] = {}
+                for frame, _ in pairs(frames) do
+                    result[unit][frame:GetName()] = true
+                end
+            end
+        end
+
+        return result
+    end
+
+
+    ---@param units table<string, boolean>
+    ---@return table<string, BuffWatcher_GuidFrameData>
+    local buildGuidsToFrames = function(units)
         ---@type table<string, BuffWatcher_GuidFrameData>
         local result = {}
 
@@ -294,14 +317,55 @@ function BuffWatcher_FrameManagerNew:new(context, configuration)
         return result
     end
 
+    ---Compares two frame maps, returns true if equal
+    ---@param one table<string, table<string, boolean>>
+    ---@param two table<string, table<string, boolean>>
+    ---@return boolean
+    local compareFrameMaps = function(one, two)
+        if BuffWatcher_Shared_Singleton.GetTableKeyCount(one) ~= BuffWatcher_Shared_Singleton.GetTableKeyCount(two) then
+            return false
+        end
+
+        for unit, oneFrames in pairs(one) do
+            if (two[unit] == nil) then
+                return false
+            end
+
+            local twoFrames = two[unit]
+
+            if BuffWatcher_Shared_Singleton.GetTableKeyCount(oneFrames) ~= BuffWatcher_Shared_Singleton.GetTableKeyCount(twoFrames) then
+                return false
+            end
+
+            for frame, _ in pairs(oneFrames) do
+                if twoFrames[frame] == nil then
+                    return false
+                end
+            end
+        end
+
+        return true
+    end
+
+    self.FramesChanged = function()
+        local units = context.GetPotentialUnits()
+
+        local nextFrameMap = buildFrameMap(units)
+
+        -- if frames have *actually* changed, because we get excessive events from LibGetFrame
+        if not compareFrameMaps(nextFrameMap, lastFrameMap) then
+            DevTool:AddData("fixme compareFrameMaps check failed, calling DoFullUpdate")
+            lastFrameMap = nextFrameMap
+            self.DoFullUpdate()
+        end
+    end
+
     self.DoFullUpdate = function()
         self.Clear()
 
-        currentGuidsToFrames = buildGuidsToFrames()
+        currentGuidsToFrames = buildGuidsToFrames(context.GetPotentialUnits())
 
-        DevTool:AddData({currentGuidsToFrames = currentGuidsToFrames}, "fixme FrameManager DoFullUpdate " .. context.getName())
-
-        for guid, guidData in pairs(currentGuidsToFrames) do
+        for guid, _ in pairs(currentGuidsToFrames) do
             self.GuidRefreshed(guid)
         end
     end

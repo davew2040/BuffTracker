@@ -16,7 +16,7 @@ local cleuEvents = {
         BuffWatcher.UNIT_DIED(self, eventData)
     end,
     SPELL_CAST_SUCCESS = function(self, eventData, ...)
-        BuffWatcher.SPELL_CAST_SUCCESS(self, eventData, ...)
+        BuffWatcher.SPELL_CAST_SUCCESS(self, eventData)
     end
 }
 
@@ -113,27 +113,10 @@ function BuffWatcher:UNIT_DIED(eventData)
 end
 
 function BuffWatcher:NAME_PLATE_UNIT_ADDED(...)
-    -- FIXME - make this work for default frames
-    -- local plateName = select(1, ...)
-    -- local nameplate = C_NamePlate.GetNamePlateForUnit(plateName)
-    -- if (not nameplate) then
-    --     return
-    -- end
-    -- local frame = nameplate.UnitFrame
-    -- if (not frame) then
-    --     return
-    -- end
-    -- if not nameplate or frame:IsForbidden() then return end
-    -- frame.BuffFrame:ClearAllPoints()
-    -- frame.BuffFrame:SetAlpha(0)
-
-    --DevTool:AddData({...}, "NAME_PLATE_UNIT_ADDED")
-
     watcherService.HandleEvent_NameplateAdded(select(2, ...))
 end
 
 function BuffWatcher:NAME_PLATE_UNIT_REMOVED(...)
-    -- DevTool:AddData({...}, "NAME_PLATE_UNIT_REMOVED")
     watcherService.HandleEvent_NameplateRemoved(select(2, ...))
 end
 
@@ -148,24 +131,103 @@ function BuffWatcher:ARENA_TEAM_ROSTER_UPDATE(...)
 end
 
 function BuffWatcher:ARENA_OPPONENT_UPDATE(...)
-    print("ARENA_OPPONENT_UPDATE")
-    DevTool:AddData({...}, "fixme ARENA_OPPONENT_UPDATE")
+--     print("ARENA_OPPONENT_UPDATE")
+--     DevTool:AddData({...}, "fixme ARENA_OPPONENT_UPDATE")
     
     watcherService.ArenaOpponentUpdate()
 end
 
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
-    print("PLAYER_ENTERING_WORLD")
+    --print("PLAYER_ENTERING_WORLD")
     watcherService.PlayerEnteringWorld()
     
     LGF:ScanForUnitFrames()
 end
 
 function BuffWatcher:PARTY_CONVERTED_TO_RAID(...)
-    print("PARTY_CONVERTED_TO_RAID")
+    --print("PARTY_CONVERTED_TO_RAID")
     watcherService.RefreshLoaded()
 end
 
-function BuffWatcher:SlashCommand()
-    mainWindow.Show()
+function BuffWatcher:RunBenchmark(value)
+    local iterations = 1000000
+    -- local sum = 0
+
+    -- local intMap = { }
+    -- intMap[123456789012] = 1
+
+    -- local stringMap = { }
+    -- stringMap["123456789012"] = 1
+
+    -- BuffWatcher_Shared.Benchmark(function()
+    --     local myTest = intMap[123456789012]
+    --     sum = sum + myTest
+    -- end, iterations)
+
+
+    -- BuffWatcher_Shared.Benchmark(function()
+    --     local key = tostring(123456789012)
+    --     local key2 = tostring(123456789012)
+    --     local myTest = stringMap[key]
+    --     sum = sum + myTest
+    -- end, iterations)
+    local pool = CreateObjectPool(
+        function()
+            return {} 
+        end
+    )
+
+    local test = nil
+
+
+    BuffWatcher_Shared.Benchmark(function()
+        if test ~= nil then
+            pool:Release(test["testKey"])
+            pool:Release(test)
+        end
+
+        test = pool:Acquire()
+
+        test["testKey"] = pool:Acquire()
+        test["testKey"]["testKey2"] = 42
+    end, 100)
+
+    BuffWatcher_Shared.Benchmark(function()
+        if test ~= nil then
+            pool:Release(test["testKey"])
+            pool:Release(test)
+        end
+
+        test = pool:Acquire()
+
+        test["testKey"] = pool:Acquire()
+        test["testKey"]["testKey2"] = 42
+    end, iterations)
+
+    BuffWatcher_Shared.Benchmark(function()
+        if test ~= nil then
+            test = nil
+        end
+
+        test = {}
+
+        test["testKey"] = {
+            ["testKey2"] = 42
+        }
+    end, iterations)
+end
+
+function BuffWatcher:SlashCommand(input)
+    local command = self:GetArgs(input, 1)
+    if (command == next) then
+        mainWindow.Show()
+    else
+        command = string.lower(command)
+
+        if (command == "show") then
+            mainWindow.Show()
+        elseif (command == "bench") then
+            self:RunBenchmark(self:GetArgs(input, 2))
+        end
+    end
 end

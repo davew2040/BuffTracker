@@ -323,38 +323,38 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
     self.HandleEvent_UnitAura = function(targetUnit, updateInfo)
         
-        if (updateInfo.addedAuras ~= nil) then
-            --- fixme - remove debug data
-            for _, added in ipairs(updateInfo.addedAuras) do
-                local unit = 'none'
-                if (targetUnit ~= nil) then
-                    unit = UnitName(targetUnit)
-                end
-                local sourceGuid = 'none'
-                if (added.sourceUnit ~= nil) then
-                    sourceGuid = UnitGUID(added.sourceUnit)
-                end
-                DevTool:AddData({ updateInfo = CopyTable(updateInfo), sourceGuid = sourceGuid }, "fixme added aura " .. added.name .. " to unit " .. unit)
-                if (tempAuraIds[added.auraInstanceID] == nil) then
-                    tempAuraIds[added.auraInstanceID] = CopyTable(added)
-                end
-            end
-        end
+        -- if (updateInfo.addedAuras ~= nil) then
+        --     --- fixme - remove debug data
+        --     for _, added in ipairs(updateInfo.addedAuras) do
+        --         local unit = 'none'
+        --         if (targetUnit ~= nil) then
+        --             unit = UnitName(targetUnit)
+        --         end
+        --         local sourceGuid = 'none'
+        --         if (added.sourceUnit ~= nil) then
+        --             sourceGuid = UnitGUID(added.sourceUnit)
+        --         end
+        --         DevTool:AddData({ updateInfo = CopyTable(updateInfo), sourceGuid = sourceGuid }, "fixme added aura " .. added.name .. " to unit " .. unit)
+        --         if (tempAuraIds[added.auraInstanceID] == nil) then
+        --             tempAuraIds[added.auraInstanceID] = CopyTable(added)
+        --         end
+        --     end
+        -- end
 
-        if (updateInfo.removedAuraInstanceIDs ~= nil) then
-            --- fixme - remove debug data
-            for _, removed in ipairs(updateInfo.removedAuraInstanceIDs) do
-                local removedInstance = tempAuraIds[removed]
+        -- if (updateInfo.removedAuraInstanceIDs ~= nil) then
+        --     --- fixme - remove debug data
+        --     for _, removed in ipairs(updateInfo.removedAuraInstanceIDs) do
+        --         local removedInstance = tempAuraIds[removed]
                 
-                local unit = 'none'
-                if (removedInstance ~= nil) then
-                    if (targetUnit ~= nil) then
-                        unit = UnitName(targetUnit)
-                    end
-                    DevTool:AddData({ removedInstance = CopyTable(removedInstance) }, "fixme removed aura " .. removedInstance.name .. " from unit " .. unit)
-                end
-            end
-        end
+        --         local unit = 'none'
+        --         if (removedInstance ~= nil) then
+        --             if (targetUnit ~= nil) then
+        --                 unit = UnitName(targetUnit)
+        --             end
+        --             DevTool:AddData({ removedInstance = CopyTable(removedInstance) }, "fixme removed aura " .. removedInstance.name .. " from unit " .. unit)
+        --         end
+        --     end
+        -- end
 
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
@@ -385,7 +385,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
 
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
-                context.RefreshGuid(deadGuid)
+                context.HandleUnitDied(deadGuid)
             end
         end
     end
