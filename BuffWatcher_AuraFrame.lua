@@ -1,21 +1,23 @@
 ---@class BuffWatcher_AuraFrame
 BuffWatcher_AuraFrame = {}
 
----@param parentFrame any
----@param aura BuffWatcher_AuraInstance
 ---@param framePool any
 ---@param cooldownFramePool any
----@param texturePool any
----@param auraInstance BuffWatcher_AuraInstance
----@param context BuffWatcher_AuraContext
----@param alpha number
----@param auraTitle string
 ---@return BuffWatcher_AuraFrame
-function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePool, texturePool, auraInstance, context, alpha, auraTitle)
+function BuffWatcher_AuraFrame:new(framePool, cooldownFramePool)
     self = {}
 
     ---@type BuffWatcher_FramesCollection
-    local frames = BuffWatcher_FramesCollection:new()
+    local frames = nil
+
+    ---@type BuffWatcher_AuraContext?
+    local savedContext = nil
+
+    ---@type any
+    local savedParentFrame = nil
+
+    ---@type BuffWatcher_AuraInstance?
+    local savedAuraInstance = nil
 
     --- gets the default UI level of the frame
     ---@return integer
@@ -34,121 +36,184 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
     --     return scale
     -- end
 
-    ---@param parentFrame any
-    ---@param aura BuffWatcher_AuraInstance
-    ---@param borders BuffWatcher_BorderDefinition[]
-    ---@param borderIndex integer
-    ---@param currentSize integer
-    ---@param lastBorderWidth integer
-    ---@param auraTitle string
-    self.BuildFrames = function(parentFrame, aura, borders, borderIndex, currentSize, lastBorderWidth, auraTitle)
-        if (borderIndex > #borders) then -- if we've previously added all the borders, then add the main aura frame
-            local auraFrame = framePool:Acquire() -- CreateFrame("Frame", "test spell frame", borderFrame)
+    ---@return BuffWatcher_FramesCollection
+    local initializeFrames = function()
+        local newFrames = BuffWatcher_FramesCollection:new()
 
-            auraFrame:SetParent(parentFrame)
-            auraFrame:SetFrameLevel(borderIndex + getFrameLevel())
-            auraFrame:SetSize(currentSize, currentSize)
-            auraFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", lastBorderWidth, -lastBorderWidth)
+        --outer 
+        local outerBorderFrame = framePool:Acquire() 
 
-            auraFrame.texture = auraFrame:CreateTexture("BuffWatcher texture frame - " .. auraTitle)
-            auraFrame.texture:SetTexture(auraInstance.icon)
-            auraFrame.texture:SetAllPoints(auraFrame)
-            auraFrame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-            
-            table.insert(frames.allFrames, auraFrame)
+        outerBorderFrame:SetParent(UIParent)
+        outerBorderFrame:SetIgnoreParentScale(true)
+        outerBorderFrame:SetScale(0.5)
+        -- We expect that these values are updated through the SetOffsets method later
 
-            auraFrame:Show()
+        outerBorderFrame.texture = outerBorderFrame:CreateTexture("BuffWatcher frame outerBorderFrame")
+        outerBorderFrame.texture:SetAllPoints(outerBorderFrame)
+        outerBorderFrame.texture:SetColorTexture(0, 0, 0)
 
-            if (aura.showCooldown) then
-                local cooldownFrame = cooldownFramePool:Acquire()
-                cooldownFrame:SetParent(auraFrame)
-                cooldownFrame:SetAllPoints()
-                cooldownFrame:SetCooldown(aura.expirationTime-aura.duration, aura.duration)
-                cooldownFrame:SetReverse(true)
+        newFrames.rootFrame = outerBorderFrame
 
-                frames.cooldownFrame = cooldownFrame
-                cooldownFrame:Show()
-           end
-        elseif (borderIndex == 1) then
-            local outerBorderFrame = framePool:Acquire() 
+        outerBorderFrame:Show()
+        
+        --- dispelFrame
+        local dispelFrame = framePool:Acquire() 
 
-            local currentBorder = borders[borderIndex]
+        dispelFrame:SetParent(outerBorderFrame)
 
-            outerBorderFrame:SetParent(parentFrame)
-            outerBorderFrame:SetFrameLevel(borderIndex + getFrameLevel())
-            outerBorderFrame:SetSize(currentSize, currentSize)
-            outerBorderFrame:SetIgnoreParentScale(true)
-            outerBorderFrame:SetAlpha(alpha)
-            outerBorderFrame:SetScale(0.5)
-            -- We expect that these values are updated through the SetOffsets method later
-            outerBorderFrame:SetPoint(context.GetSelfAnchorPoint(), parentFrame, context.GetTargetAnchorPoint(), 0, 0) 
+        dispelFrame.texture = dispelFrame:CreateTexture("BuffWatcher frame dispelFrame")
+        dispelFrame.texture:SetAllPoints(dispelFrame)
 
-            outerBorderFrame.texture = outerBorderFrame:CreateTexture("BuffWatcher border frame " .. borderIndex .. ' ' .. auraTitle)
-            outerBorderFrame.texture:SetAllPoints(outerBorderFrame)
-            outerBorderFrame.texture:SetColorTexture(currentBorder.color.red, currentBorder.color.green, currentBorder.color.blue)
+        newFrames.dispelFrame = dispelFrame
+        dispelFrame:Show()
 
-            table.insert(frames.allFrames, outerBorderFrame)
-            frames.rootFrame = outerBorderFrame
+        --- hostilityFrame
+        local hostilityFrame = framePool:Acquire() 
 
-            self.BuildFrames(outerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width, auraTitle)
+        hostilityFrame:SetParent(dispelFrame)
+        hostilityFrame.texture = hostilityFrame:CreateTexture("BuffWatcher frame hostilityFrame")
+        hostilityFrame.texture:SetAllPoints(hostilityFrame)
 
-            outerBorderFrame:Show()
-        else
-            local innerBorderFrame =  framePool:Acquire() 
+        newFrames.hostilityFrame = hostilityFrame
+        hostilityFrame:Show()
 
-            local currentBorder = borders[borderIndex]
+        --- innerFrame
+        local innerFrame = framePool:Acquire() 
 
-            innerBorderFrame:SetParent(parentFrame)
-            innerBorderFrame:SetFrameLevel(borderIndex + getFrameLevel())
-            innerBorderFrame:SetSize(currentSize, currentSize)
-            innerBorderFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", lastBorderWidth, -lastBorderWidth)
+        innerFrame:SetParent(hostilityFrame)
 
-            innerBorderFrame.texture = innerBorderFrame:CreateTexture("BuffWatcher border frame " .. borderIndex .. ' ' .. auraTitle)
-            innerBorderFrame.texture:SetAllPoints(innerBorderFrame)
-            innerBorderFrame.texture:SetColorTexture(currentBorder.color.red, currentBorder.color.green, currentBorder.color.blue)
+        innerFrame.texture = innerFrame:CreateTexture("BuffWatcher frame innerFrame")
+        innerFrame.texture:SetAllPoints(innerFrame)
+        innerFrame.texture:SetColorTexture(0, 0, 0)
 
-            table.insert(frames.allFrames, innerBorderFrame)
+        newFrames.innerBorder = innerFrame
+        innerFrame:Show()
 
-            self.BuildFrames(innerBorderFrame, aura, borders, borderIndex+1, currentSize - 2*currentBorder.width, currentBorder.width, auraTitle)
+        -- auraframe
+        local auraFrame = framePool:Acquire() -- CreateFrame("Frame", "test spell frame", borderFrame)
 
-            innerBorderFrame:Show()
-        end
+        auraFrame:SetParent(innerFrame)
+
+        auraFrame.texture = auraFrame:CreateTexture("BuffWatcher frame auraFrame")
+        auraFrame.texture:SetAllPoints(auraFrame)
+        auraFrame.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        
+        newFrames.auraFrame = auraFrame
+        auraFrame:Show()
+
+        local cooldownFrame = cooldownFramePool:Acquire()
+        cooldownFrame:SetParent(auraFrame)
+        cooldownFrame:SetAllPoints()
+        cooldownFrame:SetReverse(true)
+
+        newFrames.cooldownFrame = cooldownFrame
+        cooldownFrame:Show()
+
+        return newFrames
     end
 
-    self.BuildFrames(parentFrame, aura, auraInstance.borders, 1, auraInstance.actualSize, 0, auraTitle)
-
     self.Dispose = function()
-        for _, frame in ipairs(frames.allFrames) do
-            frame:SetParent(nil)
-            frame:Hide()
-            framePool:Release(frame)
+        -- TODO
+        -- for _, frame in ipairs(frames.allFrames) do
+        --     frame:SetParent(nil)
+        --     frame:Hide()
+        --     framePool:Release(frame)
 
-            if (frame.texture ~= nil) then
-                frame.texture:Hide()
-                frame.texture:SetParent(nil)
-            end
-        end
+        --     if (frame.texture ~= nil) then
+        --         frame.texture:Hide()
+        --         frame.texture:SetParent(nil)
+        --     end
+        -- end
         
-        if (frames.cooldownFrame ~= nil) then 
+        -- if (frames.cooldownFrame ~= nil) then 
+        --     frames.cooldownFrame:Hide()
+        --     frames.cooldownFrame:SetParent(nil)
+        --     cooldownFramePool:Release(frames.cooldownFrame)
+        -- end
+    end
+
+    self.SetInactive = function()
+        if (frames.rootFrame ~= nil) then
+            frames.rootFrame:Hide()
+            --frames.rootFrame:SetParent(UIParent)
+        end
+
+        savedContext = nil
+        savedParentFrame = nil
+        savedAuraInstance = nil
+    end
+
+    ---@param aura BuffWatcher_AuraInstance
+    ---@param context BuffWatcher_AuraContext
+    ---@param parentFrame any
+    ---@param alpha number
+    self.SetAura = function(aura, context, parentFrame, alpha)
+        savedContext = context
+        savedParentFrame = parentFrame
+        savedAuraInstance = aura
+
+        local currentWidth = aura.actualSize
+
+        frames.rootFrame:SetParent(parentFrame)
+        frames.rootFrame:SetSize(currentWidth, currentWidth)
+        frames.rootFrame:SetPoint(context.GetSelfAnchorPoint(), parentFrame, context.GetTargetAnchorPoint(), 0, 0) 
+        frames.rootFrame:SetAlpha(alpha)
+        frames.rootFrame:Show()
+
+        if (savedAuraInstance.borders.showDispel) then
+            currentWidth = currentWidth - aura.borders.outerWidth
+            frames.dispelFrame:SetPoint("TOPLEFT", frames.rootFrame, "TOPLEFT",  aura.borders.outerWidth, - aura.borders.outerWidth)
+            frames.dispelFrame:SetPoint("BOTTOMRIGHT", frames.rootFrame, "BOTTOMRIGHT", -aura.borders.outerWidth, aura.borders.outerWidth)
+            frames.dispelFrame.texture:SetColorTexture(
+                aura.borders.dispelColor.red, 
+                aura.borders.dispelColor.green, 
+                aura.borders.dispelColor.blue
+            )
+        else
+            frames.dispelFrame:SetAllPoints(frames.rootFrame)
+        end
+
+        frames.hostilityFrame:SetPoint("TOPLEFT", frames.dispelFrame, "TOPLEFT", aura.borders.dispelWidth, -aura.borders.dispelWidth)
+        frames.hostilityFrame:SetPoint("BOTTOMRIGHT", frames.dispelFrame, "BOTTOMRIGHT", -aura.borders.dispelWidth, aura.borders.dispelWidth)
+        frames.hostilityFrame.texture:SetColorTexture(
+            aura.borders.hostilityColor.red,
+            aura.borders.hostilityColor.green,
+            aura.borders.hostilityColor.blue
+        )
+        frames.innerBorder:SetPoint("TOPLEFT", frames.hostilityFrame, "TOPLEFT", aura.borders.hostilityWidth, -aura.borders.hostilityWidth)
+        frames.innerBorder:SetPoint("BOTTOMRIGHT", frames.hostilityFrame, "BOTTOMRIGHT", -aura.borders.hostilityWidth, aura.borders.hostilityWidth)
+
+        frames.auraFrame.texture:SetTexture(aura.icon)
+        frames.auraFrame:SetPoint("TOPLEFT", frames.innerBorder, "TOPLEFT", aura.borders.innerWidth, -aura.borders.innerWidth)
+        frames.auraFrame:SetPoint("BOTTOMRIGHT", frames.innerBorder, "BOTTOMRIGHT", -aura.borders.innerWidth, aura.borders.innerWidth)
+
+        if aura.showCooldown then
+            frames.cooldownFrame:Show()
+            frames.cooldownFrame:SetCooldown(aura.expirationTime-aura.duration, aura.duration)
+        else
             frames.cooldownFrame:Hide()
-            frames.cooldownFrame:SetParent(nil)
-            cooldownFramePool:Release(frames.cooldownFrame)
         end
     end
 
     ---@param x integer
     ---@param y integer
     self.SetOffsets = function(x, y)
-        frames.rootFrame:SetPoint(context.GetSelfAnchorPoint(), parentFrame, context.GetTargetAnchorPoint(), x + context.GetXOffset(), y + context.GetYOffset())
+        frames.rootFrame:SetPoint(
+            savedContext.GetSelfAnchorPoint(), 
+            savedParentFrame, 
+            savedContext.GetTargetAnchorPoint(), 
+            x + savedContext.GetXOffset(), 
+            y + savedContext.GetYOffset()
+        )
     end
 
     self.GetWidth = function()
-        return auraInstance.actualSize
+        return savedAuraInstance and savedAuraInstance.actualSize or 0
     end
 
     self.UpdateCooldown = function()
         if (frames.cooldownFrame ~= nil) then
-            frames.cooldownFrame:SetCooldown(aura.expirationTime-aura.duration, aura.duration)
+            frames.cooldownFrame:SetCooldown(savedAuraInstance.expirationTime-savedAuraInstance.duration, savedAuraInstance.duration)
         end
     end
 
@@ -156,6 +221,8 @@ function BuffWatcher_AuraFrame:new(parentFrame, aura, framePool, cooldownFramePo
     self.SetParent = function(newParent)
         frames.rootFrame:SetParent(newParent)
     end
+
+    frames = initializeFrames()
 
     return self
 end

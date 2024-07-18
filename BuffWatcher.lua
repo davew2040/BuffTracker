@@ -12,14 +12,20 @@ local mainWindow = nil
 local watcherService = nil
 
 local cleuEvents = {
+    ---@param self any
+    ---@param eventData BuffWatcher_Blizzard_CombatLogEntry
     UNIT_DIED = function(self, eventData) 
         BuffWatcher.UNIT_DIED(self, eventData)
     end,
-    SPELL_CAST_SUCCESS = function(self, eventData, ...)
+
+    ---@param self any
+    ---@param eventData BuffWatcher_Blizzard_CombatLogEntry
+    SPELL_CAST_SUCCESS = function(self, eventData)
         BuffWatcher.SPELL_CAST_SUCCESS(self, eventData)
     end
 }
 
+---@type BuffWatcher_MiscellaneousObjectPool
 local pool = nil
 
 function BuffWatcher:OnInitialize()
@@ -42,6 +48,8 @@ local lgfUpdate = function(...)
 end
 
 function BuffWatcher:OnEnable()
+    pool = BuffWatcher_MiscellaneousObjectPool:new()
+
     local contextDefaults = BuffWatcher_DefaultContextValues:new()
 
     BuffWatcher_DbAccessor_Singleton.OnInitialize(contextDefaults);
@@ -49,11 +57,11 @@ function BuffWatcher:OnEnable()
     local loggerModule = BuffWatcher_LoggerModule:new()
     local storedSpellsRegistry = BuffWatcher_StoredSpellsRegistry:new()
     local configuration = BuffWatcher_Configuration:new(BuffWatcher_DbAccessor_Singleton)
-    local contextStore = BuffWatcher_AuraContextStore:new(BuffWatcher_DbAccessor_Singleton, configuration, storedSpellsRegistry, contextDefaults)
+    local contextStore = BuffWatcher_AuraContextStore:new(BuffWatcher_DbAccessor_Singleton, configuration, storedSpellsRegistry, contextDefaults, pool)
     local settingsDialog = BuffWatcher_SettingsDialog:new(BuffWatcher_DbAccessor_Singleton, contextStore, contextDefaults)
     local weakAuraGenerator = BuffWatcher_WeakAuraGenerator:new(configuration)
     local weakAuraExporter = BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
-    watcherService = BuffWatcher_WatcherService:new(configuration, contextStore)
+    watcherService = BuffWatcher_WatcherService:new(configuration, contextStore, pool)
 
     --BuffWatcher_WeakAuraInterface_Singleton = weakAurasInterface
 
@@ -94,20 +102,34 @@ function BuffWatcher:UNIT_AURA(...)
 end
 
 function BuffWatcher:COMBAT_LOG_EVENT_UNFILTERED(...)
-    local eventData = {CombatLogGetCurrentEventInfo()}
-    local subevent = eventData[2]
+    ---@type BuffWatcher_Blizzard_CombatLogEntry
+    local eventData = pool.GetObject() 
+
+    local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,	destRaidFlags, param12 = CombatLogGetCurrentEventInfo()
+
+    eventData.timestamp = timestamp
+    eventData.subevent = subevent
+    eventData.hideCaster = hideCaster
+    eventData.sourceGUID = sourceGUID
+    eventData.destGUID = destGUID
+
+    if (eventData.subevent == 'SPELL_CAST_SUCCESS') then
+        eventData.spellID = param12
+    end
 
     if (cleuEvents[subevent] ~= nil) then
         cleuEvents[subevent](self, eventData)
     end
+
+    pool.ReleaseObject(eventData)
 end
 
----@param eventData any
+---@param eventData BuffWatcher_Blizzard_CombatLogEntry
 function BuffWatcher:SPELL_CAST_SUCCESS(eventData)
     watcherService.HandleEvent_Cast(eventData)
 end
 
----@param eventData any
+---@param eventData BuffWatcher_Blizzard_CombatLogEntry
 function BuffWatcher:UNIT_DIED(eventData)
     watcherService.HandleEvent_UnitDied(eventData)
 end
@@ -149,8 +171,27 @@ function BuffWatcher:PARTY_CONVERTED_TO_RAID(...)
     watcherService.RefreshLoaded()
 end
 
+
+
 function BuffWatcher:RunBenchmark(value)
     local iterations = 1000000
+
+    local threePartKeyBuilder = {}
+    
+    ---Builds a three-part string key
+    ---@param one any
+    ---@param two any
+    ---@param three any
+    local getThreePartKey = function(one, two, three)
+        threePartKeyBuilder[1] = one
+        threePartKeyBuilder[2] = two
+        threePartKeyBuilder[3] = three
+
+        local key =  table.concat(threePartKeyBuilder, ":")
+
+        return key
+    end
+
     -- local sum = 0
 
     -- local intMap = { }
@@ -171,49 +212,10 @@ function BuffWatcher:RunBenchmark(value)
     --     local myTest = stringMap[key]
     --     sum = sum + myTest
     -- end, iterations)
-    local pool = CreateObjectPool(
-        function()
-            return {} 
-        end
-    )
-
-    local test = nil
 
 
     BuffWatcher_Shared.Benchmark(function()
-        if test ~= nil then
-            pool:Release(test["testKey"])
-            pool:Release(test)
-        end
-
-        test = pool:Acquire()
-
-        test["testKey"] = pool:Acquire()
-        test["testKey"]["testKey2"] = 42
-    end, 100)
-
-    BuffWatcher_Shared.Benchmark(function()
-        if test ~= nil then
-            pool:Release(test["testKey"])
-            pool:Release(test)
-        end
-
-        test = pool:Acquire()
-
-        test["testKey"] = pool:Acquire()
-        test["testKey"]["testKey2"] = 42
-    end, iterations)
-
-    BuffWatcher_Shared.Benchmark(function()
-        if test ~= nil then
-            test = nil
-        end
-
-        test = {}
-
-        test["testKey"] = {
-            ["testKey2"] = 42
-        }
+        local test = getThreePartKey("a", "b", "c")
     end, iterations)
 end
 

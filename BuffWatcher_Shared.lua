@@ -63,13 +63,7 @@ function BuffWatcher_Shared:new()
     end
 
     self.IsPartyOrRaidUnit = function(unitName) 
-        if (IsInGroup()) then
-            return string.find(unitName, 'party') == 1
-        elseif (IsInRaid()) then
-            return string.find(unitName, 'raid') == 1
-        end
-
-        return false
+        return self.IsRaidUnit(unitName) or self.IsPartyUnit(unitName)
     end
 
     self.NormalizeUnit = function(unitName)
@@ -140,6 +134,7 @@ function BuffWatcher_Shared:new()
 
         return merged
     end
+
     ---@param destination table
     ---@param toMerge table
     self.MergeIntoOrderedTable = function(destination, toMerge)
@@ -459,24 +454,21 @@ end
 
 ---@generic T, U
 ---@param source table<T, any>
+---@param destination table<T, any>
 ---@param sortPicker fun(input: T): U
 ---@return any
-function BuffWatcher_Shared.OrderValuesByDescending(source, sortPicker)
-
-    local copy = {}
+function BuffWatcher_Shared.OrderValuesByDescending(source, destination, sortPicker)
 
     for _,v in pairs(source) do
-        table.insert(copy, v)
+        table.insert(destination, v)
     end
 
     table.sort(
-        copy, 
+        destination, 
         function(a, b)
             return sortPicker(a) > sortPicker(b)
         end
     )
-
-    return copy
 end
 
 ---@generic T, U
@@ -726,23 +718,17 @@ end
 ---@generic T, U
 ---@param old table<T, U>
 ---@param new table<T, U>
----@return BuffWatcher_KeyDiffResult
-BuffWatcher_Shared.KeyDiff = function(old, new)
+---@param objectPool BuffWatcher_MiscellaneousObjectPool
+---@return BuffWatcher_KeyDiffResult --- object pool object
+BuffWatcher_Shared.KeyDiff = function(old, new, objectPool)
     ---@type BuffWatcher_KeyDiffResult
-    local diff = {
-        added = {},
-        removed = {},
-        unchanged = {}
-    }
+    local diff = objectPool.GetObject()
+    diff.added = objectPool.GetObject()
+    diff.removed = objectPool.GetObject()
 
     for newKey,v in pairs(new) do
         if (old[newKey] == nil) then
             diff.added[newKey] = v
-        else
-            diff.unchanged[newKey] = {
-                old = old[newKey],
-                new = new[newKey]
-            }
         end
     end
 
@@ -754,6 +740,18 @@ BuffWatcher_Shared.KeyDiff = function(old, new)
 
     return diff
 end
+
+-- Would be awfully nice if I could get generic type annotations working for this
+---@generic T, U
+---@param keyDiff BuffWatcher_KeyDiffResult
+---@param objectPool BuffWatcher_MiscellaneousObjectPool
+BuffWatcher_Shared.ReleaseKeyDiff = function(keyDiff, objectPool)
+    objectPool.ReleaseObject(keyDiff.added)
+    objectPool.ReleaseObject(keyDiff.removed)
+
+    objectPool.ReleaseObject(keyDiff)
+end
+
 
 ---@param t table
 ---@return boolean
@@ -816,7 +814,38 @@ BuffWatcher_Shared.ComputeDistance = function(unit1, unit2)
     local result = instance1 == instance2 and ((x2 - x1) ^ 2 + (y2 - y1) ^ 2) ^ 0.5
     DevTool:AddData({unit1 = unit1, unit2 = unit2}, "ending")
     return result
-  end
+end
 
+---@param t table
+BuffWatcher_Shared.ResetTable = function(t)
+    for k in pairs(t) do
+        t[k] = nil
+    end
+end
+
+---@param target table
+---@param source table
+BuffWatcher_Shared.CopyTableValues = function(target, source)
+    for k,v in pairs(source) do
+        target[k] = v
+    end
+end
+
+---comment Inserts keys into a target table where a predicate is true
+---@param target table
+---@param source table
+---@param filterFn any
+---@return nil
+BuffWatcher_Shared.InsertKeysWhere = function(target, source, filterFn)
+    for k,v in pairs(source) do
+        if (filterFn(k)) then
+            target[k] = v
+        end
+    end
+end
+
+
+---@type table
+BuffWatcher_Shared.EmptyTable = {}
 
 BuffWatcher_Shared_Singleton = BuffWatcher_Shared:new();

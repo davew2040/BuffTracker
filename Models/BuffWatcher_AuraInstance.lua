@@ -3,7 +3,7 @@
 ---@field spellId number
 ---@field dispelName? string
 ---@field showCooldown boolean
----@field borders BuffWatcher_BorderDefinition[]
+---@field borders BuffWatcher_BordersDefinition
 ---@field duration number
 ---@field expirationTime number
 ---@field baseSize integer

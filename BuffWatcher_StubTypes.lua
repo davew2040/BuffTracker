@@ -31,3 +31,12 @@
 ---@field sourceGuid string
 
 ---@class BuffWatcher_Blizzard_Frame
+
+---@class BuffWatcher_Blizzard_CombatLogEntry
+---@field timestamp number
+---@field subevent string
+---@field hideCaster boolean
+---@field sourceGUID string
+---@field sourceName string
+---@field destGUID string
+---@field spellID number

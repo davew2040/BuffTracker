@@ -20,11 +20,13 @@ BuffWatcher_AuraContextStore.ContextKeys = {
 ---@param configuration BuffWatcher_Configuration
 ---@param spellRegistry BuffWatcher_StoredSpellsRegistry
 ---@param defaultContextValues BuffWatcher_DefaultContextValues
+---@param objectPool BuffWatcher_MiscellaneousObjectPool
 function BuffWatcher_AuraContextStore:new(
     dbAccessor, 
     configuration,
     spellRegistry, 
-    defaultContextValues
+    defaultContextValues, 
+    objectPool
 )
     self = {};
 
@@ -178,7 +180,7 @@ function BuffWatcher_AuraContextStore:new(
             customUnlistedMultiplier = settings.customUnlistedMultiplier
         }
 
-        local context = BuffWatcher_AuraContext:new(params, configuration)
+        local context = BuffWatcher_AuraContext:new(params, configuration, objectPool)
 
         return context
     end

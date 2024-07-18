@@ -66,7 +66,7 @@ function BuffWatcher_LoggerWindow_SpellRow:new(spellRegistry)
         sourceNameText:SetText(spell.sourceName)
         textureFrame:SetImage(texture)
 
-        local castKey = BuffWatcher_Shared_Singleton.GetCastRecordKey(spell)
+        local castKey = BuffWatcher_CastRecord.GetKey(spell)
         local spellIsStored = storedSpells[castKey] ~= nil
 
         addButton:SetDisabled(spellIsStored)

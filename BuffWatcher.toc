@@ -51,12 +51,13 @@ BuffWatcher_UnitGuidTable.lua
 BuffWatcher_Callbacks.lua
 BuffWatcher_DefaultContextValues.lua
 BuffWatcher_DbAccessor.lua
+BuffWatcher_MiscellaneousObjectPool.lua
+BuffWatcher_AuraFramePool.lua
 BuffWatcher_AuraContext.lua
 BuffWatcher_StoredSpellsRegistry.lua
 BuffWatcher_LoggerModule.lua
 BuffWatcher_Configuration.lua
 BuffWatcher_AuraFrame.lua
-BuffWatcher_FrameManager.lua
 BuffWatcher_FrameManagerNew.lua
 BuffWatcher_AuraContextStore.lua
 BuffWatcher_WeakAuraGenerator_Loader.lua

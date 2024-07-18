@@ -390,7 +390,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                 allstates[key].show = false
             end
 
-            context.removeKeyFromGuid(guid, key)
+            context.RemoveKeyFromGuid(guid, key)
 
             local auraIds = context.getAurasIdsByStateKey(key)
             for _, auraId in ipairs(auraIds) do
@@ -481,7 +481,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
                     if (allstates[key] ~= nil) then
                         allstates[key].show = false
                         allstates[key].changed = true
-                        context.removeKeyFromGuid(allstates[key].targetGuid, key)
+                        context.RemoveKeyFromGuid(allstates[key].targetGuid, key)
                         hasUpdates = true
                     end
                 end

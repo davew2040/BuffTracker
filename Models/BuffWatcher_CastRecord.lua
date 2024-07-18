@@ -9,6 +9,8 @@
 ---@field key string
 BuffWatcher_CastRecord = {}
 
+local keyMaker = {}
+
 ---@param type SpellTypes
 ---@param spellId integer
 ---@param spellName string
@@ -34,6 +36,17 @@ end
 
 ---@param record BuffWatcher_CastRecord
 ---@return string
-function BuffWatcher_CastRecord.GetKey(record)
-    return record.type .. ":" .. record.spellId
+BuffWatcher_CastRecord.GetKey = function(record)
+    keyMaker[1] = record.type
+    keyMaker[2] = record.spellId
+    return table.concat(keyMaker, ":")
+end
+
+---@param spellType SpellTypes
+---@param spellId number
+---@return string
+BuffWatcher_CastRecord.GetKeyFromParams = function(spellType, spellId)
+    keyMaker[1] = spellType
+    keyMaker[2] = spellId
+    return table.concat(keyMaker, ":")
 end

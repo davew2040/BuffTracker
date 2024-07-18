@@ -5,46 +5,43 @@ function BuffWatcher_LoggerModule:new()
     self = {}
 
     local SpellTypes = BuffWatcher_Shared_Singleton.SpellTypes
-    local SpellTypeLabels = BuffWatcher_Shared_Singleton.SpellTypeLabels
-
-    local spellFilters = {
-        spellType = SpellTypes.Any,
-        name = "",
-        caster = ""
-    }
 
     local mainFrame = nil
     ---@type table<string, BuffWatcher_CastRecord>
     local spellRecords = {}
 
-    local addUnitAura = function(isBuff, sourceUnit, auraInfo)
+    ---@param isBuff boolean
+    ---@param sourceUnit string
+    ---@param auraName string
+    ---@param auraId number
+    local addUnitAura = function(isBuff, sourceUnit, auraName, auraId)
         local type = isBuff and SpellTypes.Buff or SpellTypes.Debuff
-        local name = auraInfo[1]
-        local spellId = auraInfo[10]
         local sourceName = UnitName(sourceUnit)
 
-        local buffRecord = BuffWatcher_CastRecord:new(type, spellId, name, sourceName)
+        local key = BuffWatcher_CastRecord.GetKeyFromParams(type, auraId)
+ 
+        if (spellRecords[key] == nil) then
+            local auraRecord = BuffWatcher_CastRecord:new(type, auraId, auraName, sourceName)
 
-        if (spellRecords[buffRecord.key] == nil) then
-            spellRecords[buffRecord.key] = buffRecord
+            spellRecords[key] = auraRecord
         end
     end
 
     local checkUnitBuffs = function(unit)
         for i=1,40 do
-            local buff = {UnitBuff(unit, i)}
-            if (#buff == 0) then
+            local name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId = UnitBuff(unit, i)
+            if (name == nil) then
                 break
             end
-            addUnitAura(true, unit, buff)
+            addUnitAura(true, unit, name, spellId)
         end
 
         for i=1,40 do
-            local buff = {UnitDebuff(unit, i)}
-            if (#buff == 0) then
+            local name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId = UnitDebuff(unit, i)
+            if (name == nil) then
                 break
             end
-            addUnitAura(false, unit, buff)
+            addUnitAura(false, unit, name, spellId)
         end
     end
 
@@ -64,23 +61,20 @@ function BuffWatcher_LoggerModule:new()
 
     local OnEvent = function (ref, event, ...)
         -- if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
-        --     local eventInfo = {CombatLogGetCurrentEventInfo()}
-        --     local subevent = eventInfo[2]
+        --     local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,	destRaidFlags, spellId, spellName = CombatLogGetCurrentEventInfo()
 
         --     if (subevent == "SPELL_CAST_SUCCESS") then
-        --         local sourceName = eventInfo[5]
-        --         local spellId = eventInfo[12]
-        --         local spellName = eventInfo[13]
+        --         local spellRecordKey = BuffWatcher_CastRecord.GetKeyFromParams(SpellTypes.Cast, spellId)
 
-        --         local spellRecord = BuffWatcher_CastRecord:new(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
-
-        --         if (spellRecords[spellRecord.key] == nil) then
-        --             spellRecords[spellRecord.key] = spellRecord
+        --         if (spellRecords[spellRecordKey] == nil) then
+        --             local spellRecord = BuffWatcher_CastRecord:new(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
+        --             spellRecords[spellRecordKey] = spellRecord
         --         end
         --     end
         -- elseif (event == "UNIT_AURA") then
         --     local auraInfo = select(2, ...)
         --     local targetUnit = select(1, ...)
+
         --     if (auraInfo.addedAuras ~= nil) then
         --         for i,v in ipairs(auraInfo.addedAuras) do
         --             local sourceUnit = v.sourceUnit
@@ -93,16 +87,14 @@ function BuffWatcher_LoggerModule:new()
         --                 break
         --             end
 
-        --             ---@type BuffWatcher_CastRecord
-        --             local buffRecord = nil
+        --             local spellType = v.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
 
-        --             if (v.isHelpful) then
-        --                 buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Buff, v.spellId, v.name, unitName)
-        --             else
-        --                 buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Debuff, v.spellId, v.name, unitName)
-        --             end
+        --             local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, v.spellId)
 
-        --             if (spellRecords[buffRecord.key] == nil) then
+        --             if (spellRecords[key] == nil) then
+        --                 ---@type BuffWatcher_CastRecord
+        --                 local buffRecord = BuffWatcher_CastRecord:new(spellType, v.spellId, v.name, unitName)
+
         --                 spellRecords[buffRecord.key] = buffRecord
         --             end
         --         end
@@ -122,16 +114,16 @@ function BuffWatcher_LoggerModule:new()
         --                 if (unitName == nil) then
         --                     break
         --                 end
+                        
+        --                 local spellType = updateInfo.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
 
-        --                 local buffRecord = nil
-        --                 if (updateInfo.isHelpful) then
-        --                     buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Buff, updateInfo.spellId, updateInfo.name, unitName)
-        --                 else
-        --                     buffRecord = BuffWatcher_CastRecord:new(SpellTypes.Debuff, updateInfo.spellId, updateInfo.name, unitName)
-        --                 end
-
-        --                 if (spellRecords[buffRecord.key] == nil) then
-        --                     spellRecords[buffRecord.key] = buffRecord
+        --                 local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, updateInfo.spellId)
+    
+        --                 if (spellRecords[key] == nil) then
+        --                     ---@type BuffWatcher_CastRecord
+        --                     local auraRecord = BuffWatcher_CastRecord:new(spellType, updateInfo.spellId, updateInfo.name, unitName)
+    
+        --                     spellRecords[auraRecord.key] = auraRecord
         --                 end
         --             end
         --         end

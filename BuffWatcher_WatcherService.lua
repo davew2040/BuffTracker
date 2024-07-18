@@ -5,7 +5,8 @@ BuffWatcher_WatcherService = {}
 
 ---@param configuration BuffWatcher_Configuration
 ---@param contextStore BuffWatcher_AuraContextStore
-function BuffWatcher_WatcherService:new(configuration, contextStore)
+---@param pool BuffWatcher_MiscellaneousObjectPool
+function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
     self = {};
 
     DevTool:AddData("added new BuffWatcher_WatcherService")
@@ -322,40 +323,6 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
     ---@param targetUnit string
     ---@param updateInfo BuffWatcher_Blizzard_UnitAuraUpdateInfo
     self.HandleEvent_UnitAura = function(targetUnit, updateInfo)
-        
-        -- if (updateInfo.addedAuras ~= nil) then
-        --     --- fixme - remove debug data
-        --     for _, added in ipairs(updateInfo.addedAuras) do
-        --         local unit = 'none'
-        --         if (targetUnit ~= nil) then
-        --             unit = UnitName(targetUnit)
-        --         end
-        --         local sourceGuid = 'none'
-        --         if (added.sourceUnit ~= nil) then
-        --             sourceGuid = UnitGUID(added.sourceUnit)
-        --         end
-        --         DevTool:AddData({ updateInfo = CopyTable(updateInfo), sourceGuid = sourceGuid }, "fixme added aura " .. added.name .. " to unit " .. unit)
-        --         if (tempAuraIds[added.auraInstanceID] == nil) then
-        --             tempAuraIds[added.auraInstanceID] = CopyTable(added)
-        --         end
-        --     end
-        -- end
-
-        -- if (updateInfo.removedAuraInstanceIDs ~= nil) then
-        --     --- fixme - remove debug data
-        --     for _, removed in ipairs(updateInfo.removedAuraInstanceIDs) do
-        --         local removedInstance = tempAuraIds[removed]
-                
-        --         local unit = 'none'
-        --         if (removedInstance ~= nil) then
-        --             if (targetUnit ~= nil) then
-        --                 unit = UnitName(targetUnit)
-        --             end
-        --             DevTool:AddData({ removedInstance = CopyTable(removedInstance) }, "fixme removed aura " .. removedInstance.name .. " from unit " .. unit)
-        --         end
-        --     end
-        -- end
-
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
                 context.UnitAura(targetUnit, updateInfo)
@@ -363,23 +330,25 @@ function BuffWatcher_WatcherService:new(configuration, contextStore)
         end
     end
 
-    ---@param eventData any
+    ---@param eventData BuffWatcher_Blizzard_CombatLogEntry
     self.HandleEvent_Cast = function(eventData)
         ---@type BuffWatcher_Blizzard_CastInfo
-        local castInfo = {
-            spellId = eventData[12],
-            sourceGuid = eventData[4],
-            sourceName = eventData[5]
-        }
+        local castInfo = pool.GetObject()
+        
+        castInfo.spellId = eventData.spellID
+        castInfo.sourceGuid = eventData.sourceGUID
+        castInfo.sourceName = eventData.sourceName
 
         for _, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded()) then
                 context.HandleCast(castInfo)
             end
         end
+
+        pool.ReleaseObject(castInfo)
     end
 
-    ---@param eventData any
+    ---@param eventData BuffWatcher_Blizzard_CombatLogEntry
     self.HandleEvent_UnitDied = function(eventData)
         local deadGuid = eventData[8]
 

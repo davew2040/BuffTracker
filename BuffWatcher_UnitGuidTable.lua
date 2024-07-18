@@ -1,15 +1,24 @@
 ---@class BuffWatcher_UnitGuidTable
 BuffWatcher_UnitGuidTable = {}
 
-function BuffWatcher_UnitGuidTable:new()
+---@param objectPool BuffWatcher_MiscellaneousObjectPool
+function BuffWatcher_UnitGuidTable:new(objectPool)
     self = {};
 
     ---@type table<string, string>
-    local unitToGuid = {}
+    local unitToGuid = nil
 
     ---@type table<string, table<string, boolean>>
-    local guidToUnits = {}
+    local guidToUnits = nil
 
+    ---@param toRelease table<string, table<string, boolean>>
+    local releaseGuidToUnits = function(toRelease)
+        for k,_ in pairs(toRelease) do
+            objectPool.ReleaseObject(toRelease[k])
+        end
+
+        objectPool.ReleaseObject(toRelease)
+    end
 
     self.GetUnitsToGuid = function()
         return unitToGuid
@@ -25,8 +34,9 @@ function BuffWatcher_UnitGuidTable:new()
         unitToGuid[unit] = guid
 
         if (guidToUnits[guid] == nil) then
-            guidToUnits[guid] = {}
+            guidToUnits[guid] = objectPool.GetObject()
         end
+
         guidToUnits[guid][unit] = true
     end
 
@@ -34,7 +44,7 @@ function BuffWatcher_UnitGuidTable:new()
     ---@return table<string, boolean>
     self.GetUnitsByGuid = function(guid)
         if guidToUnits[guid] == nil then
-            return {}
+            return BuffWatcher_Shared.EmptyTable
         end
 
         return guidToUnits[guid]
@@ -50,38 +60,52 @@ function BuffWatcher_UnitGuidTable:new()
     self.UnlinkUnit = function(unit)
         local guid = unitToGuid[unit]
 
+        -- if (guid == nil) then
+        --     local message = "FIXME unlinking unit " .. unit
+        --     if (guid == nil) then
+        --         message = message .. " from nil guid"
+        --     else
+        --             message = message .. " from guid " .. guid
+        --     end
+        --     DevTool:AddData({ unitToGuid = CopyTable(unitToGuid), guidToUnits = CopyTable(guidToUnits) }, message)
+
+        -- end
+
         unitToGuid[unit] = nil
-        
+
         if (guidToUnits[guid] ~= nil) then
             guidToUnits[guid][unit] = nil
 
             if (BuffWatcher_Shared_Singleton.GetTableKeyCount(guidToUnits[guid]) == 0) then
+                objectPool.ReleaseObject(guidToUnits[guid])
                 guidToUnits[guid] = nil
             end
         end
     end
 
-    ---@param guid string
-    self.UnlinkGuid = function(guid)
-        local unit = guidToUnits[guid]
-
-        guidToUnits[guid] = nil
-        unitToGuid[unit] = nil
-    end
-
     self.Reset = function()
-        guidToUnits = {}
-        unitToGuid = {}
+        if (guidToUnits ~= nil) then
+            releaseGuidToUnits(guidToUnits)
+        end
+        
+        if (unitToGuid ~= nil) then
+            objectPool.ReleaseObject(unitToGuid)
+        end
+
+        if (allGuids ~= nil) then
+            objectPool.ReleaseObject(allGuids)
+        end
+
+        guidToUnits = objectPool.GetObject()
+        unitToGuid = objectPool.GetObject()
     end
 
-    ---@return table<string, boolean>
-    self.GetAllGuids = function()
-        return BuffWatcher_Shared_Singleton.TransformTable(
-            guidToUnits, 
-            function(key) return key end, 
-            function(value) return true end
-        )
+    self.Release = function()
+        objectPool.ReleaseObject(guidToUnits)
+        objectPool.ReleaseObject(unitToGuid)
     end
+
+    self.Reset()
 
     return self;
 end

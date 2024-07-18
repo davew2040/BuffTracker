@@ -28,8 +28,8 @@ BuffWatcher_AuraContext_Params = {}
 
 ---@param params BuffWatcher_AuraContext_Params
 ---@param configuration BuffWatcher_Configuration
----@param framePool any
-function BuffWatcher_AuraContext:new(params, configuration, framePool)
+---@param objectPool BuffWatcher_MiscellaneousObjectPool
+function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     self = {};
 
     local maxDistance = 100.0
@@ -75,29 +75,36 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@type table<string, boolean> 
     local contextUnits = {}
 
+    local threePartKeyBuilder = {}
+
     -- do not add/remove to this directly! use the helpers
     ---@type table<string, table<string, boolean>>
     local guidToStateKeyMap = {}
 
     ---@type table<integer, string>
-    local auraIdToStateKeyMap = {}  
+    local auraIdToStateKeyMap = nil
 
     -- maps state keys to aura instances
     ---@type table<string, BuffWatcher_AuraInstance>
     self.auraInstancesMap = {}
 
     ---@type BuffWatcher_UnitGuidTable
-    local unitToGuidMap = BuffWatcher_UnitGuidTable:new()
+    local unitToGuidMap = nil
 
     ---@type boolean
     self.useDefaultUnlistedMultiplier = false
     ---@type number
     self.customUnlistedMultiplier = 0.5
 
+    ---@type table<string, BuffWatcher_Blizzard_AuraData>
+    local temporaryAuraIterationSet = nil
+
     ---@type any
     self.framePool = CreateFramePool("Frame")
     ---@type any
     self.cooldownFramePool = CreateFramePool("Cooldown", nil, "CooldownFrameTemplate")
+    ---@type BuffWatcher_AuraFramePool
+    self.auraFramePool = BuffWatcher_AuraFramePool:new(self.framePool, self.cooldownFramePool)
     ---@type any
     self.texturePool = CreateTexturePool(UIParent)
 
@@ -187,7 +194,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.customUnlistedMultiplier = params.customUnlistedMultiplier
 
         contextUnits = initializeContextUnits(frameType)
-        frameManager = BuffWatcher_FrameManagerNew:new(self, configuration)
+        frameManager = BuffWatcher_FrameManagerNew:new(self, configuration, objectPool)
     end
 
     initializeFromParameters(params)
@@ -214,7 +221,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param key string
     self.addKeyByGuid = function(targetGuid, key)
         if (guidToStateKeyMap[targetGuid] == nil) then
-            guidToStateKeyMap[targetGuid] = {}
+            guidToStateKeyMap[targetGuid] = objectPool.GetObject()
         end
 
         guidToStateKeyMap[targetGuid][key] = true 
@@ -222,7 +229,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
     ---@param targetGuid string
     ---@param key string
-    self.removeKeyFromGuid = function(targetGuid, key)
+    self.RemoveKeyFromGuid = function(targetGuid, key)
         if (guidToStateKeyMap[targetGuid] == nil) then
             return
         end
@@ -231,6 +238,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
         local tableKeyCount = BuffWatcher_Shared_Singleton.GetTableKeyCount(guidToStateKeyMap[targetGuid])
         if (tableKeyCount == 0) then
+            objectPool.ReleaseObject(guidToStateKeyMap[targetGuid])
             guidToStateKeyMap[targetGuid] = nil
         end
     end
@@ -239,7 +247,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return table<string, boolean>
     self.GetKeysByGuid = function(targetGuid) 
         if (guidToStateKeyMap[targetGuid] == nil) then
-            return {}
+            return BuffWatcher_Shared.EmptyTable
         end
 
         return guidToStateKeyMap[targetGuid]
@@ -479,17 +487,22 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
                 or unitName == 'player'
             return isRaid 
+
         elseif (frameType == BuffWatcher_FrameTypes.Party) then
             local isGroup = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName) or
                 BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
                 or unitName == 'player'
             return isGroup
+
         elseif (frameType == BuffWatcher_FrameTypes.Arena) then
             return BuffWatcher_Shared_Singleton.IsArenaUnit(unitName)
+
         elseif (frameType == BuffWatcher_FrameTypes.Nameplate) then
             return BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)
+
         elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
-            return unitName == 'player' or BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
+            return unitName == 'player' or BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unitName)
+
         end
 
         return false
@@ -563,110 +576,110 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
     end
 
+    self.ReleaseGuidToStateKeyMap = function()
+        for key, _ in pairs(guidToStateKeyMap) do
+            objectPool.ReleaseObject(guidToStateKeyMap[key])
+        end
+
+        guidToStateKeyMap = {}
+    end
+
     self.ResetAuraState = function()
         for key, _ in pairs(self.auraInstancesMap) do
             self.KillStateKey(key, false)
         end
 
-        guidToStateKeyMap = {}
-        auraIdToStateKeyMap = {}
-        unitToGuidMap.Reset()
-        self.auraInstancesMap = {}
+        self.auraInstancesMap = objectPool.GetObject()
+
+        self.ReleaseGuidToStateKeyMap()
+
+        if (auraIdToStateKeyMap ~= nil) then
+            objectPool.ReleaseObject(auraIdToStateKeyMap)
+        end
+
+        auraIdToStateKeyMap = objectPool.GetObject()
+
+        if (unitToGuidMap ~= nil) then
+            unitToGuidMap.Release()
+        end
+
+        unitToGuidMap = BuffWatcher_UnitGuidTable:new(objectPool)
+
+        self.auraInstancesMap = objectPool.GetObject()
     end
 
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
-    ---@return BuffWatcher_BorderDefinition[]
+    ---@return BuffWatcher_BordersDefinition
     self.GetAuraBorders = function(auraInfo)
-        ---@type BuffWatcher_BorderDefinition[]
-        local borders = {}
+        local dispelWidth = 0
+        ---@type BuffWatcher_Color
+        local dispelColor = nil
 
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
-
-        -- TODO - implement coloring by buff type
         if (showDispelType and auraInfo.dispelName ~= nil) then
-            table.insert(borders, {
-                width = configuration.GetDispelBorderSize(),
-                color = getDispelColor(auraInfo.dispelName)
-            })
-
-            table.insert(borders, {
-                width = 1,
-                color = BuffWatcher_Color:new(0, 0, 0, 1)
-            })
+            dispelWidth = configuration.GetDispelBorderSize()
+            dispelColor = getDispelColor(auraInfo.dispelName)
+        else
+            dispelColor = BuffWatcher_Color:new(0, 0, 0, 1)
         end
+
+        local hostilityWidth = configuration.GetBuffDebuffBorderSize()
+        local hostilityColor = nil
 
         if (auraInfo.isHarmful) then
-            table.insert(borders, {
-                width = configuration.GetBuffDebuffBorderSize(),
-                color = configuration.GetDebuffColor()
-            })
+            hostilityColor = configuration.GetDebuffColor()
         else
-            table.insert(borders, {
-                width = configuration.GetBuffDebuffBorderSize(),
-                color = configuration.GetBuffColor()
-            })
+            hostilityColor = configuration.GetBuffColor()
         end
 
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
+        ---@type BuffWatcher_BordersDefinition
+        local borders =  objectPool.GetObject()
+        
+        borders.innerWidth = 1
+        borders.outerWidth = 1
+        borders.dispelColor = dispelColor
+        borders.dispelWidth = dispelWidth
+        borders.hostilityColor = hostilityColor
+        borders.hostilityWidth = hostilityWidth
+        borders.showDispel = true
 
         return borders
     end
 
     ---@param castInfo BuffWatcher_Blizzard_CastInfo
-    ---@return BuffWatcher_BorderDefinition[]
+    ---@return BuffWatcher_BordersDefinition
     self.GetCastBorders = function(castInfo)
-        ---@type BuffWatcher_BorderDefinition[]
-        local borders = {}
-
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
-
-        -- Casts are always considered to be helpful to the caster
-        table.insert(borders, {
-            width = configuration.GetBuffDebuffBorderSize(),
-            color = configuration.GetBuffColor()
-        })
-
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
+        ---@type BuffWatcher_BordersDefinition
+        local borders = {
+            innerWidth = 1,
+            outerWidth = 1,
+            dispelColor = BuffWatcher_Color:new(0, 0, 0, 1),
+            dispelWidth = 0,
+            hostilityColor = configuration.GetBuffColor(),
+            hostilityWidth = configuration.GetBuffDebuffBorderSize(),
+            showDispel = false,
+        }
 
         return borders
     end
 
-    ---@return BuffWatcher_BorderDefinition[]
+    ---@return BuffWatcher_BordersDefinition[]
     self.GetMarkerBorders = function()
-        ---@type BuffWatcher_BorderDefinition[]
-        local borders = {}
-
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
-
         local markerColor = configuration.GetBuffColor()
+
         if (self.includeDebuffs()) then
             markerColor = configuration.GetDebuffColor()
         end
 
-        table.insert(borders, {
-            width = configuration.GetBuffDebuffBorderSize(),
-            color =  markerColor
-        })
-
-        table.insert(borders, {
-            width = 1,
-            color = BuffWatcher_Color:new(0, 0, 0, 1)
-        })
+        ---@type BuffWatcher_BordersDefinition
+        local borders = {
+            innerWidth = 1,
+            outerWidth = 1,
+            dispelColor = BuffWatcher_Color:new(0, 0, 0, 1),
+            dispelWidth = 0,
+            hostilityColor = markerColor,
+            hostilityWidth = configuration.GetBuffDebuffBorderSize(),
+            showDispel = false,
+        }
 
         return borders
     end
@@ -677,11 +690,25 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         return 100
     end
 
+    ---Builds a three-part string key
+    ---@param one any
+    ---@param two any
+    ---@param three any
+    local getThreePartKey = function(one, two, three)
+        threePartKeyBuilder[1] = one
+        threePartKeyBuilder[2] = two
+        threePartKeyBuilder[3] = three
+
+        local key =  table.concat(threePartKeyBuilder, ":")
+
+        return key
+    end
+
     ---@param targetGuid string
     ---@param index integer
     ---@return string
     local getMarkerStateKey = function(targetGuid, index) 
-        return BuffWatcher_TriggerType.Marker .. ":" .. targetGuid .. ":" .. tostring(index)
+        return getThreePartKey(BuffWatcher_TriggerType.Marker, targetGuid, index)
     end
 
     ---@param type SpellTypes
@@ -689,9 +716,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param auraId integer
     ---@return string
     local getBuffDebuffStateKey = function(type, spellId, auraId) 
-        return type .. ":" .. spellId .. ":" .. auraId
+        return getThreePartKey(type, spellId, auraId)
     end
-
 
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
     ---@return string
@@ -711,17 +737,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param sourceGuid string
     ---@return string
     local getCastStateKey = function(spellId, sourceGuid) 
-        return BuffWatcher_TriggerType.Cast .. ":" .. spellId .. ":" .. sourceGuid
-    end
-
-    ---@param borders BuffWatcher_BorderDefinition[]
-    ---@param baseSize integer
-    local getSizeWithBorders = function(borders, baseSize)
-        for _, border in ipairs(borders) do
-            baseSize = baseSize + border.width*2
-        end
-
-        return baseSize
+        return getThreePartKey(BuffWatcher_TriggerType.Cast, spellId, sourceGuid)
     end
 
     ---@param watcherInfo? BuffWatcher_StoredSpell
@@ -759,28 +775,28 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         local borders = self.GetMarkerBorders()
 
         ---@type BuffWatcher_AuraInstance
-        local newInstance = {
-            stateKey = key,
-            spellId = 0,
-            dispelName = nil,
-            showCooldown = false,
-            borders = borders,
-            duration = 0,
-            expirationTime = 0,
-            baseSize = baseSize,
-            actualSize = baseSize * multiplier,
-            priority = priority,
-            sourceGuid = targetGuid, 
-            targetGuid = targetGuid,
-            targetUnit = targetUnit,
-            auraInstanceId = 0,
-            triggerType = BuffWatcher_TriggerType.Marker,
-            icon = icon,
-            name = "Marker",
-            caster = targetUnit,
-            isHarmful = false,
-            timerHandle = nil
-        }
+        local newInstance = objectPool.GetObject()
+        
+        newInstance.stateKey = key
+        newInstance.spellId = 0
+        newInstance.dispelName = nil
+        newInstance.showCooldown = false
+        newInstance.borders = borders
+        newInstance.duration = 0
+        newInstance.expirationTime = 0
+        newInstance.baseSize = baseSize
+        newInstance.actualSize = baseSize * multiplier
+        newInstance.priority = priority
+        newInstance.sourceGuid = targetGuid
+        newInstance.targetGuid = targetGuid
+        newInstance.targetUnit = targetUnit
+        newInstance.auraInstanceId = 0
+        newInstance.triggerType = BuffWatcher_TriggerType.Marker
+        newInstance.icon = icon
+        newInstance.name = "Marker"
+        newInstance.caster = targetUnit
+        newInstance.isHarmful = false
+        newInstance.timerHandle = nil
 
         self.auraInstancesMap[key] = newInstance
         self.addKeyByGuid(targetGuid, key)
@@ -814,7 +830,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@param targetUnit string
     ---@param watcherInfo? BuffWatcher_StoredSpell
     local function addNewStateKey(key, auraInfo, targetUnit, watcherInfo)
-        local spellInfo = {GetSpellInfo(auraInfo.spellId)}
+        local spellName, _, spellIcon = GetSpellInfo(auraInfo.spellId)
         local sizeMultiplier = getAuraSizeMultiplier(watcherInfo)
 
         local targetGuid = UnitGUID(targetUnit)
@@ -837,29 +853,29 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
 
         ---@type BuffWatcher_AuraInstance
-        local newInstance = {
-            spellId = auraInfo.spellId,
-            stateKey = key,
-            dispelName = auraInfo.dispelName,
-            showCooldown = auraInfo.duration ~= 0,
-            borders = borders,
-            duration = auraInfo.duration,
-            expirationTime = auraInfo.expirationTime,
-            baseSize = baseSize,
-            actualSize = baseSize * sizeMultiplier,
-            priority = getPriority(watcherInfo, auraInfo),
-            sourceGuid = auraInfo.sourceUnit and UnitGUID(auraInfo.sourceUnit) or nil, 
-            targetGuid = targetGuid,
-            targetUnit = targetUnit,
-            auraInstanceId = auraInfo.auraInstanceID,
-            triggerType = triggerType,
-            icon = spellInfo[3],
-            name = spellInfo[1],
-            caster = targetUnit,
-            isHarmful = auraInfo.isHarmful,
-            timerHandle = nil
-        }
+        local newInstance = objectPool.GetObject()
 
+        newInstance.spellId = auraInfo.spellId
+        newInstance.stateKey = key
+        newInstance.dispelName = auraInfo.dispelName
+        newInstance.showCooldown = auraInfo.duration ~= 0
+        newInstance.borders = borders
+        newInstance.duration = auraInfo.duration
+        newInstance.expirationTime = auraInfo.expirationTime
+        newInstance.baseSize = baseSize
+        newInstance.actualSize = baseSize * sizeMultiplier
+        newInstance.priority = getPriority(watcherInfo, auraInfo)
+        newInstance.sourceGuid = auraInfo.sourceUnit and UnitGUID(auraInfo.sourceUnit) or nil
+        newInstance.targetGuid = targetGuid
+        newInstance.targetUnit = targetUnit
+        newInstance.auraInstanceId = auraInfo.auraInstanceID
+        newInstance.triggerType = triggerType
+        newInstance.icon = spellIcon
+        newInstance.name = spellName
+        newInstance.caster = targetUnit
+        newInstance.isHarmful = auraInfo.isHarmful
+        newInstance.timerHandle = nil
+        
         self.auraInstancesMap[key] = newInstance
         auraIdToStateKeyMap[auraInfo.auraInstanceID] = key 
         self.addKeyByGuid(targetGuid, key)
@@ -911,7 +927,9 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             return true
         end
 
-        return CheckInteractDistance(unit, 4)
+        local isVisible = UnitIsVisible(unit)
+
+        return isVisible == true
     end
 
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
@@ -936,7 +954,12 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             if (self.isNameplate()) then
                 return not blizzardAura.isFromPlayerOrPlayerPet
             else 
-                return isUnitFrameInRange(targetUnit, maxDistance) and not blizzardAura.isFromPlayerOrPlayerPet
+                local isInRange = isUnitFrameInRange(targetUnit, maxDistance)
+                local isNotFromPlayerOrPet = not blizzardAura.isFromPlayerOrPlayerPet
+                local shouldInclude = isInRange and isNotFromPlayerOrPet 
+                --fixme - debug as needed
+                --DevTool:AddData({targetUnit = targetUnit, name = UnitName(targetUnit), isInRange = isInRange, isNotFromPlayerOrPet = isNotFromPlayerOrPet}, "fixme isInRange/notplayer " .. UnitName(targetUnit) .. " = " .. tostring(isInRange) .. "/" .. tostring(isNotFromPlayerOrPet))
+                return shouldInclude
             end
         end
 
@@ -949,21 +972,34 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
                 return false
             end
 
-            if not isUnitFrameInRange(targetUnit, maxDistance) then
+            if not self.isNameplate() and not isUnitFrameInRange(targetUnit, maxDistance) then
                 return false
             end
         end
 
         return true
     end
-    
+
+    ---comment
+    ---@param unit string
+    ---@param auraInfo BuffWatcher_Blizzard_AuraData
+    local processBlizzardAura = function(unit, auraInfo)
+        if (auraInfo ~= nil) then
+            if shouldHandleAura(auraInfo, unit) then
+                local key = getBuffDebuffStateKeyFromAura(auraInfo)
+                temporaryAuraIterationSet[key] = auraInfo
+            end
+        else
+            DevTool:AddData("error - helpful aura not found")
+        end
+    end
 
     ---@param unit string
     local refreshUnitAuras = function(unit)
         local hasUpdates = false
 
         ---@type table<string, BuffWatcher_Blizzard_AuraData>
-        local foundStateKeys = {}
+        local foundStateKeys = objectPool.GetObject()
 
         AuraUtil.ForEachAura(unit, "HELPFUL", nil, 
             function(auraInfo) 
@@ -1009,11 +1045,14 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         for existingKey, _ in pairs(existingKeys) do
             -- if an existing key no longer exists, then remove it
             local existingKeyInfo = self.GetAuraInstanceByKey(existingKey)
+
             if isBuffDebuff(existingKeyInfo) and foundStateKeys[existingKey] == nil then
                 self.KillStateKey(existingKey, false)
                 hasUpdates = true
             end
         end
+
+        objectPool.ReleaseObject(foundStateKeys)
 
         return hasUpdates
     end
@@ -1080,29 +1119,28 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             local timer = getTimer(watcherInfo.duration, key)
 
             ---@type BuffWatcher_AuraInstance
-            local newCast =
-            {
-                spellId = castInfo.spellId,
-                stateKey = key,
-                dispelName = nil,
-                showCooldown = true,
-                borders = borders,
-                duration = watcherInfo.duration,
-                expirationTime = GetTime() + watcherInfo.duration,
-                baseSize = baseSize,
-                actualSize = baseSize * watcherInfo.sizeMultiplier,
-                priority = getPriority(watcherInfo, nil),
-                sourceGuid = castInfo.sourceGuid, 
-                targetGuid = castInfo.sourceGuid,
-                targetUnit = nil,
-                auraInstanceId = 0,
-                triggerType = BuffWatcher_TriggerType.Cast,
-                icon = spellIcon,
-                name = spellName,
-                caster = nil,
-                isHarmful = false,
-                timerHandle = timer
-            }
+            local newCast = objectPool.GetObject()
+            
+            newCast.spellId = castInfo.spellId
+            newCast.stateKey = key
+            newCast.dispelName = nil
+            newCast.showCooldown = true
+            newCast.borders = borders
+            newCast.duration = watcherInfo.duration
+            newCast.expirationTime = GetTime() + watcherInfo.duration
+            newCast.baseSize = baseSize
+            newCast.actualSize = baseSize * watcherInfo.sizeMultiplier
+            newCast.priority = getPriority(watcherInfo, nil)
+            newCast.sourceGuid = castInfo.sourceGuid
+            newCast.targetGuid = castInfo.sourceGuid
+            newCast.targetUnit = nil
+            newCast.auraInstanceId = 0
+            newCast.triggerType = BuffWatcher_TriggerType.Cast
+            newCast.icon = spellIcon
+            newCast.name = spellName
+            newCast.caster = nil
+            newCast.isHarmful = false
+            newCast.timerHandle = timer
 
             self.auraInstancesMap[key] = newCast
             self.addKeyByGuid(castInfo.sourceGuid, key)
@@ -1146,14 +1184,24 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
             end
         end
 
-        self.auraInstancesMap[stateKey] = nil
-        self.removeKeyFromGuid(auraInstance.targetGuid, stateKey)
-
         if (notifyFrameManager) then
             frameManager.AuraRemoved(auraInstance.targetGuid, stateKey)
         end
 
+        self.RemoveKeyFromGuid(auraInstance.targetGuid, stateKey)
+        self.ReleaseAuraInstance(stateKey)
+
         return true
+    end
+
+    ---@param stateKey string
+    self.ReleaseAuraInstance = function(stateKey)
+        local auraInstance = self.auraInstancesMap[stateKey]
+
+        self.auraInstancesMap[stateKey] = nil
+
+        objectPool.ReleaseObject(auraInstance.borders)
+        objectPool.ReleaseObject(auraInstance)
     end
 
     ---@param auraId integer
@@ -1178,19 +1226,15 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
 
         ---@type BuffWatcher_AuraFrame
-        local auraFrame = BuffWatcher_AuraFrame:new(
-            parentFrame, 
-            auraInstance, 
-            self.framePool, 
-            self.cooldownFramePool, 
-            self.texturePool, 
-            auraInstance,
-            self,
-            alpha, 
-            self.getName() .. ":" .. auraInstance.stateKey
-        )
+        local auraFrame = self.auraFramePool.GetAuraFrame()
+        auraFrame.SetAura(auraInstance, self, parentFrame, alpha)
 
         return auraFrame
+    end
+
+    ---@param auraFrame BuffWatcher_AuraFrame
+    self.ReleaseFrame = function(auraFrame)
+        self.auraFramePool.ReleaseAuraFrame(auraFrame)
     end
 
     ---@param guid string 
@@ -1229,7 +1273,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
 
         unitToGuidMap.LinkUnitToGuid(unitLabel, unitGuid)
 
-        if (configuration.GetShowTestAnchors()) then
+        if configuration.GetShowTestAnchors() then
             handleAddMarkers(unitLabel, unitGuid)
             hasUpdates = true
         end
@@ -1256,9 +1300,10 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         end
         
         local guid = unitToGuidMap.GetGuidByUnit(nameplate)
-        unitToGuidMap.UnlinkUnit(nameplate)
 
         self.ClearLooseAuras(guid, false)
+
+        unitToGuidMap.UnlinkUnit(nameplate)
 
         frameManager.NameplateUnitRemoved(guid)
     end
@@ -1269,13 +1314,18 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return boolean
     self.ClearLooseAuras = function(guid, notifyFrameManager)
         local stateKeys = guidToStateKeyMap[guid]
+        local clearedAny = false
 
         if (stateKeys == nil) then 
-            stateKeys = {}
+            stateKeys = BuffWatcher_Shared.EmptyTable
         end
 
         ---@type table<string, boolean>
-        local activeStateKeys = BuffWatcher_Shared_Singleton.TableKeyFilter(stateKeys,
+        local activeStateKeys = objectPool.GetObject()
+        
+        BuffWatcher_Shared.InsertKeysWhere(
+            activeStateKeys,
+            stateKeys,
             function(stateKey)
                 local auraInstance = self.auraInstancesMap[stateKey]
                 return isLooseAura(auraInstance)
@@ -1283,10 +1333,13 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         )
 
         for k,_ in pairs(activeStateKeys) do
+            clearedAny = true
             self.KillStateKey(k, notifyFrameManager)
         end
 
-        return true
+        objectPool.ReleaseObject(activeStateKeys)
+
+        return clearedAny
     end
 
     self.DoFullClear = function()
@@ -1300,7 +1353,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
         self.DoFullClear()
         
         if (isLoaded) then
-            self.UpdateAllUnits()
+            self.AddAllUnits()
         end
     end
 
@@ -1312,7 +1365,7 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     ---@return BuffWatcher_UnitGuidTable
     local getUnitGuidTable = function()
         local units = getContextUnits()
-        local newTable = BuffWatcher_UnitGuidTable:new()
+        local newTable = BuffWatcher_UnitGuidTable:new(objectPool)
 
         for unitName, _ in pairs(units) do
             if (UnitExists(unitName)) then
@@ -1375,32 +1428,17 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     end
 
 
-    self.UpdateAllUnits = function()
-        DevTool:AddData("fixme UpdateAllUnits " .. name)
-
-        local previousGuids = unitToGuidMap.GetAllGuids()
-        local newUnitGuidMap = getUnitGuidTable()
-        local newGuids = newUnitGuidMap.GetAllGuids()
-
-        for newGuid, _ in pairs(newGuids) do
-            if (previousGuids[newGuid] == nil) then
-                local units = newUnitGuidMap.GetUnitsByGuid(newGuid)
-                ---@type string?
-                local unit = BuffWatcher_Shared.FirstKeyOrDefault(units)
-                if (unit ~= nil) then
-                    self.DoUnitAdd(unit, false)
-                end
-            end
-
-            previousGuids[newGuid] = nil
+    self.AddAllUnits = function()
+        -- nameplates should receive a full set of update notifications anyway
+        if self.isNameplate() then
+            return false
         end
 
-        --- curently not used, as we only call this on a reset
-        -- for unusedGuid, _ in pairs(previousGuids) do
-        --     self.ClearGuid(unusedGuid)
-        -- end
-
-        unitToGuidMap = newUnitGuidMap
+        for unit, _ in pairs(self.GetPotentialUnits()) do
+            if (UnitExists(unit)) then
+                self.DoUnitAdd(unit, false)
+            end
+        end
 
         frameManager.DoFullUpdate()
 
@@ -1411,6 +1449,8 @@ function BuffWatcher_AuraContext:new(params, configuration, framePool)
     self.GetPotentialUnits = function()
         return contextUnits
     end
+
+    self.DoFullClear()
 
     return self;
 end
