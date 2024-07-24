@@ -60,78 +60,78 @@ function BuffWatcher_LoggerModule:new()
     end
 
     local OnEvent = function (ref, event, ...)
-        -- if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
-        --     local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,	destRaidFlags, spellId, spellName = CombatLogGetCurrentEventInfo()
+        if (event == "COMBAT_LOG_EVENT_UNFILTERED") then
+            local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,	destRaidFlags, spellId, spellName = CombatLogGetCurrentEventInfo()
 
-        --     if (subevent == "SPELL_CAST_SUCCESS") then
-        --         local spellRecordKey = BuffWatcher_CastRecord.GetKeyFromParams(SpellTypes.Cast, spellId)
+            if (subevent == "SPELL_CAST_SUCCESS") then
+                local spellRecordKey = BuffWatcher_CastRecord.GetKeyFromParams(SpellTypes.Cast, spellId)
 
-        --         if (spellRecords[spellRecordKey] == nil) then
-        --             local spellRecord = BuffWatcher_CastRecord:new(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
-        --             spellRecords[spellRecordKey] = spellRecord
-        --         end
-        --     end
-        -- elseif (event == "UNIT_AURA") then
-        --     local auraInfo = select(2, ...)
-        --     local targetUnit = select(1, ...)
+                if (spellRecords[spellRecordKey] == nil) then
+                    local spellRecord = BuffWatcher_CastRecord:new(SpellTypes.Cast, spellId, spellName, nameOnly(sourceName))
+                    spellRecords[spellRecordKey] = spellRecord
+                end
+            end
+        elseif (event == "UNIT_AURA") then
+            local auraInfo = select(2, ...)
+            local targetUnit = select(1, ...)
 
-        --     if (auraInfo.addedAuras ~= nil) then
-        --         for i,v in ipairs(auraInfo.addedAuras) do
-        --             local sourceUnit = v.sourceUnit
-        --             if (sourceUnit == nil) then
-        --                 break
-        --             end
+            if (auraInfo.addedAuras ~= nil) then
+                for i,v in ipairs(auraInfo.addedAuras) do
+                    local sourceUnit = v.sourceUnit
+                    if (sourceUnit == nil) then
+                        break
+                    end
 
-        --             local unitName = UnitName(sourceUnit)
-        --             if (unitName == nil) then
-        --                 break
-        --             end
+                    local unitName = UnitName(sourceUnit)
+                    if (unitName == nil) then
+                        break
+                    end
 
-        --             local spellType = v.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
+                    local spellType = v.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
 
-        --             local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, v.spellId)
+                    local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, v.spellId)
 
-        --             if (spellRecords[key] == nil) then
-        --                 ---@type BuffWatcher_CastRecord
-        --                 local buffRecord = BuffWatcher_CastRecord:new(spellType, v.spellId, v.name, unitName)
+                    if (spellRecords[key] == nil) then
+                        ---@type BuffWatcher_CastRecord
+                        local buffRecord = BuffWatcher_CastRecord:new(spellType, v.spellId, v.name, unitName)
 
-        --                 spellRecords[buffRecord.key] = buffRecord
-        --             end
-        --         end
-        --     end
+                        spellRecords[buffRecord.key] = buffRecord
+                    end
+                end
+            end
 
-        --     if (auraInfo.updatedAuraInstanceIDs ~= nil) then
-        --         for i,v in ipairs(auraInfo.updatedAuraInstanceIDs) do
-        --             local updateInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(targetUnit, v)
-        --             if (updateInfo ~= nil) then
+            if (auraInfo.updatedAuraInstanceIDs ~= nil) then
+                for i,v in ipairs(auraInfo.updatedAuraInstanceIDs) do
+                    local updateInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(targetUnit, v)
+                    if (updateInfo ~= nil) then
 
-        --                 local sourceUnit = updateInfo.sourceUnit
-        --                 if (sourceUnit == nil) then
-        --                     break
-        --                 end
+                        local sourceUnit = updateInfo.sourceUnit
+                        if (sourceUnit == nil) then
+                            break
+                        end
     
-        --                 local unitName = UnitName(sourceUnit)
-        --                 if (unitName == nil) then
-        --                     break
-        --                 end
+                        local unitName = UnitName(sourceUnit)
+                        if (unitName == nil) then
+                            break
+                        end
                         
-        --                 local spellType = updateInfo.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
+                        local spellType = updateInfo.isHelpful and SpellTypes.Buff or SpellTypes.Debuff
 
-        --                 local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, updateInfo.spellId)
+                        local key = BuffWatcher_CastRecord.GetKeyFromParams(spellType, updateInfo.spellId)
     
-        --                 if (spellRecords[key] == nil) then
-        --                     ---@type BuffWatcher_CastRecord
-        --                     local auraRecord = BuffWatcher_CastRecord:new(spellType, updateInfo.spellId, updateInfo.name, unitName)
+                        if (spellRecords[key] == nil) then
+                            ---@type BuffWatcher_CastRecord
+                            local auraRecord = BuffWatcher_CastRecord:new(spellType, updateInfo.spellId, updateInfo.name, unitName)
     
-        --                     spellRecords[auraRecord.key] = auraRecord
-        --                 end
-        --             end
-        --         end
-        --     end
-        -- elseif (event == "NAME_PLATE_UNIT_ADDED") then
-        --      local targetUnit = select(1, ...)
-        --      checkUnitBuffs(targetUnit)
-        -- end
+                            spellRecords[auraRecord.key] = auraRecord
+                        end
+                    end
+                end
+            end
+        elseif (event == "NAME_PLATE_UNIT_ADDED") then
+             local targetUnit = select(1, ...)
+             checkUnitBuffs(targetUnit)
+        end
     end
 
     local Initialize = function()

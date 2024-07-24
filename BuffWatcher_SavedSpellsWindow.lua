@@ -31,7 +31,14 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
         ---@param spell BuffWatcher_StoredSpell
         BuffWatcher_Shared.SortBy(input, function(spell)
             local spellName = GetSpellInfo(spell.spellId)
-            return spellName
+
+            if (spellName ~= nil) then
+                return spellName
+            else
+                DevTool:AddData(spell.spellId, "fixme bad spell id")
+            end
+
+            return ''
         end)
     end
 
@@ -125,6 +132,11 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
         if (filter.name ~= nil and filter.name ~= "") then
             ---@type string
             local spellName = GetSpellInfo(spellRecord.spellId)
+            
+            if (spellName == nil) then
+                return false 
+            end
+
             if string.find(string.lower(spellName), filter.name) == nil then
                 return false
             end

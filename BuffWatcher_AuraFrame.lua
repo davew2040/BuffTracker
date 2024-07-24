@@ -135,7 +135,7 @@ function BuffWatcher_AuraFrame:new(framePool, cooldownFramePool)
     self.SetInactive = function()
         if (frames.rootFrame ~= nil) then
             frames.rootFrame:Hide()
-            --frames.rootFrame:SetParent(UIParent)
+            frames.rootFrame:SetParent(UIParent)
         end
 
         savedContext = nil

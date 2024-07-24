@@ -96,8 +96,13 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@type number
     self.customUnlistedMultiplier = 0.5
 
-    ---@type table<string, BuffWatcher_Blizzard_AuraData>
-    local temporaryAuraIterationSet = nil
+    ---@type table<string, boolean>
+    local unitsWithPendingUpdates = objectPool:GetObject()
+
+    ---@type number
+    local lastUpdateTime = 0
+
+    local minimumUpdateTimeSeconds = 0.05
 
     ---@type any
     self.framePool = CreateFramePool("Frame")
@@ -483,14 +488,14 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@return boolean
     local filterByUnit = function(unitName, frameType)
         if (frameType == BuffWatcher_FrameTypes.Raid) then
-            local isRaid = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName) or
-                BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+            local isRaid = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
+                or BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
                 or unitName == 'player'
             return isRaid 
 
         elseif (frameType == BuffWatcher_FrameTypes.Party) then
-            local isGroup = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName) or
-                BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+            local isGroup = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
+                or BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
                 or unitName == 'player'
             return isGroup
 
@@ -528,6 +533,10 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         end
 
         if (not filterByUnit(targetUnit, frameType)) then
+            if (targetUnit ~= nil and not self.isNameplate()) then
+                DevTool:AddData({ targetUnit = targetUnit, context = self.getName(), frameType == frameType }, "fixme filterbyunit " .. targetUnit)
+            end
+            
             return false
         end
 
@@ -920,9 +929,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
 
     ---Returns true if the units are comparable and the distance is less than a specified amount
     ---@param unit string
-    ---@param maxRange number
     ---@return boolean
-    local isUnitFrameInRange = function(unit, maxRange)
+    local isUnitFrameInRange = function(unit)
         if (unit == 'player') then
             return true
         end
@@ -954,7 +962,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             if (self.isNameplate()) then
                 return not blizzardAura.isFromPlayerOrPlayerPet
             else 
-                local isInRange = isUnitFrameInRange(targetUnit, maxDistance)
+                local isInRange = isUnitFrameInRange(targetUnit)
                 local isNotFromPlayerOrPet = not blizzardAura.isFromPlayerOrPlayerPet
                 local shouldInclude = isInRange and isNotFromPlayerOrPet 
                 --fixme - debug as needed
@@ -972,7 +980,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
                 return false
             end
 
-            if not self.isNameplate() and not isUnitFrameInRange(targetUnit, maxDistance) then
+            if not self.isNameplate() and not isUnitFrameInRange(targetUnit) then
                 return false
             end
         end
@@ -1055,6 +1063,36 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         objectPool.ReleaseObject(foundStateKeys)
 
         return hasUpdates
+    end
+
+    local refreshAllPendingUnitAuras = function()
+        local hasUpdates = false
+
+        for unit, _ in pairs(unitToGuidMap.GetUnitsToGuid()) do
+            if unitsWithPendingUpdates[unit] ~= nil then
+                if refreshUnitAuras(unit) then
+                    frameManager.GuidRefreshed(unitToGuidMap.GetGuidByUnit(unit))
+                end
+            end
+        end
+
+        objectPool.ReleaseObject(unitsWithPendingUpdates)
+
+        unitsWithPendingUpdates = objectPool.GetObject()
+
+        lastUpdateTime = GetTime()
+    end
+
+    local tryRefreshAuras = function()
+        local currentTime = GetTime()
+        local timeSinceLast = currentTime - lastUpdateTime
+
+        if (timeSinceLast > minimumUpdateTimeSeconds) then
+            DevTool:AddData("fixme Doing updates, " .. timeSinceLast)
+            refreshAllPendingUnitAuras()
+        else 
+            DevTool:AddData("fixme Skipping updates, " .. timeSinceLast)
+        end
     end
 
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
@@ -1289,6 +1327,10 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return hasUpdates
     end
 
+    self.HandleTimerTick = function()
+        refreshAllPendingUnitAuras()
+    end
+
     ---@param nameplate string
     self.NameplateRemoved = function(nameplate)
         if (not self.isNameplate()) then
@@ -1401,9 +1443,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return false
         end
 
-        if (refreshUnitAuras(targetUnit)) then
-            hasUpdates = true
-        end
+        unitsWithPendingUpdates[targetUnit] = true
 
         if (updateInfo.updatedAuraInstanceIDs ~= nil) then
             for _, auraId in ipairs(updateInfo.updatedAuraInstanceIDs) do

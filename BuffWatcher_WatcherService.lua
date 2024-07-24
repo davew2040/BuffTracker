@@ -11,9 +11,14 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
 
     DevTool:AddData("added new BuffWatcher_WatcherService")
 
-    local GroupSpacingWidth = 10
+    local refreshTime = 0.1
 
     local storedSpellsRegistry = nil
+
+    local refreshTimer = C_Timer.NewTicker(refreshTime, function()
+        self.RefreshTimerTick()
+    end) -- This ticker will run 10 times (10 seconds in total).
+    
 
     local resetNameplatesMap = function(context)
         context.unlinkAllNameplates()
@@ -377,6 +382,14 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
             --     if (context.IsLoaded()) then
             --         context.DoFullReset()
             --     end
+            end
+        end
+    end
+
+    self.RefreshTimerTick = function()
+        for key, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded()) then
+                context.HandleTimerTick()
             end
         end
     end
