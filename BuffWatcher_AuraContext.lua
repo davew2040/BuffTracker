@@ -1418,7 +1418,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
 
             if (newVisibility ~= lastVisibility) then
                 visibleUnits[unit] = newVisibility
-(y)
+
                 if (newVisibility == true) then
                     refreshUnitAuras(unit)
                 else
