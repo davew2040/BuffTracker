@@ -144,6 +144,7 @@ end
 
 function BuffWatcher:GROUP_ROSTER_UPDATE(...)
     watcherService.RefreshLoaded()
+    watcherService.HandleEvent_GroupRosterUpdate()
     LGF:ScanForUnitFrames()
 end
 

@@ -104,21 +104,6 @@ function BuffWatcher_Shared:new()
         return 'player'
     end
 
-    ---@generic T, U
-    ---@param src table<T, U> 
-    ---@return table<T, boolean>
-    self.CopyKeys = function(src)
-        ---@generic T 
-        ---@type table<T, boolean>
-        local copiedKeys = {}
-
-        for key, _ in pairs(src) do
-            copiedKeys[key] = true
-        end
-
-        return copiedKeys
-    end
-
     self.SimpleTableMerge = function(t1, t2)
         local merged = {}
 
@@ -844,6 +829,17 @@ BuffWatcher_Shared.InsertKeysWhere = function(target, source, filterFn)
     end
 end
 
+---@generic T, U
+---@param src table<T, U> 
+---@param dest table<T, U> 
+---@return table<T, boolean>
+BuffWatcher_Shared.CopyKeysInto = function(src, dest)
+    for key, _ in pairs(src) do
+        dest[key] = true
+    end
+
+    return dest
+end
 
 ---@type table
 BuffWatcher_Shared.EmptyTable = {}

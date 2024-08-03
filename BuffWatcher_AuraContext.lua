@@ -144,6 +144,15 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@type BuffWatcher_FrameManagerNew
     local frameManager
 
+    local getPartyAndRaidUnits = function()
+        local party = CopyTable(BuffWatcher_Shared_Singleton.partyUnits)
+        local raid = CopyTable(BuffWatcher_Shared_Singleton.raidUnits)
+
+        local merged = BuffWatcher_Shared_Singleton.SimpleTableMerge(party, raid)
+        
+        return merged
+    end
+
     ---@param frameType BuffWatcher_FrameTypes
     ---@return table<string, boolean>
     local initializeContextUnits = function(frameType)
@@ -154,8 +163,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return CopyTable(BuffWatcher_Shared_Singleton.arenaUnits)
 
         elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
-            local bgUnits = CopyTable(BuffWatcher_Shared_Singleton.partyUnits)
+            local bgUnits = getPartyAndRaidUnits()
             bgUnits['player'] = true
+
+            DevTool:AddData(CopyTable(bgUnits), "fixme bgUnits")
+
             return bgUnits
 
         elseif (frameType == BuffWatcher_FrameTypes.Party) then
@@ -164,8 +176,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return partyUnits
 
         elseif (frameType == BuffWatcher_FrameTypes.Raid) then
-            local raidUnits = CopyTable(BuffWatcher_Shared_Singleton.raidUnits)
+            local raidUnits = getPartyAndRaidUnits()
             raidUnits['player'] = true
+
+            
+            DevTool:AddData(CopyTable(raidUnits), "fixme raidUnits")
             return raidUnits
 
         end
@@ -488,8 +503,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@return boolean
     local filterByUnit = function(unitName, frameType)
         if (frameType == BuffWatcher_FrameTypes.Raid) then
-            local isRaid = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
-                or BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+            local isRaid = BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unitName)
                 or unitName == 'player'
             return isRaid 
 
@@ -546,6 +560,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         end
 
         if (BuffWatcher_Shared.UnitIsMinor(targetUnit)) then
+            return false
+        end
+
+        if UnitGUID(targetUnit) == nil then
+            DevTool:AddData("Identified nil guid for unit " .. targetUnit .. " with name " .. UnitName(targetUnit))
             return false
         end
 
@@ -1020,7 +1039,6 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         self.RemoveAuraId(removedId)
     end
 
-
     ---@param unit string
     local refreshUnitAuras = function(unit)
         local hasUpdates = false
@@ -1356,11 +1374,28 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         
         local guid = unitToGuidMap.GetGuidByUnit(nameplate)
 
+        if guid == nil then
+            return
+        end
+
         self.ClearLooseAuras(guid, false)
 
         unitToGuidMap.UnlinkUnit(nameplate)
 
         frameManager.NameplateUnitRemoved(guid)
+    end
+
+    self.GroupRosterUpdate = function()
+        if (not self.isNameplate()) then
+            self.DoFullReset()
+        end
+    end
+
+    ---@param stateKey string
+    ---@return boolean
+    local clearLooseAurasHelper = function(stateKey)
+        local auraInstance = self.auraInstancesMap[stateKey]
+        return isLooseAura(auraInstance)
     end
 
     -- Specifically intended to clear auras that aren't persisted between unit add/removes (we keep casts and item uses)
@@ -1381,10 +1416,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         BuffWatcher_Shared.InsertKeysWhere(
             activeStateKeys,
             stateKeys,
-            function(stateKey)
-                local auraInstance = self.auraInstancesMap[stateKey]
-                return isLooseAura(auraInstance)
-            end
+            clearLooseAurasHelper
         )
 
         for k,_ in pairs(activeStateKeys) do
@@ -1403,7 +1435,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     end
 
     self.DoFullReset = function()
-        DevTool:AddData("resetting contexts" .. name)
+        DevTool:AddData("resetting contexts " .. name)
 
         self.DoFullClear()
         
@@ -1469,11 +1501,15 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return true
     end
 
-    local isUnitVisible = function(unit) 
+    local unitVisibleStatus = function(unit) 
         if (self.isNameplate()) then
             return true
         end
         
+        if visibleUnits[unit] == nil then
+            DevTool:AddData("visibleUnits[unit] is nil for unit " .. unit)
+        end
+
         return visibleUnits[unit] == true
     end
 
@@ -1487,7 +1523,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return false
         end
 
-        if (not isUnitVisible(targetUnit)) then
+        if (not unitVisibleStatus(targetUnit)) then
+            if (not self.isNameplate()) then
+                DevTool:AddData({ updateInfo = CopyTable(updateInfo), visibility = CopyTable(visibleUnits)}, "fixme filtering out updateInfo for unit that isn't visible: " .. targetUnit)
+            end
+
             return false
         end
 
@@ -1537,6 +1577,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
                 self.DoUnitAdd(unit, false)
             end
         end
+
+        DevTool:AddData({ visibleUnits = CopyTable(visibleUnits), context = self.getName() }, "fixme resetting visibleUnits")
 
         frameManager.DoFullUpdate()
 

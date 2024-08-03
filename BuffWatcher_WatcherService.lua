@@ -304,6 +304,8 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
     ---comment
     ---@param targetUnit string
     self.HandleEvent_NameplateAdded = function(targetUnit)
+        DevTool:AddData("fixme HandleEvent_NameplateAdded " .. targetUnit .. " " .. UnitName(targetUnit))
+
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded() and context.isNameplate()) then
                 context.DoUnitAdd(targetUnit, true)
@@ -314,6 +316,8 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
     ---comment
     ---@param targetUnit string
     self.HandleEvent_NameplateRemoved = function(targetUnit)
+        DevTool:AddData("fixme HandleEvent_NameplateRemoved " .. targetUnit)
+
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.isNameplate() and context.IsLoaded()) then
                 context.NameplateRemoved(targetUnit)
@@ -321,8 +325,14 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
         end
     end
 
-    ---@type table<integer, any>
-    local tempAuraIds = {}
+    ---comment
+    self.HandleEvent_GroupRosterUpdate = function()
+        for _, context in pairs(contextStore.GetContexts()) do
+            if (context.IsLoaded()) then
+                context.GroupRosterUpdate()
+            end
+        end
+    end
 
     ---comment
     ---@param targetUnit string

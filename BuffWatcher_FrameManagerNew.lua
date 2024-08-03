@@ -55,15 +55,21 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
         return context.getFrameType() == BuffWatcher_FrameTypes.Raid --and context.includeBuffsAndCasts() == true
     end
 
-    ---@param wowFrame BuffWatcher_Blizzard_Frame
-    ---@return table<string, BuffWatcher_FrameData>
-    local getAurasForFrame = function(wowFrame)
-        return frameToAuraData[wowFrame]
+    -- ---@param wowFrame BuffWatcher_Blizzard_Frame
+    -- ---@return table<string, BuffWatcher_FrameData>
+    -- local getAurasForFrame = function(wowFrame)
+    --     return frameToAuraData[wowFrame]
+    -- end
+
+    ---comment
+    ---@param frameData BuffWatcher_FrameData
+    local framePrioritizer = function(frameData)
+        return frameData.auraInstance.priority
     end
 
     ---@param wowFrame BuffWatcher_Blizzard_Frame
     local redrawAurasByFrame = function(wowFrame)
-        local auraFrames = getAurasForFrame(wowFrame)
+        local auraFrames = frameToAuraData[wowFrame]
 
         local orderedAuras = objectPool.GetObject()
 
@@ -71,10 +77,7 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
         BuffWatcher_Shared.OrderValuesByDescending(
             auraFrames, 
             orderedAuras,
-            function(key)
-                ---@cast key BuffWatcher_FrameData
-                return key.auraInstance.priority
-            end
+            framePrioritizer
         )
 
         local x = 0
@@ -198,13 +201,19 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
             DevTool:AddData(frameToAuraData, "fixme frameToAuraData before Clear")
         end
 
-        for guid, _ in pairs(currentGuidsToFrames) do
+        local guidsOnly = objectPool.GetObject()
+
+        BuffWatcher_Shared.CopyKeysInto(currentGuidsToFrames, guidsOnly)
+
+        for guid, _ in pairs(guidsOnly) do
             removeGuid(guid)
         end
 
         if (lastFrameMap ~= nil) then
             releaseFrameMap(lastFrameMap)
         end
+
+        objectPool.ReleaseObject(guidsOnly)
 
         local units = context.GetPotentialUnits()
 
@@ -214,7 +223,7 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
     ---@param wowFrame BuffWatcher_Blizzard_Frame
     ---@param stateKey string
     local removeAuraFromFrame = function(wowFrame, stateKey)
-        local frameAuras = getAurasForFrame(wowFrame)
+        local frameAuras = frameToAuraData[wowFrame]
         local frameToRemove = frameAuras[stateKey]
 
         context.ReleaseFrame(frameToRemove.auraFrame)
@@ -243,14 +252,16 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
             auraInstance = auraInstance
         }
 
-        getAurasForFrame(wowFrame)[stateKey] = frameEntry
+        frameToAuraData[wowFrame][stateKey] = frameEntry
     end
 
     local addAuraToGuid = function(guid, stateKey) 
         local wowFrames = getFramesForGuid(guid)
 
         for wowFrame, _ in pairs(wowFrames) do
-            addAuraToFrame(wowFrame, stateKey)
+            if (wowFrames[stateKey] == nil) then
+                addAuraToFrame(wowFrame, stateKey)
+            end
         end
     end
 
@@ -266,7 +277,7 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
         local frames = getFramesForGuid(guid)
 
         for wowFrame, _ in pairs(frames) do
-            local aura = getAurasForFrame(wowFrame)[stateKey]
+            local aura = frameToAuraData[wowFrame][stateKey]
 
             if (aura ~= nil) then
                 aura.auraFrame.UpdateCooldown()
@@ -289,7 +300,7 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
         local newKeys = context.GetKeysByGuid(unitGuid)
 
         for _, frame in pairs(framesForGuid) do
-            local currentFrameKeys = getAurasForFrame(frame)
+            local currentFrameKeys = frameToAuraData[frame]
 
             local diff = BuffWatcher_Shared.KeyDiff(currentFrameKeys, newKeys, objectPool)
          
@@ -334,6 +345,7 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
                     ---@type BuffWatcher_GuidFrameData
                     local newEntry = {
                         guid = unitGuid, 
+                        frameAuras = {},
                         unitName = UnitName(unit),
                         frames = frames,
                         units = {
@@ -395,25 +407,6 @@ function BuffWatcher_FrameManagerNew:new(context, configuration, objectPool)
 
         -- if frames have *actually* changed, because we get excessive events from LibGetFrame
         if not compareFrameMaps(nextFrameMap, lastFrameMap) then
-            local fixmeLogObject = {}
-
-            if (lastFrameMap ~= nil) then
-                fixmeLogObject.lastFrameMap = CopyTable(lastFrameMap, false)
-            end
-
-            if (nextFrameMap ~= nil) then
-                fixmeLogObject.nextFrameMap = CopyTable(nextFrameMap, false)
-            end
-
-
-            DevTool:AddData(fixmeLogObject, "fixme compareFrameMaps check failed, calling DoFullUpdate " .. context.getName())
-
-            if (lastFrameMap ~= nil) then
-                releaseFrameMap(lastFrameMap)
-            end
-
-            lastFrameMap = nextFrameMap
-
             self.DoFullUpdate()
         end
     end
