@@ -488,7 +488,17 @@ function BuffWatcher_Shared.PlayerInBattleground()
     local result = C_PvP.IsBattleground()
     local isBattleground = result ~= nil and result == true
 
-    return isBattleground
+    if isBattleground then
+        return true
+    end
+
+    local brawlActive = C_PvP.IsInBrawl()
+    
+    if brawlActive then 
+        return true
+    end
+
+    return false
 end
 
 ---@return boolean
@@ -496,66 +506,6 @@ function BuffWatcher_Shared.PlayerInArena()
     local _, instanceType = GetInstanceInfo()
 
     return instanceType == "arena"
-end
-
----@return BuffWatcher_Blizzard_AuraData[]
-function BuffWatcher_Shared.GetUnitAuras(unitName)
-    ---@type BuffWatcher_Blizzard_AuraData[]
-    local result = {}
-
-    local i = 1
-    while true do
-        local unitAuraData = {UnitBuff(unitName, i)}
-
-        if (#unitAuraData == 0) then
-            break
-        end
-        
-        ---@type BuffWatcher_Blizzard_AuraData
-        local newUnitAura = {
-            name = unitAuraData[1],
-            auraInstanceID = 0,
-            isHelpful = true,
-            isHarmful = false,
-            icon = unitAuraData[2],
-            count = unitAuraData[3],
-            duration = unitAuraData[5],
-            expirationTime = unitAuraData[6],
-            sourceUnit = unitAuraData[7],
-            spellId = unitAuraData[10]
-        }
-
-        table.insert(result, newUnitAura)
-        i = i+1
-    end
-
-    i=1
-    while true do
-        local unitAuraData = {UnitDebuff(unitName, i)}
-
-        if (#unitAuraData == 0) then
-            break
-        end
-        
-        ---@type BuffWatcher_Blizzard_AuraData
-        local newUnitAura = {
-            name = unitAuraData[1],
-            auraInstanceID = 0,
-            isHelpful = false,
-            isHarmful = true,
-            icon = unitAuraData[2],
-            count = unitAuraData[3],
-            duration = unitAuraData[5],
-            expirationTime = unitAuraData[6],
-            sourceUnit = unitAuraData[7],
-            spellId = unitAuraData[10]
-        }
-
-        table.insert(result, newUnitAura)
-        i = i+1
-    end
-
-    return result
 end
 
 ---@return table<string, string>
@@ -660,43 +610,6 @@ function BuffWatcher_Shared.InvertStringMap(map)
     end
 
     return inverted
-end
-
----@param oldLinkage BuffWatcher_UnitToGuidLinkage
----@param newLinkage BuffWatcher_UnitToGuidLinkage
----@return BuffWatcher_UnitsComparisonResult
-function BuffWatcher_Shared.CompareUnitToGuidMaps(oldLinkage, newLinkage)
-    ---@type string[]
-    local added = {}
-    ---@type string[]
-    local removed = {}
-    ---@type table<string, string>
-    local changed = {}
-
-    for newUnit,_ in pairs(newLinkage.unitToGuid) do
-        if (oldLinkage.unitToGuid[newUnit] == nil) then
-            table.insert(added, newUnit)
-        elseif (oldLinkage.unitToGuid[newUnit] ~= newLinkage.unitToGuid[newUnit]) then
-            local targetGuid = newLinkage.unitToGuid[newUnit]
-            local oldUnit = oldLinkage.guidToUnit[targetGuid]
-            changed[newUnit] = oldUnit
-        end
-    end
-
-    for oldUnit,_ in pairs(oldLinkage.unitToGuid) do
-        if (newLinkage.unitToGuid[oldUnit] == nil) then
-            table.insert(removed, oldUnit)
-        end
-    end
-
-    ---@type BuffWatcher_UnitsComparisonResult
-    local result = {
-        addedUnits = added,
-        removedUnits = removed,
-        changedUnits = changed
-    }
-
-    return result
 end
 
 -- Would be awfully nice if I could get generic type annotations working for this
@@ -839,6 +752,35 @@ BuffWatcher_Shared.CopyKeysInto = function(src, dest)
     end
 
     return dest
+end
+
+BuffWatcher_Shared.CompareValues = function(one, two)
+    local t1 = type(one)
+    local t2 = type(two)
+
+    if t1 ~= t2 then
+        return false
+    end
+
+    if t1 == "table" then
+        -- Check if both are tables and recursively compare their contents
+        for k1, v1 in pairs(one) do
+            if not BuffWatcher_Shared.CompareValues(v1, two[k1]) then
+                return false
+            end
+        end
+
+        for k2, v2 in pairs(two) do
+            if not BuffWatcher_Shared.CompareValues(one[k2], v2) then
+                return false
+            end
+        end
+
+        return true
+    else
+        -- For non-table values, simply compare them directly
+        return one == two
+    end
 end
 
 ---@type table

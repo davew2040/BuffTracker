@@ -244,11 +244,23 @@ function BuffWatcher_LoggerWindow:new(incomingStoredSpells, loggerModule)
     end
     
     self.UpdateWindow = function()
+        DevTool:AddData("fixme UpdateWindow")
+
         spellRecords = loggerModule.GetSpellRecords()
+
+        DevTool:AddData("fixme spellRecords")
+
         local filteredRecords = applyFilters(spellRecords, spellFilters)
         indexedSpellRecords = GetIndexedRecords(filteredRecords)
         pager = Pager:new(pageSize, #indexedSpellRecords)
+
+        DevTool:AddData("fixme before UpdateSpellRows")
+
+
         self.UpdateSpellRows()
+
+        DevTool:AddData("fixme UpdateWindow done")
+
     end
 
     self.GetFrame = function()

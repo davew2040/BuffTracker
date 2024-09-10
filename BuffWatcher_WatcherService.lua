@@ -91,199 +91,11 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
         return baseSize
     end
 
-    ---@param context BuffWatcher_AuraContext
-    ---@param auraInfo BuffWatcher_Blizzard_AuraData
-    ---@param watcherInfo BuffWatcher_StoredSpell
-    ---@param targetUnit string
-    ---@param targetGuid string
-    ---@param sourceGuid string
-    ---@return boolean
-    local function handleBuffOrDebuffAddOrUpdateStoredSpell(context, auraInfo, watcherInfo, targetUnit, targetGuid, sourceGuid)
-        local auraId = auraInfo.auraInstanceID
-        local spellInfo = {GetSpellInfo(auraInfo.spellId)}
-        local auraInstances = context.auraInstancesMap;
-
-        if (watcherInfo.hide) then
-            return false
-        end
-
-        if (watcherInfo.ownOnly and sourceGuid ~= UnitGUID('player')) then
-            return false
-        end
-
-        local key = getBuffDebuffStateKey(watcherInfo.buffType, watcherInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
-
-        if (auraInstances[key] == nil) then
-            context.linkAuraIdToStateKey(auraId, key)
-            context.addKeyByGuid(targetGuid, key)
-
-            local baseSize = configuration.GetDefaultUnitFrameSize()
-            local borders = context.GetAuraBorders(auraInfo)
-            local sizeWithBorders = getSizeWithBorders(borders, baseSize)
-
-            local triggerType = BuffWatcher_TriggerType.Buff
-            if (auraInfo.isHarmful) then
-                triggerType = BuffWatcher_TriggerType.Debuff
-            end
-
-            ---@type BuffWatcher_AuraInstance
-            local newInstance = {
-                spellId = watcherInfo.spellId,
-                showCooldown = auraInfo.duration ~= 0,
-                borders = borders,
-                frames = BuffWatcher_FramesCollection:new(),
-                baseSize = baseSize,
-                actualSize = sizeWithBorders,
-                priority = watcherInfo.priority,
-                sourceGuid = sourceGuid, 
-                targetGuid = targetGuid,
-                auraInstanceId = auraInfo.auraInstanceID,
-                triggerType = triggerType,
-                icon = spellInfo[3],
-                name = spellInfo[1],
-                caster = targetUnit,
-                isHarmful = auraInfo.isHarmful
-            }
-
-            local frames = context.GetAuraFrames(auraInfo, newInstance, borders)
-            newInstance.frames = frames
-
-            DevTool:AddData(borders, "fixme borders")
-            DevTool:AddData(newInstance, "fixme newInstance")
-
-            auraInstances[key] = newInstance
-        else
-            --fixme - update
-            -- auraInstances[key].duration = auraInfo.duration
-            -- auraInstances[key].expirationTime = auraInfo.expirationTime
-            -- auraInstances[key].changed = true
-        end
-
-        return true
-    end
-
     ---@param auraInfo BuffWatcher_Blizzard_AuraData
     ---@return boolean -- true if passes filter, false if fails
     local catchAllFilter = function(auraInfo)
         if (auraInfo.duration == 0) then 
             return false
-        end
-
-        return true
-    end
-
-    ---@param context BuffWatcher_AuraContext
-    ---@param auraInfo BuffWatcher_Blizzard_AuraData
-    ---@param targetUnit string
-    ---@param normalizedUnit string
-    ---@param targetGuid string
-    ---@param sourceGuid string
-    ---@return boolean
-    local function handleBuffOrDebuffNpc(context, auraInfo, targetUnit, normalizedUnit, targetGuid, sourceGuid)
-        local auraId = auraInfo.auraInstanceID
-        local spellInfo = {GetSpellInfo(auraInfo.spellId)}
-            
-        local key = getBuffDebuffStateKey(BuffWatcher_Shared_Singleton.SpellTypes.Buff, auraInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
-            
-        local autoHide = true
-        if (auraInfo.duration == 0) then
-            autoHide = false
-        end
-
-        local triggerType = BuffWatcher_TriggerType.Buff
-        if (auraInfo.isHarmful) then
-            triggerType = BuffWatcher_TriggerType.Debuff
-        end
-
-        if (allstates[key] == nil) then
-            ---@type BuffWatcher_WeakAura_StateEntry
-            local newState = {
-                show = true,
-                changed = true,
-                progressType = auraInfo.duration == 0 and "static" or "timed",
-                duration = auraInfo.duration,
-                expirationTime = auraInfo.duration + GetTime(),
-                name = auraInfo.name,
-                icon = spellInfo[3],
-                caster = auraInfo.sourceUnit,
-                autoHide = autoHide,
-                showGlow = false,
-                sizeMultiplier = configuration.GetUnlistedMultiplier(),
-                index = 10,
-                unit = targetUnit,
-                size = configuration.GetDefaultUnitFrameSize(),
-                showDispelOutline = true,
-                targetGuid = targetGuid,
-                triggerType = triggerType,
-                outlineType = getOutlineType(auraInfo)
-            }
-            allstates[key] = newState
-            context.linkAuraIdToStateKey(auraId, key)
-            context.addKeyByGuid(targetGuid, key)
-    
-        else
-            allstates[key].duration = auraInfo.duration
-            allstates[key].expirationTime = auraInfo.expirationTime
-            allstates[key].changed = true
-        end
-
-        return true
-    end
-
-    ---@param context BuffWatcher_AuraContext
-    ---@param auraInfo BuffWatcher_Blizzard_AuraData
-    ---@param targetUnit string
-    ---@param targetGuid string
-    ---@param sourceGuid string
-    ---@return boolean
-    local function handleBuffOrDebuffCatchAll(allstates, context, auraInfo, targetUnit, targetGuid, sourceGuid)
-        local auraId = auraInfo.auraInstanceID
-        local spellInfo = {GetSpellInfo(auraInfo.spellId)}
-
-        if (context.showUnlistedAuras() == BuffWatcher_ShowUnlistedType.OwnOnly and sourceGuid ~= UnitGUID("player")) then
-            return false
-        end
-            
-        if (not catchAllFilter(auraInfo)) then
-            return false
-        end
-
-        local key = getBuffDebuffStateKey(BuffWatcher_Shared_Singleton.SpellTypes.Buff, auraInfo.spellId, targetGuid, sourceGuid, auraId, context.getName())
-
-        local autoHide = true
-        if (auraInfo.duration == 0) then
-            autoHide = false
-        end
-
-        if (allstates[key] == nil) then
-            ---@type BuffWatcher_WeakAura_StateEntry
-            local newState = {
-                show = true,
-                changed = true,
-                progressType = auraInfo.duration == 0 and "static" or "timed",
-                duration = auraInfo.duration,
-                expirationTime = auraInfo.duration + GetTime(),
-                name = auraInfo.name,
-                icon = spellInfo[3],
-                caster = auraInfo.sourceUnit,
-                autoHide = autoHide,
-                showGlow = false,
-                sizeMultiplier = configuration.GetUnlistedMultiplier(),
-                index = 10,
-                unit = targetUnit,
-                size = configuration.GetDefaultUnitFrameSize(),
-                showDispelOutline = true,
-                targetGuid = targetGuid,
-                triggerType = BuffWatcher_TriggerType.CatchAll,
-                outlineType = getOutlineType(auraInfo)
-            }
-            allstates[key] = newState
-            context.linkAuraIdToStateKey(auraId, key)
-            context.addKeyByGuid(targetGuid, key)
-        else
-            allstates[key].duration = auraInfo.duration
-            allstates[key].expirationTime = auraInfo.expirationTime
-            allstates[key].changed = true
         end
 
         return true
@@ -304,7 +116,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
     ---comment
     ---@param targetUnit string
     self.HandleEvent_NameplateAdded = function(targetUnit)
-        DevTool:AddData("fixme HandleEvent_NameplateAdded " .. targetUnit .. " " .. UnitName(targetUnit))
+        --DevTool:AddData("fixme HandleEvent_NameplateAdded " .. targetUnit .. " " .. UnitName(targetUnit))
 
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded() and context.isNameplate()) then
@@ -316,7 +128,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
     ---comment
     ---@param targetUnit string
     self.HandleEvent_NameplateRemoved = function(targetUnit)
-        DevTool:AddData("fixme HandleEvent_NameplateRemoved " .. targetUnit)
+        --DevTool:AddData("fixme HandleEvent_NameplateRemoved " .. targetUnit)
 
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.isNameplate() and context.IsLoaded()) then
@@ -408,7 +220,7 @@ function BuffWatcher_WatcherService:new(configuration, contextStore, pool)
         DevTool:AddData("fixme ArenaOpponentUpdate")
         for key, context in pairs(contextStore.GetContexts()) do
             if (context.IsLoaded() and (context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Arena or context.getFrameType() == BuffWatcher_Shared_Singleton.FrameTypes.Party)) then
-                context.DoFullReset()
+                context.GroupRosterUpdate()
             end
         end
     end

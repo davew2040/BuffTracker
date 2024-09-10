@@ -52,21 +52,22 @@ function BuffWatcher_LoggerWindow_SpellRow:new(spellRegistry)
         return spellRowFrame
     end
 
-    ---@param spell BuffWatcher_CastRecord
-    self.setSpell = function(spell)
+    ---@param castRecord BuffWatcher_CastRecord
+    self.setSpell = function(castRecord)
         storedSpells = spellRegistry.GetSpells()
-        currentSpell = spell
+        currentSpell = castRecord
 
-        local spellName, _ = GetSpellInfo(spell.spellId)
-        local texture = GetSpellTexture(spell.spellId)
+        local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(castRecord.spellId)
 
-        spellIdText:SetText(spell.spellId)
-        spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[spell.type])
-        spellNameText:SetText(spellName)
-        sourceNameText:SetText(spell.sourceName)
+        local texture = C_Spell.GetSpellTexture(castRecord.spellId)
+
+        spellIdText:SetText(castRecord.spellId)
+        spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[castRecord.type])
+        spellNameText:SetText(spellInfo.name)
+        sourceNameText:SetText(castRecord.sourceName)
         textureFrame:SetImage(texture)
 
-        local castKey = BuffWatcher_CastRecord.GetKey(spell)
+        local castKey = BuffWatcher_CastRecord.GetKey(castRecord)
         local spellIsStored = storedSpells[castKey] ~= nil
 
         addButton:SetDisabled(spellIsStored)

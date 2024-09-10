@@ -30,10 +30,10 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
     local sortByNameAscending = function(input)
         ---@param spell BuffWatcher_StoredSpell
         BuffWatcher_Shared.SortBy(input, function(spell)
-            local spellName = GetSpellInfo(spell.spellId)
+            local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(spell.spellId)
 
-            if (spellName ~= nil) then
-                return spellName
+            if (spellInfo ~= nil) then
+                return spellInfo.name
             else
                 DevTool:AddData(spell.spellId, "fixme bad spell id")
             end
@@ -46,8 +46,8 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
     local sortByNameDescending = function(input)
         ---@param spell BuffWatcher_StoredSpell
         BuffWatcher_Shared.SortByDescending(input, function(spell)
-            local spellName = GetSpellInfo(spell.spellId)
-            return spellName
+            local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(spell.spellId)
+            return spellInfo.name
         end)
     end
 
@@ -130,14 +130,13 @@ function BuffWatcher_SavedSpellsWindow:new(incomingStoredSpells, addEditCastWind
     ---@return boolean
     local meetsFilter = function(spellRecord, filter) 
         if (filter.name ~= nil and filter.name ~= "") then
-            ---@type string
-            local spellName = GetSpellInfo(spellRecord.spellId)
+            local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(spellRecord.spellId)
             
-            if (spellName == nil) then
+            if (spellInfo == nil) then
                 return false 
             end
 
-            if string.find(string.lower(spellName), filter.name) == nil then
+            if string.find(string.lower(spellInfo.name), filter.name) == nil then
                 return false
             end
         end

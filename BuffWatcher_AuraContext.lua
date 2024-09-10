@@ -32,8 +32,6 @@ BuffWatcher_AuraContext_Params = {}
 function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     self = {};
 
-    local maxDistance = 100.0
-
     ---@type BuffWatcher_SpellBundle
     local spellBundle = nil
     ---@type string
@@ -257,6 +255,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         guidToStateKeyMap[targetGuid][key] = nil
 
         local tableKeyCount = BuffWatcher_Shared_Singleton.GetTableKeyCount(guidToStateKeyMap[targetGuid])
+
         if (tableKeyCount == 0) then
             objectPool.ReleaseObject(guidToStateKeyMap[targetGuid])
             guidToStateKeyMap[targetGuid] = nil
@@ -417,8 +416,25 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return LooseTriggers[auraInstance.triggerType] ~= nil
     end
 
+    local isCompStomp = function()
+        local inBrawl = C_PvP.IsInBrawl()
+
+        if not inBrawl then
+            return false
+        end
+    
+        local brawlInfo = C_PvP.GetAvailableBrawlInfo()
+
+        return brawlInfo and brawlInfo.name == "Brawl: Comp Stomp"
+    end
+
     ---@return boolean
     self.IncludeNpcs = function() 
+        -- if in comp stomp, then there will be a crazy amount of aura spam that's technically from NPC's
+        if (isCompStomp()) then
+            return false
+        end
+
         return true
     end
 
@@ -508,8 +524,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return isRaid 
 
         elseif (frameType == BuffWatcher_FrameTypes.Party) then
-            local isGroup = BuffWatcher_Shared_Singleton.IsPartyUnit(unitName)
-                or BuffWatcher_Shared_Singleton.IsRaidUnit(unitName)
+            local isGroup = BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unitName)
                 or unitName == 'player'
             return isGroup
 
@@ -520,7 +535,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return BuffWatcher_Shared_Singleton.IsNameplateUnit(unitName)
 
         elseif (frameType == BuffWatcher_FrameTypes.Battleground) then
-            return unitName == 'player' or BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unitName)
+            return BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unitName)
+                or unitName == 'player'
 
         end
 
@@ -539,9 +555,16 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return true
     end
 
+    ---comment
+    ---@param unit string
+    ---@return boolean
+    local unitIsPlayerDuplicate = function(unit)
+        return (BuffWatcher_Shared_Singleton.IsPartyOrRaidUnit(unit) and UnitGUID(unit) == UnitGUID('player'))
+    end
+
     ---@param targetUnit string
     ---@return boolean -- false if the filter fails and event should not be processed
-    self.FilterEvent = function(targetUnit)
+    self.UnitPassesFilter = function(targetUnit)
         if (targetUnit == 'target' or targetUnit == 'softenemy') then
             return false
         end
@@ -564,7 +587,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         end
 
         if UnitGUID(targetUnit) == nil then
-            DevTool:AddData("Identified nil guid for unit " .. targetUnit .. " with name " .. UnitName(targetUnit))
+            DevTool:AddData("Identified nil guid for unit " .. targetUnit)
+            return false
+        end
+
+        if unitIsPlayerDuplicate(targetUnit) then
             return false
         end
 
@@ -863,7 +890,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@param targetUnit string
     ---@param watcherInfo? BuffWatcher_StoredSpell
     local function addNewStateKey(key, auraInfo, targetUnit, watcherInfo)
-        local spellName, _, spellIcon = GetSpellInfo(auraInfo.spellId)
+        local spell = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(auraInfo.spellId)
+
         local sizeMultiplier = getAuraSizeMultiplier(watcherInfo)
 
         local targetGuid = UnitGUID(targetUnit)
@@ -903,8 +931,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         newInstance.targetUnit = targetUnit
         newInstance.auraInstanceId = auraInfo.auraInstanceID
         newInstance.triggerType = triggerType
-        newInstance.icon = spellIcon
-        newInstance.name = spellName
+        newInstance.icon = spell.iconID
+        newInstance.name = spell.name
         newInstance.caster = targetUnit
         newInstance.isHarmful = auraInfo.isHarmful
         newInstance.timerHandle = nil
@@ -980,17 +1008,19 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         local watcherInfo = getWatcherInfo(blizzardAura)
 
         -- if we haven't explicitly opted to see (or hide) this aura, then only show if it's an NPC aura
-        if (watcherInfo == nil and self.IncludeNpcs()) then
-            -- "isFromPlayerOrPlayerPet" is only reliable if the unit is in the same zone or a nameplate - ignore auras on units in a different zone
-            if (self.isNameplate()) then
-                return not blizzardAura.isFromPlayerOrPlayerPet
-            else 
-                local isInRange = isUnitFrameInRange(targetUnit)
-                local isNotFromPlayerOrPet = not blizzardAura.isFromPlayerOrPlayerPet
-                local shouldInclude = isInRange and isNotFromPlayerOrPet 
-                --fixme - debug as needed
-                --DevTool:AddData({targetUnit = targetUnit, name = UnitName(targetUnit), isInRange = isInRange, isNotFromPlayerOrPet = isNotFromPlayerOrPet}, "fixme isInRange/notplayer " .. UnitName(targetUnit) .. " = " .. tostring(isInRange) .. "/" .. tostring(isNotFromPlayerOrPet))
-                return shouldInclude
+        if (watcherInfo == nil) then
+            if (self.IncludeNpcs()) then
+                -- "isFromPlayerOrPlayerPet" is only reliable if the unit is in the same zone or a nameplate - ignore auras on units in a different zone
+                if (self.isNameplate()) then
+                    return not blizzardAura.isFromPlayerOrPlayerPet
+                else 
+                    local isNotFromPlayerOrPet = not blizzardAura.isFromPlayerOrPlayerPet
+                    local shouldInclude = isNotFromPlayerOrPet 
+                    
+                    return shouldInclude
+                end
+            else
+                return false
             end
         end
 
@@ -1168,11 +1198,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return false
         end
 
-        if (not self.FilterEvent(castInfo.sourceName)) then
+        if (not self.UnitPassesFilter(castInfo.sourceName)) then
             return false
         end
 
-        local spellName, _, spellIcon = GetSpellInfo(castInfo.spellId)
+        local spell = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(castInfo.spellId)
 
         local key = getCastStateKey(castInfo.spellId, castInfo.sourceGuid)
 
@@ -1199,8 +1229,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             newCast.targetUnit = nil
             newCast.auraInstanceId = 0
             newCast.triggerType = BuffWatcher_TriggerType.Cast
-            newCast.icon = spellIcon
-            newCast.name = spellName
+            newCast.icon = spell.iconID
+            newCast.name = spell.name
             newCast.caster = nil
             newCast.isHarmful = false
             newCast.timerHandle = timer
@@ -1235,6 +1265,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         if (auraInstance.triggerType == BuffWatcher_TriggerType.Buff 
                 or auraInstance.triggerType == BuffWatcher_TriggerType.Debuff
                 or auraInstance.triggerType == BuffWatcher_TriggerType.CatchAll) then
+
             if (auraIdToStateKeyMap[auraInstance.auraInstanceId] ~= nil) then
                 auraIdToStateKeyMap[auraInstance.auraInstanceId] = nil
             end
@@ -1298,7 +1329,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     end
 
     ---@param auraFrame BuffWatcher_AuraFrame
-    self.ReleaseFrame = function(auraFrame)
+    self.ReleaseAuraFrame = function(auraFrame)
         self.auraFramePool.ReleaseAuraFrame(auraFrame)
     end
 
@@ -1319,6 +1350,20 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         end
     end
 
+    local removeUnit = function(unit)
+        local guid = unitToGuidMap.GetGuidByUnit(unit)
+
+        if guid == nil then
+            DevTool:AddData("fixme tried to remove unit without corresponding guid " .. unit)
+            return
+        end
+
+        self.ClearLooseAuras(guid, false)
+
+        unitToGuidMap.UnlinkUnit(unit)
+
+        frameManager.NameplateUnitRemoved(guid)
+    end
 
     ---@comment This is really pulling double duty, but as a handler for nameplate adding and
     ---    also for when a unit frame is initally added
@@ -1326,18 +1371,27 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@param notifyFrameManager boolean
     ---@return boolean
     self.DoUnitAdd = function(unitLabel, notifyFrameManager)
-        if (not self.FilterEvent(unitLabel)) then
+        if (not self.UnitPassesFilter(unitLabel)) then
             return false
         end
 
-        --- if we've already added, then stop
-        if (unitToGuidMap.GetGuidByUnit(unitLabel) ~= nil) then
-            return false
+        local unitGuid = UnitGUID(unitLabel)
+        local existingGuid = unitToGuidMap.GetGuidByUnit(unitLabel)
+
+        if (existingGuid ~= nil) then
+            if unitGuid ~= existingGuid then
+                -- if unit already present isn't linked to the correct guid, then assume it's
+                --   removed and proceed as though it's new
+                removeUnit(unitLabel)
+            else 
+                -- already added, so exit
+                if refreshUnitAuras(unitLabel) then
+                    return true
+                end
+            end
         end
 
         local hasUpdates = false
-
-        local unitGuid = UnitGUID(unitLabel)
 
         unitToGuidMap.LinkUnitToGuid(unitLabel, unitGuid)
 
@@ -1352,10 +1406,18 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
                 hasUpdates = true
             end
         else
-            visibleUnits[unitLabel] = false
+            local inRange = isUnitFrameInRange(unitLabel)
+
+            if inRange then
+                if refreshUnitAuras(unitLabel) then
+                    hasUpdates = true
+                end
+            end
+            
+            visibleUnits[unitLabel] = inRange
         end
 
-        if (notifyFrameManager) then
+        if (notifyFrameManager and self.isNameplate()) then
             frameManager.NameplateUnitAdded(unitLabel)
         end
 
@@ -1368,26 +1430,47 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             return
         end
 
-        if (not self.FilterEvent(nameplate)) then
+        if (not self.UnitPassesFilter(nameplate)) then
             return
         end
         
-        local guid = unitToGuidMap.GetGuidByUnit(nameplate)
+        removeUnit(nameplate)
+    end
 
-        if guid == nil then
-            return
+    ---@return BuffWatcher_UnitGuidTable
+    local buildTemporaryUnitMap = function()
+        local newUnitMap = BuffWatcher_UnitGuidTable:new(objectPool)
+
+        for unit, _ in pairs(contextUnits) do
+            if (UnitExists(unit) and self.UnitPassesFilter(unit)) then
+                newUnitMap.LinkUnitToGuid(unit, UnitGUID(unit))
+            end    
         end
 
-        self.ClearLooseAuras(guid, false)
-
-        unitToGuidMap.UnlinkUnit(nameplate)
-
-        frameManager.NameplateUnitRemoved(guid)
+        return newUnitMap
     end
+
+    ---@return boolean
+    local haveUnitsChanged = function()
+        local newUnitMap = buildTemporaryUnitMap()
+
+        local areEqual = BuffWatcher_Shared.CompareValues(unitToGuidMap.GetUnitsToGuid(), newUnitMap.GetUnitsToGuid())
+
+        if (not areEqual) then
+            DevTool:AddData({ existing = CopyTable(unitToGuidMap.GetUnitsToGuid()), newUnits = CopyTable(newUnitMap.GetUnitsToGuid()), result = areEqual}, "fixme haveUnitsChanged failed result = " .. tostring(areEqual))
+        end
+
+        newUnitMap.Release()
+
+        return not areEqual
+    end
+
 
     self.GroupRosterUpdate = function()
         if (not self.isNameplate()) then
-            self.DoFullReset()
+            if (haveUnitsChanged()) then
+                self.DoFullReset()
+            end
         end
     end
 
@@ -1457,6 +1540,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
                     local guid = unitToGuidMap.GetGuidByUnit(unit)
                     self.ClearLooseAuras(guid, true)
                 end
+
+                frameManager.GuidRefreshed(UnitGUID(unit))
             end
         end
     end
@@ -1519,15 +1604,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     self.UnitAura = function(targetUnit, updateInfo)
         local hasUpdates = false
 
-        if (not self.FilterEvent(targetUnit)) then
+        if (not self.UnitPassesFilter(targetUnit)) then
             return false
         end
 
         if (not unitVisibleStatus(targetUnit)) then
-            if (not self.isNameplate()) then
-                DevTool:AddData({ updateInfo = CopyTable(updateInfo), visibility = CopyTable(visibleUnits)}, "fixme filtering out updateInfo for unit that isn't visible: " .. targetUnit)
-            end
-
             return false
         end
 

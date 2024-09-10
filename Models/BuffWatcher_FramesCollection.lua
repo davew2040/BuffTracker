@@ -10,8 +10,6 @@ BuffWatcher_FramesCollection = {}
 
 ---@return BuffWatcher_FramesCollection
 function BuffWatcher_FramesCollection:new()
-    DevTool:AddData("fixme BuffWatcher_FramesCollection:new()")
-
     ---@type BuffWatcher_FramesCollection
     local result = {
         rootFrame = nil,

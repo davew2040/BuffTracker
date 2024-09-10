@@ -33,9 +33,9 @@ function BuffWatcher_AddEditSavedCast:new()
     local setSavedSpell = function(spell)
         activeModel = CopyTable(spell)
 
-        local spellName = GetSpellInfo(spell.spellId)
+        local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(spell.spellId)
 
-        mainFrame:SetTitle("Add/Edit Spell - " .. spellName)
+        mainFrame:SetTitle("Add/Edit Spell - " .. spellInfo.name)
     end
 
     local initializeActionsBar = function(parent)

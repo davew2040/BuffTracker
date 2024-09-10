@@ -14,6 +14,7 @@
 ---@field sizeMultiplier number
 ---@field priority number
 ---@field ownOnly boolean
+---@field isMinorAura boolean
 BuffWatcher_StoredSpell = {}
 
 ---@return BuffWatcher_StoredSpell
@@ -34,7 +35,8 @@ function BuffWatcher_StoredSpell:new()
         showGlow = false,
         sizeMultiplier = 1,
         priority = 0,
-        ownOnly = false
+        ownOnly = false,
+        isMinorAura = false
     }
 
     return self

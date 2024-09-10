@@ -444,7 +444,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
         local normalizedUnit = BuffWatcher_Shared_Singleton.NormalizeUnit(targetUnit)
         local auraData = select(2, ...)
 
-        if (not context.FilterEvent(targetUnit)) then
+        if (not context.UnitPassesFilter(targetUnit)) then
             return false
         end
 
@@ -555,7 +555,7 @@ function BuffWatcher_WeakAuraInterface:new(configuration, contextStore)
             return false
         end
 
-        if (not context.FilterEvent(sourceUnit)) then
+        if (not context.UnitPassesFilter(sourceUnit)) then
             return false
         end
 

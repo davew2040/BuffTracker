@@ -27,21 +27,27 @@ function BuffWatcher_LoggerModule:new()
         end
     end
 
-    local checkUnitBuffs = function(unit)
+    local checkUnitAuras = function(unit)
         for i=1,40 do
-            local name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId = UnitBuff(unit, i)
-            if (name == nil) then
+            ---@type BuffWatcher_Blizzard_AuraData
+            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+
+            if (auraData == nil) then
                 break
             end
-            addUnitAura(true, unit, name, spellId)
+
+            addUnitAura(true, unit, auraData.name, auraData.spellId)
         end
 
         for i=1,40 do
-            local name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId = UnitDebuff(unit, i)
-            if (name == nil) then
+            ---@type BuffWatcher_Blizzard_AuraData
+            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+
+            if (auraData == nil) then
                 break
             end
-            addUnitAura(false, unit, name, spellId)
+            
+            addUnitAura(false, unit, auraData.name, auraData.spellId)
         end
     end
 
@@ -130,7 +136,7 @@ function BuffWatcher_LoggerModule:new()
             end
         elseif (event == "NAME_PLATE_UNIT_ADDED") then
              local targetUnit = select(1, ...)
-             checkUnitBuffs(targetUnit)
+             checkUnitAuras(targetUnit)
         end
     end
 
@@ -144,7 +150,7 @@ function BuffWatcher_LoggerModule:new()
         frame:SetScript("OnEvent", OnEvent)
 
         -- make sure we get the player's buffs in there at least once
-        checkUnitBuffs("player")
+        checkUnitAuras("player")
 
         return frame
     end

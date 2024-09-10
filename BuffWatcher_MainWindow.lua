@@ -40,6 +40,9 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
     end
 
     local selectTab = function(tabKey)
+
+        DevTool:AddData("fixme selectTab")
+
         if (tabKey == TabKeys.Logger) then
             showFrame(loggerFrameKey)
             loggerWindow.UpdateWindow()
@@ -79,6 +82,8 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
     local Initialize = function(addEditCastWindow)
         local frame = AceGUI:Create("Frame")
 
+        DevTool:AddData("fixme frame initialized ")
+
         frame:SetTitle("Buff Watcher")
         frame:SetCallback("OnClose", frame.frame:Hide())
         frame:SetLayout("Fill")
@@ -87,6 +92,10 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
 
         addEditCastWindow = BuffWatcher_AddEditSavedCast:new()
         addEditCastWindow:Hide()
+
+
+        DevTool:AddData("fixme BuffWatcher_AddEditSavedCast:new() done")
+
 
         -- Callback function for OnGroupSelected
         local function SelectGroup(container, event, group)
@@ -106,10 +115,20 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
         
         frame:AddChild(tabHolder)
 
+        DevTool:AddData("fixme tabHolder  done")
+
+
         initializeFrames(addEditCastWindow, tabHolder)
+
+        DevTool:AddData("fixme initializeFrames  done")
+
+        DevTool:AddData(tabHolder, "fixme tabHolder")
+
 
         tabHolder:SelectTab(TabKeys.Logger)
         selectTab(TabKeys.Logger)
+
+        DevTool:AddData("fixme selectTab  done")
 
         return frame
     end
@@ -122,6 +141,9 @@ function BuffWatcher_MainWindow:new(incomingStoredSpells, loggerModule, weakAura
         loggerWindow.UpdateWindow()
         mainFrame.frame:Show()
     end
+
+    DevTool:AddData("fixme calling mainwindow initialize")
+
 
     mainFrame = Initialize()
 

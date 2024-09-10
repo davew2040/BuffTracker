@@ -19,6 +19,12 @@
 ---@field source string
 ---@field spellId number
 
+---@class BuffWatcher_Blizzard_SpellInfo
+---@field name string
+---@field iconID number,
+---@field spellID number
+
+
 ---@class BuffWatcher_Blizzard_UnitAuraUpdateInfo
 ---@field addedAuras BuffWatcher_Blizzard_AuraData[]
 ---@field updatedAuraInstanceIDs integer[]

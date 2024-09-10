@@ -92,10 +92,6 @@ function BuffWatcher_UnitGuidTable:new(objectPool)
             objectPool.ReleaseObject(unitToGuid)
         end
 
-        if (allGuids ~= nil) then
-            objectPool.ReleaseObject(allGuids)
-        end
-
         guidToUnits = objectPool.GetObject()
         unitToGuid = objectPool.GetObject()
     end

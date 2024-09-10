@@ -60,7 +60,7 @@ function BuffWatcher_Configuration:new(dbAccessor)
 
     ---@return number
     self.GetBorderSize = function()
-        return 3
+        return 2
     end
 
     ---@return number
@@ -74,11 +74,11 @@ function BuffWatcher_Configuration:new(dbAccessor)
     end
 
     self.GetBuffDebuffBorderSize = function()
-        return 3
+        return 2
     end
 
     self.GetDispelBorderSize = function()
-        return 3
+        return 2
     end
 
     ---@return integer

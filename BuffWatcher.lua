@@ -48,6 +48,8 @@ local lgfUpdate = function(...)
 end
 
 function BuffWatcher:OnEnable()
+    DevTool:AddData("fixme OnEnable")
+
     pool = BuffWatcher_MiscellaneousObjectPool:new()
 
     local contextDefaults = BuffWatcher_DefaultContextValues:new()
@@ -63,17 +65,28 @@ function BuffWatcher:OnEnable()
     local weakAuraExporter = BuffWatcher_WeakAuraExporter:new(configuration, weakAuraGenerator)
     watcherService = BuffWatcher_WatcherService:new(configuration, contextStore, pool)
 
+    DevTool:AddData("fixme watcherService loaded")
+
+
     --BuffWatcher_WeakAuraInterface_Singleton = weakAurasInterface
 
     settingsDialog.Initialize(BuffWatcher)
 
     --weakAurasInterface.RegisterSpells(storedSpellsRegistry)
 
+    DevTool:AddData("fixme BuffWatcher_MainWindow:new started")
+
+
     mainWindow = BuffWatcher_MainWindow:new(storedSpellsRegistry, loggerModule, weakAuraExporter, contextStore)
+
+    DevTool:AddData("fixme mainwindow started")
+
 
     mainWindow.GetFrame():Hide()
 
     --UNIT_AURA, ARENA_TEAM_ROSTER_UPDATE, GROUP_ROSTER_UPDATE, NAME_PLATE_UNIT_REMOVED, NAME_PLATE_UNIT_ADDED, COMBAT_LOG_EVENT_UNFILTERED:SPELL_CAST_SUCCESS, STATUS, CLEU:UNIT_DIED, PLAYER_ENTERING_WORLD, PARTY_CONVERTED_TO_RAID
+
+    DevTool:AddData("registering events")
 
     self:RegisterEvent("UNIT_AURA")
     self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -96,8 +109,6 @@ function BuffWatcher:OnDisable()
 end
 
 function BuffWatcher:UNIT_AURA(...)
-    --DevTool:AddData({...}, "UNIT_AURA")
-
     watcherService.HandleEvent_UnitAura(select(2, ...), select(3, ...))
 end
 
@@ -143,6 +154,7 @@ function BuffWatcher:NAME_PLATE_UNIT_REMOVED(...)
 end
 
 function BuffWatcher:GROUP_ROSTER_UPDATE(...)
+    DevTool:AddData({...}, "fixme GROUP_ROSTER_UPDATE")
     watcherService.RefreshLoaded()
     watcherService.HandleEvent_GroupRosterUpdate()
     LGF:ScanForUnitFrames()
@@ -155,7 +167,7 @@ end
 
 function BuffWatcher:ARENA_OPPONENT_UPDATE(...)
 --     print("ARENA_OPPONENT_UPDATE")
---     DevTool:AddData({...}, "fixme ARENA_OPPONENT_UPDATE")
+     DevTool:AddData({...}, "fixme ARENA_OPPONENT_UPDATE")
     
     watcherService.ArenaOpponentUpdate()
 end
@@ -163,6 +175,11 @@ end
 function BuffWatcher:PLAYER_ENTERING_WORLD(...)
     --print("PLAYER_ENTERING_WORLD")
     watcherService.PlayerEnteringWorld()
+
+    DevTool:AddData({ 
+        isBattleground = BuffWatcher_Shared.PlayerInBattleground(),
+        bestMap = C_Map.GetBestMapForUnit("player")
+    }, "fixme PLAYER_ENTERING_WORLD info")
     
     LGF:ScanForUnitFrames()
 end
@@ -173,51 +190,25 @@ function BuffWatcher:PARTY_CONVERTED_TO_RAID(...)
 end
 
 
-
-function BuffWatcher:RunBenchmark(value)
-    local iterations = 1000000
-
-    local threePartKeyBuilder = {}
-    
-    ---Builds a three-part string key
-    ---@param one any
-    ---@param two any
-    ---@param three any
-    local getThreePartKey = function(one, two, three)
-        threePartKeyBuilder[1] = one
-        threePartKeyBuilder[2] = two
-        threePartKeyBuilder[3] = three
-
-        local key =  table.concat(threePartKeyBuilder, ":")
-
-        return key
+local benchmarkRoutine = function()
+    for i=1,40 do
+        ---@type BuffWatcher_Blizzard_AuraData
+        local auraData = C_UnitAuras.GetAuraDataByIndex('player', i, "HELPFUL")
     end
 
-    -- local sum = 0
+    for i=1,40 do
+        ---@type BuffWatcher_Blizzard_AuraData
+        local auraData = C_UnitAuras.GetAuraDataByIndex('player', i, "HARMFUL")
 
-    -- local intMap = { }
-    -- intMap[123456789012] = 1
-
-    -- local stringMap = { }
-    -- stringMap["123456789012"] = 1
-
-    -- BuffWatcher_Shared.Benchmark(function()
-    --     local myTest = intMap[123456789012]
-    --     sum = sum + myTest
-    -- end, iterations)
+    end
+end
 
 
-    -- BuffWatcher_Shared.Benchmark(function()
-    --     local key = tostring(123456789012)
-    --     local key2 = tostring(123456789012)
-    --     local myTest = stringMap[key]
-    --     sum = sum + myTest
-    -- end, iterations)
+function BuffWatcher:RunBenchmark(value)
+    local iterations = 10000
 
 
-    BuffWatcher_Shared.Benchmark(function()
-        local test = getThreePartKey("a", "b", "c")
-    end, iterations)
+    BuffWatcher_Shared.Benchmark(benchmarkRoutine, iterations)
 end
 
 function BuffWatcher:SlashCommand(input)

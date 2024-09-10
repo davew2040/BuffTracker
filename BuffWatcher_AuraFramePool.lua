@@ -9,7 +9,6 @@ function BuffWatcher_AuraFramePool:new(framePool, cooldownFramePool)
 
     local pool = CreateObjectPool(
         function(pool)
-            DevTool:AddData(pool, "fixme object pool initialize")
             return BuffWatcher_AuraFrame:new(framePool, cooldownFramePool)
         end
         -- ---@param pool any

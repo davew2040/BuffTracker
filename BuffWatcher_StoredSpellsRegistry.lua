@@ -28,7 +28,9 @@ function BuffWatcher_StoredSpellsRegistry:new()
                 end
             end
 
-            allResults[BuffWatcher_StoredSpell.GetStoredSpellKey(singleResult)] = singleResult
+            if (BuffWatcher_Blizzard_Wrapper.GetSpellInfo(dbSpell.spellId) ~= nil) then
+                allResults[BuffWatcher_StoredSpell.GetStoredSpellKey(singleResult)] = singleResult
+            end
         end
 
         return allResults

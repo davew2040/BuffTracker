@@ -13,8 +13,6 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
     ---@type BuffWatcher_SavedDbOptions
     local currentModel = nil
 
-    local dummy = true
-
     ---@param picker fun(model: BuffWatcher_SavedDbOptions): any
     local buildRootGetter = function(picker)
         return function(info) 

@@ -82,12 +82,17 @@ function BuffWatcher_SavedSpellsWindow_SpellRow:new(parent)
     self.SetSpell = function(spell)
         currentSpell = spell
 
-        local spellName, _ = GetSpellInfo(spell.spellId)
-        local texture = GetSpellTexture(spell.spellId)
+        local spellInfo = BuffWatcher_Blizzard_Wrapper.GetSpellInfo(spell.spellId)
+
+        if (spellInfo == nil) then
+            return
+        end
+
+        local texture = C_Spell.GetSpellTexture(spell.spellId)
 
         spellIdText:SetText(spell.spellId)
         spellTypeText:SetText(BuffWatcher_Shared_Singleton.SpellTypeLabels[spell.buffType])
-        spellNameText:SetText(spellName)
+        spellNameText:SetText(spellInfo.name)
         textureFrame:SetImage(texture)
         chkParty:SetValue(spell.showInParty)
         chkArena:SetValue(spell.showInArena)
