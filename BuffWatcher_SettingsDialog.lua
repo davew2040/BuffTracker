@@ -66,9 +66,15 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                             [BuffWatcher_ShowUnlistedType.Any] = "Any",
                             [BuffWatcher_ShowUnlistedType.OwnOnly] = "Own Only",
                         },
-                        get = self.BuildGenericAuraGroupGetter("showUnlistedAuras"),
-                        set = self.BuildGenericAuraGroupSetter("showUnlistedAuras")
-                    },                    
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.showUnlistedAuras end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.showUnlistedAuras = newValue 
+                            end
+                        )
+                    },
                     xOffset = {
                         name = "Horizontal Offset",
                         desc = "The horizontal offset of the aura group",
@@ -76,8 +82,14 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         min = -1000,
                         max = 1000,
                         step = 1,
-                        get = self.BuildGenericAuraGroupGetter("xOffset"),
-                        set = self.BuildGenericAuraGroupSetter("xOffset")
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.xOffset end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.xOffset = newValue 
+                            end
+                        )
                     },
                     yOffset = {
                         name = "Vertical Offset",
@@ -86,22 +98,40 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         min = -1000,
                         max = 1000,
                         step = 1,
-                        get = self.BuildGenericAuraGroupGetter("yOffset"),
-                        set = self.BuildGenericAuraGroupSetter("yOffset")
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.yOffset end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.yOffset = newValue 
+                            end
+                        )
                     },
                     showDispelType = {
                         type = "toggle",
                         name = "Show Dispel Type",
                         desc = "Toggles whether a border indicating the dispel type should be shown on these auras.",
-                        get = self.BuildGenericAuraGroupGetter("showDispelType"),
-                        set = self.BuildGenericAuraGroupSetter("showDispelType")
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.showDispelType end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.showDispelType = newValue 
+                            end
+                        )
                     },
                     useDefaultIconSize = {
                         type = "toggle",
                         name = "Use Default Icon Size",
                         desc = "Toggles whether the default icon size should be used for this group.",
-                        get = self.BuildGenericAuraGroupGetter("useDefaultIconSize"),
-                        set = self.BuildGenericAuraGroupSetter("useDefaultIconSize")
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.useDefaultIconSize end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.useDefaultIconSize = newValue 
+                            end
+                        )
                     },
                     customIconSize = {
                         name = "Custom Icon Size",
@@ -110,8 +140,14 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         min = 16,
                         max = 128,
                         step = 1,
-                        get = self.BuildGenericAuraGroupGetter("customIconSize"),
-                        set = self.BuildGenericAuraGroupSetter("customIconSize"),
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.customIconSize end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.customIconSize = newValue 
+                            end
+                        ),
                         disabled = function(info)
                             local groupKey = info[2]
                             return currentModel.groupUserSettings[groupKey].useDefaultIconSize
@@ -122,16 +158,28 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         desc = "Determines the anchor point of the target frame that the aura set will be aligned with.",
                         type = "select",
                         values = getAnchorPoints(),
-                        get = self.BuildGenericAuraGroupGetter("anchorPoint"),
-                        set = self.BuildGenericAuraGroupSetter("anchorPoint"),
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.anchorPoint end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.anchorPoint = newValue 
+                            end
+                        )
                     },   
                     selfPoint = {
                         name = "Self Anchor Point",
                         desc = "Determines the point of the aura frame that aura frames will be anchored from.",
                         type = "select",
                         values = getAnchorPoints(),
-                        get = self.BuildGenericAuraGroupGetter("selfPoint"),
-                        set = self.BuildGenericAuraGroupSetter("selfPoint"),
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.selfPoint end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.selfPoint = newValue 
+                            end
+                        )
                     },   
                     growDirection = {
                         name = "Grow Direction",
@@ -141,15 +189,27 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                             [BuffWatcher_GrowDirection.Left] = "Left",
                             [BuffWatcher_GrowDirection.Right] = "Right"
                         },
-                        get = self.BuildGenericAuraGroupGetter("growDirection"),
-                        set = self.BuildGenericAuraGroupSetter("growDirection"),
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.growDirection end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.growDirection = newValue 
+                            end
+                        )
                     },                   
                     useDefaultUnlistedMultiplier = {
                         type = "toggle",
                         name = "Use Default Unlisted Multiplier",
                         desc = "Toggles whether the default unlisted multiplier should be used",
-                        get = self.BuildGenericAuraGroupGetter("useDefaultUnlistedMultiplier"),
-                        set = self.BuildGenericAuraGroupSetter("useDefaultUnlistedMultiplier")
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.useDefaultUnlistedMultiplier end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.useDefaultUnlistedMultiplier = newValue 
+                            end
+                        )
                     },
                     customUnlistedMultiplier = {
                         name = "Custom Unlisted Multiplier",
@@ -158,12 +218,50 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
                         min = 0.1,
                         max = 5,
                         step = 0.1,
-                        get = self.BuildGenericAuraGroupGetter("customUnlistedMultiplier"),
-                        set = self.BuildGenericAuraGroupSetter("customUnlistedMultiplier"),
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.customUnlistedMultiplier end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.customUnlistedMultiplier = newValue 
+                            end
+                        ),
                         disabled = function(info)
                             local groupKey = info[2]
                             return currentModel.groupUserSettings[groupKey].useDefaultUnlistedMultiplier
                         end
+                    },
+                    minorAuraMultiplier = {
+                        name = "Minor Aura Multiplier",
+                        desc = "The icon size multiplier applied to auras marked as minor auras.",
+                        type = "range",
+                        min = 0.1,
+                        max = 5,
+                        step = 0.1,
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.minorAuraMultiplier end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.minorAuraMultiplier = newValue 
+                            end
+                        )
+                    },
+                    minorAuraPriority = {
+                        name = "Minor Aura Priority",
+                        desc = "The priority value applied to auras marked as minor auras.",
+                        type = "range",
+                        min = 1,
+                        max = 10,
+                        step = 1,
+                        get = self.BuildGenericAuraGroupGetter(
+                            function(s) return s.minorAuraPriority end
+                        ),
+                        set = self.BuildGenericAuraGroupSetter(
+                            function(s, newValue) 
+                                s.minorAuraPriority = newValue 
+                            end
+                        )
                     },
                 }
             }
@@ -228,23 +326,27 @@ function BuffWatcher_SettingsDialog:new(dbAccessor, contextStore, defaultContext
         local optionsFrame = AceConfigDialog:AddToBlizOptions("BuffWatcher_options", "BuffWatcher")
     end
 
-    self.BuildGenericAuraGroupGetter = function(settingName)
+    ---@param picker fun(groupSettings: BuffWatcher_AuraGroupUserSettings): any
+    ---@return fun(info: any): any
+    self.BuildGenericAuraGroupGetter = function(picker)
+        ---@type fun(info: any): nil
         local getter = function(info)
             local groupKey = info[2]
-            local value = currentModel.groupUserSettings[groupKey][settingName]
+            local value = picker(currentModel.groupUserSettings[groupKey])
             return value
         end
 
         return getter
     end
 
-    ---@param settingName string
-    ---@return fun(info: any, value: any)
-    self.BuildGenericAuraGroupSetter = function(settingName)
-        ---@type fun(info: any, value: any)
+    ---@param valueSetter fun(groupSettings: BuffWatcher_AuraGroupUserSettings, newValue: any): any
+    ---@return fun(info: any, value: any): nil
+    self.BuildGenericAuraGroupSetter = function(valueSetter)
+        ---@type fun(info: any, value: any): nil
         local setter = function(info, value)
             local groupKey = info[2]
-            currentModel.groupUserSettings[groupKey][settingName] = value
+            local groupSettings = currentModel.groupUserSettings[groupKey]
+            valueSetter(groupSettings, value)
             dbAccessor.SetOptions(currentModel)
         end
 

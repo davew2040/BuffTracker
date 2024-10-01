@@ -163,6 +163,18 @@ function BuffWatcher_AddEditSavedCast:new()
                     return activeModel.ownOnly
                  end
               },
+              isMinorAura = {
+                name = "Minor Aura",
+                desc = "Flags this auras as a minor aura, which will then use minor aura settings.",
+                type = "toggle",
+                ---@param 
+                set = function(info,val) 
+                    activeModel.isMinorAura = val
+                end,
+                get = function(info) 
+                    return activeModel.isMinorAura
+                 end
+              },
               priority = {
                 name = "Priority",
                 desc = "Sets priority for this spell",
@@ -176,7 +188,10 @@ function BuffWatcher_AddEditSavedCast:new()
                 end,
                 get = function(info) 
                     return activeModel.priority
-                 end
+                end,
+                disabled = function(info)
+                    return activeModel.isMinorAura
+                end
               },
               multiplier = {
                 name = "Size Multiplier",
@@ -191,7 +206,10 @@ function BuffWatcher_AddEditSavedCast:new()
                 end,
                 get = function(info) 
                     return activeModel.sizeMultiplier
-                 end
+                end,
+                disabled = function(info)
+                    return activeModel.isMinorAura
+                end
               },
             }
           }

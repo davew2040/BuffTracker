@@ -19,6 +19,8 @@ BuffWatcher_AuraContext = {}
 ---@field icon integer
 ---@field xOffset integer,
 ---@field yOffset integer,
+---@field minorAuraMultiplier number,
+---@field minorAuraPriority integer,
 ---@field selfPoint string,
 ---@field anchorPoint string
 ---@field unlistedRowCount integer
@@ -72,7 +74,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     local isLoaded = false
     ---@type table<string, boolean> 
     local contextUnits = {}
-
+    ---@type number
+    local minorAuraMultiplier = 1.0
+    ---@type integer
+    local minorAuraPriority = 1
+    
     local threePartKeyBuilder = {}
 
     -- do not add/remove to this directly! use the helpers
@@ -208,6 +214,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         selfPoint = params.selfPoint
         anchorPoint = params.anchorPoint
         unlistedRowCount = params.unlistedRowCount
+        minorAuraMultiplier = params.minorAuraMultiplier
+        minorAuraPriority = params.minorAuraPriority
         self.useDefaultUnlistedMultiplier = params.useDefaultUnlistedMultiplier
         self.customUnlistedMultiplier = params.customUnlistedMultiplier
 
@@ -229,6 +237,8 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         selfPoint = settings.selfPoint
         anchorPoint = settings.anchorPoint
         growDirection = settings.growDirection
+        minorAuraMultiplier = settings.minorAuraMultiplier
+        minorAuraPriority = settings.minorAuraPriority
 
         spellBundle = newSpellBundle
 
@@ -709,15 +719,15 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@return BuffWatcher_BordersDefinition
     self.GetCastBorders = function(castInfo)
         ---@type BuffWatcher_BordersDefinition
-        local borders = {
-            innerWidth = 1,
-            outerWidth = 1,
-            dispelColor = BuffWatcher_Color:new(0, 0, 0, 1),
-            dispelWidth = 0,
-            hostilityColor = configuration.GetBuffColor(),
-            hostilityWidth = configuration.GetBuffDebuffBorderSize(),
-            showDispel = false,
-        }
+        local borders =  objectPool.GetObject()
+        
+        borders.innerWidth = 1
+        borders.outerWidth = 1
+        borders.dispelColor = BuffWatcher_Color:new(0, 0, 0, 1)
+        borders.dispelWidth = 0
+        borders.hostilityColor = configuration.GetBuffColor()
+        borders.hostilityWidth = configuration.GetBuffDebuffBorderSize()
+        borders.showDispel = false
 
         return borders
     end
@@ -731,15 +741,15 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         end
 
         ---@type BuffWatcher_BordersDefinition
-        local borders = {
-            innerWidth = 1,
-            outerWidth = 1,
-            dispelColor = BuffWatcher_Color:new(0, 0, 0, 1),
-            dispelWidth = 0,
-            hostilityColor = markerColor,
-            hostilityWidth = configuration.GetBuffDebuffBorderSize(),
-            showDispel = false,
-        }
+        local borders =  objectPool.GetObject()
+        
+        borders.innerWidth = 1
+        borders.outerWidth = 1
+        borders.dispelColor = BuffWatcher_Color:new(0, 0, 0, 1)
+        borders.dispelWidth = 0
+        borders.hostilityColor = markerColor
+        borders.hostilityWidth = configuration.GetBuffDebuffBorderSize()
+        borders.showDispel = false
 
         return borders
     end
@@ -804,7 +814,11 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@param blizzAuraInfo? BuffWatcher_Blizzard_AuraData
     local getPriority = function(watcherInfo, blizzAuraInfo)
         if watcherInfo ~= nil then 
-            return watcherInfo.priority
+            if watcherInfo.isMinorAura then
+                return minorAuraPriority
+            else 
+                return watcherInfo.priority
+            end
         elseif blizzAuraInfo ~= nil and blizzAuraInfo.dispelName ~= nil then -- if dispellable, prioritize it over other auras
             return 2
         else
@@ -867,19 +881,23 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     ---@param targetUnit string
     ---@param targetGuid string
     local function handleAddMarkers(targetUnit, targetGuid)
-        handleSingleMarker(targetUnit, targetGuid, Icons.Up, 25, 1.3)
+        handleSingleMarker(targetUnit, targetGuid, Icons.Up, 25, 1.0)
 
         local arrowIcon = self.GetGrowthDirection() == BuffWatcher_GrowDirection.Left and Icons.Left or Icons.Right
 
-        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 24, 1.0)
-        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 23, 1.0)
+        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 24, minorAuraMultiplier)
+        handleSingleMarker(targetUnit, targetGuid, arrowIcon, 23, minorAuraMultiplier)
     end
 
     ---@param watcherInfo? BuffWatcher_StoredSpell
     ---@return number
     local getAuraSizeMultiplier = function(watcherInfo)
         if watcherInfo ~= nil then
-            return watcherInfo.sizeMultiplier
+            if watcherInfo.isMinorAura then
+                return minorAuraMultiplier
+            else 
+                return watcherInfo.sizeMultiplier
+            end
         else
             return configuration.GetNpcMultiplier()
         end
@@ -1413,7 +1431,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
                     hasUpdates = true
                 end
             end
-            
+
             visibleUnits[unitLabel] = inRange
         end
 

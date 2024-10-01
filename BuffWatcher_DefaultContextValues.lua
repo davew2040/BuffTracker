@@ -6,6 +6,7 @@ function BuffWatcher_DefaultContextValues:new()
 
     local DefaultIconSize = 32
     local DefaultRaidIconSize = 12
+    local DefaultMinorAuraPriorty = 3
 
     ---@class BuffWatcher_ContextSettingsValues
     ---@field key string
@@ -23,6 +24,8 @@ function BuffWatcher_DefaultContextValues:new()
     ---@field selfPoint string
     ---@field anchorPoint string
     ---@field unlistedRowCount integer
+    ---@field minorAuraMultiplier number
+    ---@field minorAuraPriority integer
     ---@field useDefaultUnlistedMultiplier boolean
     ---@field customUnlistedMultiplier number
     
@@ -49,6 +52,8 @@ function BuffWatcher_DefaultContextValues:new()
         customUnlistedMultiplier = 0.5,
         xOffset = 0,
         yOffset = 0,
+        minorAuraMultiplier = 0.8,
+        minorAuraPriority = 3,
         selfPoint = BuffWatcher_AnchorPoints.TOPLEFT,
         anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT
     }
@@ -63,6 +68,8 @@ function BuffWatcher_DefaultContextValues:new()
     ---@param customUnlistedMultiplier number,
     ---@param xOffset integer,
     ---@param yOffset integer
+    ---@param minorAuraMultiplier number
+    ---@param minorAuraPriority integer
     ---@param anchorPoint BuffWatcher_AnchorPoints,
     ---@param selfPoint BuffWatcher_AnchorPoints
     ---@return BuffWatcher_AuraGroupUserSettings
@@ -77,6 +84,8 @@ function BuffWatcher_DefaultContextValues:new()
         customUnlistedMultiplier,
         xOffset,
         yOffset,
+        minorAuraMultiplier,
+        minorAuraPriority,
         anchorPoint,
         selfPoint
     )
@@ -92,6 +101,8 @@ function BuffWatcher_DefaultContextValues:new()
             customUnlistedMultiplier = customUnlistedMultiplier,
             xOffset = xOffset,
             yOffset = yOffset,
+            minorAuraMultiplier = minorAuraMultiplier,
+            minorAuraPriority = minorAuraPriority,
             selfPoint = selfPoint,
             anchorPoint = anchorPoint
         }
@@ -156,6 +167,8 @@ function BuffWatcher_DefaultContextValues:new()
             params.customUnlistedMultiplier,
             params.xOffset,
             params.yOffset,
+            params.minorAuraMultiplier,
+            params.minorAuraPriority,
             params.anchorPoint,
             params.selfPoint
         )
@@ -175,6 +188,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178499,
             xOffset = 60,
             yOffset = 10,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT,
             unlistedRowCount = 2,
@@ -195,6 +210,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178492,
             xOffset = -80,
             yOffset = 10,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMLEFT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
@@ -215,6 +232,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178493,
             xOffset = 60,
             yOffset = 15,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPLEFT,
             unlistedRowCount = 2,
@@ -235,6 +254,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178494,
             xOffset = -80,
             yOffset = 15,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMLEFT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
@@ -255,6 +276,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178495,
             xOffset = -10,
             yOffset = 15,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
@@ -275,6 +298,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178496,
             xOffset = -10,
             yOffset = -10,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 1,
@@ -295,6 +320,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178497,
             xOffset = -10,
             yOffset = 15,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
@@ -315,6 +342,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 2178498,
             xOffset = -10,
             yOffset = -10,
+            minorAuraMultiplier = 0.8,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
@@ -335,6 +364,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717310,
             xOffset = -5,
             yOffset = 5,
+            minorAuraMultiplier = 0.9,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
@@ -355,6 +386,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717303,
             xOffset = -5,
             yOffset = -5,
+            minorAuraMultiplier = 0.9,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
@@ -375,6 +408,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717310,
             xOffset = -5,
             yOffset = 5,
+            minorAuraMultiplier = 0.9,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.BOTTOMRIGHT,
             unlistedRowCount = 2,
@@ -395,6 +430,8 @@ function BuffWatcher_DefaultContextValues:new()
             icon = 3717303,
             xOffset = -5,
             yOffset = -5,
+            minorAuraMultiplier = 0.9,
+            minorAuraPriority = DefaultMinorAuraPriorty,
             selfPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             anchorPoint = BuffWatcher_AnchorPoints.TOPRIGHT,
             unlistedRowCount = 2,
@@ -416,35 +453,57 @@ function BuffWatcher_DefaultContextValues:new()
         return CopyTable(DefaultFixedContextSettings)
     end
 
-    ---@param userSettings table<string, BuffWatcher_AuraGroupUserSettings>
+    ---@param fixedValues BuffWatcher_AuraGroupFixedSettings
+    ---@param userValues BuffWatcher_AuraGroupUserSettings
+    ---@return BuffWatcher_AuraGroupMergedSettings
+    local buildMergedSettingsEntry = function(fixedValues, userValues)
+        ---@type BuffWatcher_AuraGroupMergedSettings
+        local merged = {
+            friendlyName = fixedValues.friendlyName,
+            includeBuffsAndCasts = fixedValues.includeBuffsAndCasts,
+            includeDebuffs = fixedValues.includeDebuffs,
+            isHostile = fixedValues.isHostile,
+            frameType = fixedValues.frameType,
+            showUnlistedAuras = userValues.showUnlistedAuras,
+            showDispelType = userValues.showDispelType,
+            useDefaultIconSize = userValues.useDefaultIconSize,
+            customIconSize = userValues.customIconSize,
+            growDirection = userValues.growDirection,
+            icon = fixedValues.icon,
+            xOffset = userValues.xOffset,
+            yOffset = userValues.yOffset,
+            minorAuraMultiplier = userValues.minorAuraMultiplier,
+            minorAuraPriority = userValues.minorAuraPriority,
+            selfPoint = userValues.selfPoint,
+            anchorPoint = userValues.anchorPoint,
+            unlistedRowCount = userValues.unlistedRowCount,
+            useDefaultUnlistedMultiplier = userValues.useDefaultUnlistedMultiplier,
+            customUnlistedMultiplier = userValues.customUnlistedMultiplier
+        }
+
+        return merged
+    end
+
+    ---@param dbUserSettings table<string, BuffWatcher_AuraGroupUserSettings>
     ---@return table<string, BuffWatcher_AuraGroupMergedSettings>
-    self.MergeFixedAndUserSettings = function(userSettings)
+    self.MergeFixedAndUserSettings = function(dbUserSettings)
         ---@type table<string, BuffWatcher_AuraGroupMergedSettings>
         local merged = {}
 
-        for k,fixedSettings in pairs(DefaultFixedContextSettings) do
-            local userValues = userSettings[k]
+        for contextKey,fixedSettings in pairs(DefaultFixedContextSettings) do
+            local defaultUserSettings = DefaultUserSettings[contextKey]
+            local dbUserValues = dbUserSettings[contextKey]
+
+            ---@type BuffWatcher_AuraGroupUserSettings
+            local correctedUserValues = BuffWatcher_Shared.FillMissingValues(dbUserValues, defaultUserSettings)
+
             ---@type BuffWatcher_AuraGroupMergedSettings
-            merged[k] = {
-                friendlyName = fixedSettings.friendlyName,
-                includeBuffsAndCasts = fixedSettings.includeBuffsAndCasts,
-                includeDebuffs = fixedSettings.includeDebuffs,
-                isHostile = fixedSettings.isHostile,
-                frameType = fixedSettings.frameType,
-                showUnlistedAuras = userValues.showUnlistedAuras,
-                showDispelType = userValues.showDispelType,
-                useDefaultIconSize = userValues.useDefaultIconSize,
-                customIconSize = userValues.customIconSize,
-                growDirection = userValues.growDirection,
-                icon = fixedSettings.icon,
-                xOffset = userValues.xOffset,
-                yOffset = userValues.yOffset,
-                selfPoint = userValues.selfPoint,
-                anchorPoint = userValues.anchorPoint,
-                unlistedRowCount = userValues.unlistedRowCount,
-                useDefaultUnlistedMultiplier = userValues.useDefaultUnlistedMultiplier,
-                customUnlistedMultiplier = userValues.customUnlistedMultiplier
-            }
+            local mergedEntry = buildMergedSettingsEntry(fixedSettings, correctedUserValues)
+            merged[contextKey] = mergedEntry
+
+            DevTool:AddData(
+                { dbValues = CopyTable(dbUserValues), finalValues = CopyTable(mergedEntry)}, 
+                "fixme final context values after merge")
         end
 
         return merged

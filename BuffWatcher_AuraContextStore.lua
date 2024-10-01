@@ -173,6 +173,8 @@ function BuffWatcher_AuraContextStore:new(
             icon = settings.icon,
             xOffset = settings.xOffset,
             yOffset = settings.yOffset,
+            minorAuraMultiplier = settings.minorAuraMultiplier,
+            minorAuraPriority = settings.minorAuraPriority,
             selfPoint = settings.selfPoint,
             anchorPoint = settings.anchorPoint,
             unlistedRowCount = settings.unlistedRowCount,

@@ -326,10 +326,10 @@ function BuffWatcher_Shared:CopyTable(source)
     return CopyTable(source)
 end
 
-
+--- Attempts to push values from a table into a target table, if possible
 ---@param target table<any,any>
 ---@param patcher table<any,any>
-function BuffWatcher_Shared:PatchTable(target, patcher)
+BuffWatcher_Shared.PatchTable = function(target, patcher)
     for k,v in pairs(target) do
         if (patcher[k] ~= nil and type(target[k]) == type(patcher[k])) then
             target[k] = patcher[k]
@@ -351,6 +351,7 @@ function BuffWatcher_Shared.GetDefaultStoredSpell()
         showOnNameplates = true, 
         showDispelTypeOutline = true,
         duration = 10,
+        isMinorAura = false,
         showGlow = false,
         sizeMultiplier = 1,
         priority = 5,
@@ -782,6 +783,22 @@ BuffWatcher_Shared.CompareValues = function(one, two)
         return one == two
     end
 end
+
+--- Fills missing values with a provided set of default values
+---@param target table<any,any>
+---@param defaultValues table<any,any>
+BuffWatcher_Shared.FillMissingValues = function(target, defaultValues)
+    local copy = CopyTable(target)
+
+    for defaultKey, defaultValue in pairs(defaultValues) do
+        if (copy[defaultKey] == nil) then
+            copy[defaultKey] = defaultValue
+        end
+    end
+
+    return copy
+end
+
 
 ---@type table
 BuffWatcher_Shared.EmptyTable = {}

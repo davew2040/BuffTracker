@@ -11,4 +11,6 @@
 ---@field yOffset integer
 ---@field selfPoint string
 ---@field anchorPoint string
+---@field minorAuraMultiplier number
+---@field minorAuraPriority integer
 BuffWatcher_AuraGroupUserSettings = {}

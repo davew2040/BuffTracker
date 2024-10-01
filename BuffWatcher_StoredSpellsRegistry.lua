@@ -69,9 +69,9 @@ function BuffWatcher_StoredSpellsRegistry:new()
 
         DevTool:AddData(dbSpells, "fixme dbSpells")
 
-        for i,v in ipairs(imports) do
+        for i,importedSpell in ipairs(imports) do
             local newEntry = BuffWatcher_Shared.GetDefaultStoredSpell()
-            BuffWatcher_Shared:PatchTable(newEntry, v)
+            BuffWatcher_Shared.PatchTable(newEntry, importedSpell)
 
             local key = BuffWatcher_StoredSpell.GetStoredSpellKey(newEntry)
             if (validateNewEntry(key, newEntry, dbSpells, baseline)) then 

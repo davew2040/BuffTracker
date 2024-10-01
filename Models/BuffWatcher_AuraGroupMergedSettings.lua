@@ -12,6 +12,8 @@
 ---@field icon integer
 ---@field xOffset integer,
 ---@field yOffset integer,
+---@field minorAuraMultiplier number,
+---@field minorAuraPriority integer,
 ---@field selfPoint string,
 ---@field anchorPoint string
 ---@field unlistedRowCount integer
