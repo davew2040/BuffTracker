@@ -78,7 +78,9 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     local minorAuraMultiplier = 1.0
     ---@type integer
     local minorAuraPriority = 1
-    
+    ---@type BuffWatcher_TimerWrapper?
+    local refreshTimer = nil
+
     local threePartKeyBuilder = {}
 
     -- do not add/remove to this directly! use the helpers
@@ -1025,6 +1027,10 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         ---@type BuffWatcher_StoredSpell?
         local watcherInfo = getWatcherInfo(blizzardAura)
 
+        if not self.isNameplate() and not isUnitFrameInRange(targetUnit) then
+            return false
+        end
+
         -- if we haven't explicitly opted to see (or hide) this aura, then only show if it's an NPC aura
         if (watcherInfo == nil) then
             if (self.IncludeNpcs()) then
@@ -1048,10 +1054,6 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             end
 
             if (watcherInfo.ownOnly and blizzardAura.sourceUnit ~= 'player') then
-                return false
-            end
-
-            if not self.isNameplate() and not isUnitFrameInRange(targetUnit) then
                 return false
             end
         end
@@ -1150,23 +1152,15 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return hasUpdates
     end
 
-    -- local refreshAllPendingUnitAuras = function()
-    --     local hasUpdates = false
+    local refreshAllUnitAuras = function()
+        local units = unitToGuidMap.GetUnitsToGuid()
 
-    --     for unit, _ in pairs(unitToGuidMap.GetUnitsToGuid()) do
-    --         if unitsWithPendingUpdates[unit] ~= nil then
-    --             if refreshUnitAuras(unit) then
-    --                 frameManager.GuidRefreshed(unitToGuidMap.GetGuidByUnit(unit))
-    --             end
-    --         end
-    --     end
-
-    --     objectPool.ReleaseObject(unitsWithPendingUpdates)
-
-    --     unitsWithPendingUpdates = objectPool.GetObject()
-
-    --     lastUpdateTime = GetTime()
-    -- end
+        for unit, guid in pairs(units) do
+            if refreshUnitAuras(unit) then
+                frameManager.GuidRefreshed(guid)
+            end
+        end
+    end
 
     ---@param blizzardAura BuffWatcher_Blizzard_AuraData
     ---@param targetUnit string
@@ -1177,16 +1171,28 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
     end
 
     ---@param stateKey string
-    local handleTimer = function(stateKey)
+    local handleAuraTimer = function(stateKey)
         self.KillStateKey(stateKey, true)
     end
 
     ---@param stateKey string
     ---@return BuffWatcher_TimerWrapper
-    local getTimer = function(duration, stateKey)
+    local getAuraTimer = function(duration, stateKey)
         local timer = C_Timer.NewTimer(duration, 
             function()
-                handleTimer(stateKey)
+                handleAuraTimer(stateKey)
+            end
+        )
+        return BuffWatcher_TimerWrapper:new(timer)
+    end
+
+    ---@return BuffWatcher_TimerWrapper
+    local getRefreshTimer = function()
+        local timer = C_Timer.NewTicker(
+            configuration.GetRefreshTimerMilliseconds() / 1000.0, 
+            function()
+                DevTool:AddData("fixme refreshing auras for context " .. self.getName())
+                refreshAllUnitAuras()
             end
         )
         return BuffWatcher_TimerWrapper:new(timer)
@@ -1199,7 +1205,6 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             self.RefreshGuid(deadGuid)
         end
     end
-
 
     ---@param castInfo BuffWatcher_Blizzard_CastInfo
     ---@return boolean
@@ -1227,7 +1232,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         if (self.auraInstancesMap[key] == nil) then
             local baseSize = self.GetIconSize()
             local borders = self.GetCastBorders(castInfo)
-            local timer = getTimer(watcherInfo.duration, key)
+            local timer = getAuraTimer(watcherInfo.duration, key)
 
             ---@type BuffWatcher_AuraInstance
             local newCast = objectPool.GetObject()
@@ -1263,7 +1268,7 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
             castInstance.expirationTime = GetTime() + watcherInfo.duration
 
             castInstance.timerHandle.GetTimer():Cancel()
-            local newTimer = getTimer(watcherInfo.duration, key)
+            local newTimer = getAuraTimer(watcherInfo.duration, key)
             castInstance.timerHandle = newTimer
 
             frameManager.AuraUpdated(castInfo.sourceGuid, key)
@@ -1499,6 +1504,27 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         return isLooseAura(auraInstance)
     end
 
+    local shouldUseRefreshTimer = function()
+        return not self.isNameplate()
+    end
+
+    local cancelRefreshTimer = function()
+        if refreshTimer ~= nil then
+            refreshTimer.GetTimer():Cancel()
+        end
+
+        refreshTimer = nil
+    end
+
+    local startRefreshTimer = function()
+        DevTool:AddData("fixme calling startRefreshTimer")
+        if refreshTimer ~= nil then
+            refreshTimer.GetTimer():Cancel()
+        end
+
+        refreshTimer = getRefreshTimer()
+    end
+
     -- Specifically intended to clear auras that aren't persisted between unit add/removes (we keep casts and item uses)
     ---@param guid string
     ---@param notifyFrameManager boolean
@@ -1542,6 +1568,14 @@ function BuffWatcher_AuraContext:new(params, configuration, objectPool)
         
         if (isLoaded) then
             self.AddAllUnits()
+
+            if shouldUseRefreshTimer() then
+                startRefreshTimer()
+            end
+        else
+            if shouldUseRefreshTimer() then
+                cancelRefreshTimer()
+            end
         end
     end
 

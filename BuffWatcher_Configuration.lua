@@ -116,6 +116,11 @@ function BuffWatcher_Configuration:new(dbAccessor)
         return poisonColor
     end
 
+    ---@return number
+    self.GetRefreshTimerMilliseconds = function()
+        return 5000
+    end
+
     ---@param fn fun(): nil
     self.registerConfigChanged = function(fn)
         callbacks.registerCallback(BuffWatcher_Configuration.Events.ConfigChanged, fn)

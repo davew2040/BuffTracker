@@ -171,10 +171,21 @@ function BuffWatcher_AuraFrame:new(framePool, cooldownFramePool)
             )
         else
             frames.dispelFrame:SetAllPoints(frames.rootFrame)
+            frames.dispelFrame.texture:SetColorTexture(
+                0, 
+                0, 
+                0
+            )
         end
 
-        frames.hostilityFrame:SetPoint("TOPLEFT", frames.dispelFrame, "TOPLEFT", aura.borders.dispelWidth, -aura.borders.dispelWidth)
-        frames.hostilityFrame:SetPoint("BOTTOMRIGHT", frames.dispelFrame, "BOTTOMRIGHT", -aura.borders.dispelWidth, aura.borders.dispelWidth)
+        local actualDispelWidth = aura.borders.dispelWidth
+
+        if (not savedAuraInstance.borders.showDispel) then
+            actualDispelWidth = 0
+        end
+
+        frames.hostilityFrame:SetPoint("TOPLEFT", frames.dispelFrame, "TOPLEFT", actualDispelWidth, -actualDispelWidth)
+        frames.hostilityFrame:SetPoint("BOTTOMRIGHT", frames.dispelFrame, "BOTTOMRIGHT", -actualDispelWidth, actualDispelWidth)
         frames.hostilityFrame.texture:SetColorTexture(
             aura.borders.hostilityColor.red,
             aura.borders.hostilityColor.green,
